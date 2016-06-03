@@ -9,5 +9,5 @@ buckle your seat belts and prepare for awesome
 ```
 mkdir ~/lib🍔🍟🍺
 cd ~
-git clone https://github.com/osrf/libcmbml lib🍔🍟🍺
+git clone https://github.com/osrf/cmbml lib🍔🍟🍺
 ```
