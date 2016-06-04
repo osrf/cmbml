@@ -1,0 +1,9 @@
+[submodule "external/msm-lite"]
+	path = external/msm-lite
+	url = https://github.com/boost-experimental/msm-lite
+[submodule "external/hana"]
+	path = external/hana
+	url = https://github.com/boostorg/hana
+[submodule "external/spirit"]
+	path = external/spirit
+	url = https://github.com/boostorg/spirit/
