@@ -17,7 +17,6 @@ List<CacheChange> * ReaderLocator::unsent_changes() const {
   return nullptr;
 }
 
-
 SequenceNumber_t ReaderProxy::set_acked_changes() {
   return {0, 0};
 }

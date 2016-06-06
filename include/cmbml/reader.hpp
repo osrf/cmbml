@@ -3,6 +3,8 @@
 
 #include <cmbml/history.hpp>
 
+#include <cmbml/reader_state_machine.hpp>
+
 // #include <boost/hana/tuple.hpp>
 
 
@@ -42,17 +44,30 @@ namespace cmbml {
   };
 
 
-  template<typename ReaderParams, typename EndpointParams>
+  //TODO decide if inheritance or template-bool for Stateful/Stateless is better...
+
+  template<bool Stateful, typename ReaderParams, typename EndpointParams>
   struct Reader : Endpoint<EndpointParams>, ReaderParams {
+    ReaderMsm state_machine;
+    Reader() {
+      state_machine.configure<Stateful, EndpointParams::reliability_level>();
+    }
+
   protected:
     HistoryCache reader_cache;
   };
 
   template<typename ...Params>
-  using StatelessReader = Reader<Params...>;
+  using StatelessReader = Reader<false, Params...>;
 
+  // Stateful specialization
   template<typename ...Params>
-  struct StatefulReader : Reader<Params...> {
+  struct Reader<true, Params...> : Endpoint<Params...> {
+    ReaderMsm state_machine;
+    Reader() {
+      state_machine.configure<true, Endpoint<Params...>::reliability_level>();
+    }
+
     void add_matched_writer(WriterProxy & writer_proxy);
     // Why not remove by GUID?
     void remove_matched_writer(WriterProxy * writer_proxy);
@@ -60,6 +75,9 @@ namespace cmbml {
   private:
     List<WriterProxy> matched_writers;
   };
+
+  template<typename... Params>
+  using StatefulReader = Reader<true, Params...>;
 
 }
 

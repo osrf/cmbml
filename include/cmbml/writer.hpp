@@ -2,6 +2,7 @@
 #define CMBML__WRITER__HPP_
 
 #include <cmbml/history.hpp>
+#include <cmbml/writer_state_machine.hpp>
 
 namespace cmbml {
 
@@ -24,6 +25,7 @@ namespace cmbml {
     List<CacheChange> * unsent_changes() const;
 
   private:
+    // TODO see below note in ReaderProxy about compile-time behavior here
     bool expects_inline_qos;
 
     List<CacheChange> requested_changes_list;
@@ -56,15 +58,15 @@ namespace cmbml {
 
   template<
     bool pushMode,
-    Duration_t & heartbeatPeriod,
-    Duration_t & nackResponseDelay,
-    Duration_t & nackSuppressionDuration
+    typename heartbeatPeriod,
+    typename nackResponseDelay = DurationT<0, 500*1000*1000>,
+    typename nackSuppressionDuration = DurationT<0, 0>
     >
   struct WriterParams {
     static const bool push_mode = pushMode;
-    static constexpr Duration_t heartbeat_period = heartbeatPeriod;
-    static constexpr Duration_t nack_response_delay = nackResponseDelay;
-    static constexpr Duration_t nack_suppression_duration = nackSuppressionDuration;
+    static constexpr Duration_t heartbeat_period = DurationFactory<heartbeatPeriod>();
+    static constexpr Duration_t nack_response_delay = DurationFactory<nackResponseDelay>();
+    static constexpr Duration_t nack_suppression_duration = DurationFactory<nackSuppressionDuration>();
   };
 
   template<typename WriterParams, typename EndpointParams>
@@ -75,13 +77,22 @@ namespace cmbml {
     HistoryCache writer_cache;
   };
 
-  template<typename ...Params>
+  template<typename resendDataPeriod, typename ...Params>
   struct StatelessWriter : Writer<Params...> {
-    Duration_t resend_data_period;
+    StatelessWriterMsm state_machine;
+
+    StatelessWriter() {
+      // TODO
+      // auto state_machine = configure_state_machine(this);
+      state_machine.configure<Writer<Params...>::reliability_level>();
+    }
+
     // TODO: can we move the locator?
     void add_reader_locator(Locator_t & locator);
     void remove_reader_locator(Locator_t * locator);
     void reset_unset_changes();
+
+    static constexpr Duration_t resend_data_period = DurationFactory<resendDataPeriod>();
   private:
     List<ReaderLocator> reader_locators;
   };
@@ -95,7 +106,6 @@ namespace cmbml {
   private:
     List<ReaderProxy> matched_readers;
   };
-
 }
 
 #endif  // CMBML__WRITER__HPP_

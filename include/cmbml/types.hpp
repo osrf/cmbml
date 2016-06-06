@@ -36,8 +36,21 @@ namespace cmbml {
 
   //using Duration_t = std::chrono::nanoseconds;
   struct Duration_t {
+    constexpr Duration_t(uint32_t s, uint32_t ns) : sec(s), nsec(ns) {}
+
     uint32_t sec;
     uint32_t nsec;
+  };
+
+  template<typename DurationT>
+  constexpr static Duration_t DurationFactory(){
+    return Duration_t(DurationT::sec, DurationT::nsec);
+  }
+
+  template<uint32_t Sec, uint32_t Nsec>
+  struct DurationT {
+    static const uint32_t sec = Sec;
+    static const uint32_t nsec = nsec;
   };
 
   // 16-byte (128 bit) GUID
