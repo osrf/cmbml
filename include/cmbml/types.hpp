@@ -6,7 +6,6 @@
 #define CMBML__TYPES__HPP_
 
 #include <array>
-#include <chrono>  // Oh boy, I hope chrono isn't too big
 #include <cstdint>
 #include <vector>
 
@@ -103,6 +102,15 @@ namespace cmbml {
     List<Locator_t> multicast_locator_list;
     static const ReliabilityKind_t reliability_level = EndpointParams::reliability_level;
     static const TopicKind_t topic_kind = EndpointParams::topic_kind;
+  };
+
+  enum class ChangeForReaderStatusKind {
+    unsent, unacknowledged, requested, acknowledged, underway
+  };
+
+  struct ChangeForReader {
+    ChangeForReaderStatusKind status;
+    bool is_relevant;
   };
 
 }

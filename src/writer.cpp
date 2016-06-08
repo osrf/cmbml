@@ -2,11 +2,19 @@
 
 using namespace cmbml;
 
-ChangeForReader * ReaderLocator::next_requested_change() const {
-  return nullptr;
+template<typename T>
+T pop_next(List<T> & list) {
+  auto next = std::move(list.back());
+  list.pop_back();
+  return std::move(next);
 }
-ChangeForReader * ReaderLocator::next_unsent_change() const {
-  return nullptr;
+
+CacheChange ReaderLocator::pop_next_requested_change() {
+  return std::move(pop_next(requested_changes_list));
+}
+
+CacheChange ReaderLocator::pop_next_unsent_change() {
+  return std::move(pop_next(unsent_changes_list));
 }
 List<CacheChange> * ReaderLocator::requested_changes() const {
   return nullptr;
@@ -20,18 +28,13 @@ List<CacheChange> * ReaderLocator::unsent_changes() const {
 SequenceNumber_t ReaderProxy::set_acked_changes() {
   return {0, 0};
 }
-ChangeForReader * ReaderProxy::next_requested_change() const {
-  return nullptr;
+CacheChange ReaderProxy::pop_next_requested_change() {
+  return std::move(pop_next(requested_changes_list));
 }
-ChangeForReader * ReaderProxy::next_unsent_change() const {
-  return nullptr;
+CacheChange ReaderProxy::pop_next_unsent_change() {
+  return std::move(pop_next(unsent_changes_list));
 }
-List<ChangeForReader> * ReaderProxy::unsent_changes() const {
-  return nullptr;
-}
-List<ChangeForReader> * ReaderProxy::requested_changes() const {
-  return nullptr;
-}
+
 void ReaderProxy::set_requested_changes(List<SequenceNumber_t> & request_seq_numbers) {
 }
 List<ChangeForReader> * ReaderProxy::unacked_changes() const {

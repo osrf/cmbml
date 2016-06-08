@@ -2,14 +2,17 @@
 
 using namespace cmbml;
 
-void HistoryCache::addChange(CacheChange * change) {
+void HistoryCache::add_change(CacheChange && change) {
+  changes.push_back(change);
 }
-void HistoryCache::removeChange(CacheChange * change) {
+void HistoryCache::remove_change(CacheChange * change) {
 }
-SequenceNumber_t HistoryCache::get_min_sequence_number() const {
-  return {0, 0};
+
+static SequenceNumber_t temp_default = {0, 0};
+SequenceNumber_t & HistoryCache::get_min_sequence_number() const {
+  return temp_default;
 }
-SequenceNumber_t HistoryCache::get_max_sequence_number() const {
-  return {0, 0};
+SequenceNumber_t & HistoryCache::get_max_sequence_number() const {
+  return temp_default;
 }
 
