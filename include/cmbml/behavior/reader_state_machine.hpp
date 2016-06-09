@@ -3,10 +3,10 @@
 
 #include <boost/msm-lite.hpp>
 
-#include <cmbml/reader.hpp>
+#include <cmbml/structure/reader.hpp>
 #include <cmbml/types.hpp>
-#include <cmbml/history.hpp>
-#include <cmbml/data.hpp>
+#include <cmbml/structure/history.hpp>
+#include <cmbml/message/data.hpp>
 
 namespace cmbml {
 
@@ -87,12 +87,12 @@ namespace cmbml {
 
     struct data_received {
       ReaderT & reader;
-      SerializedData & data;
+      Data & data;
     };
 
     struct data_received_reliable {
       ReaderT & reader;
-      SerializedData & data;
+      Data & data;
       WriterProxy & proxy;
     };
 

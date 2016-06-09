@@ -1,9 +1,9 @@
 #ifndef CMBML__WRITER__HPP_
 #define CMBML__WRITER__HPP_
 
-#include <cmbml/history.hpp>
+#include <cmbml/structure/history.hpp>
 // #include <cmbml/writer_state_machine.hpp>
-#include <cmbml/data.hpp>
+#include <cmbml/message/data.hpp>
 
 namespace cmbml {
 
@@ -21,7 +21,7 @@ namespace cmbml {
     void set_requested_changes(List<SequenceNumber_t> & request_seq_numbers);
     List<CacheChange> * unsent_changes() const;
 
-    void send(const SerializedData & data);
+    void send(const Data & data);
     void send(const Heartbeat & heartbeat);
 
     // TODO see below note in ReaderProxy about compile-time behavior here

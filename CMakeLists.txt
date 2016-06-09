@@ -8,6 +8,7 @@ set(EMBEDDED_OPTIMIZATION_FLAGS "-fno-exceptions -Os -fno-rtti")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 include_directories(external/msm-lite/include/)
+include_directories(external/hana/include/)
 
 add_library(cmbml
   src/reader.cpp
@@ -18,12 +19,17 @@ add_library(cmbml
 target_include_directories(cmbml
   PUBLIC
   include
-  # for the future:
-  # external/hana/include
 )
 
+function(basic_cmbml_test test_name src)
+  add_executable(${test_name} ${src})
+  target_link_libraries(${test_name} ${cmbml})
+  target_include_directories(${test_name} PUBLIC include)
+endfunction()
+
 if(ENABLE_TESTING)
-  add_executable(cmbml_basic_test test/cmbml.cpp)
-  target_link_libraries(cmbml_basic_test ${cmbml})
-  target_include_directories(cmbml_basic_test PUBLIC include)
+  basic_cmbml_test(cmbml_test test/cmbml.cpp)
+
+  basic_cmbml_test(serialization_test test/serialization.cpp)
+
 endif()

@@ -14,9 +14,9 @@ namespace cmbml {
     uint32_t low;
   };
 
-  struct SerializedData;
+  struct Data;
   struct CacheChange {
-    CacheChange(const SerializedData & data);
+    CacheChange(const Data & data);
     ChangeKind_t kind;
     GUID_t writer_guid;
     InstanceHandle_t instance_handle;
@@ -25,7 +25,7 @@ namespace cmbml {
     // How to represent the type of this data in a generic way?
     // optional
     // if present, represents the serialized data stored in history
-    // SerializedData data_value;
+    // Data data_value;
   };
 
   struct HistoryCache {

@@ -10,6 +10,7 @@
 #include <vector>
 
 namespace cmbml {
+  // long is always 32 bits. there are no 64-bit int types except maybe to avoid overflow.
 
   enum class ReliabilityKind_t {
     best_effort,
@@ -23,10 +24,12 @@ namespace cmbml {
   using Octet = uint8_t;
   // 12 octets
   using GuidPrefix_t = std::array<Octet, 12>;
+  static const GuidPrefix_t guid_prefix_unknown = {0};
   // 4 octets
   using EntityId_t = std::array<Octet, 4>;
   using VendorId_t = std::array<Octet, 2>;
   static const VendorId_t cmbml_vendor_id = {0xf0, 0x9f};
+  static const VendorId_t vendor_id_unknown = {0x0, 0x0};
 
   // TODO: Figure out a better embedded-friendly sequence implementation.
   // are we going to pass around an allocator std vector?
@@ -51,6 +54,20 @@ namespace cmbml {
     static const uint32_t sec = Sec;
     static const uint32_t nsec = nsec;
   };
+
+
+  // Interesting, a fixed-point time representation (IETF RFC 1305)
+  struct Time_t {
+    int32_t seconds;
+    uint32_t fraction;  // represents sec/2^32
+    constexpr Time_t(int32_t sec, uint32_t frac) : seconds(sec), fraction(frac) {};
+  };
+
+  // TODO These constants should have better names (namespaced, or different case)
+  constexpr static Time_t time_zero = Time_t(0, 0);
+  // woah. Actually, time_t should be 64-bit ints then?
+  constexpr static Time_t time_invalid = Time_t(-1, 0xffffffff);
+  constexpr static Time_t time_infinite = Time_t(0x7fffffff, 0xffffffff);
 
   // 16-byte (128 bit) GUID
   struct GUID_t {

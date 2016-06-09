@@ -4,7 +4,7 @@
 #include <boost/msm-lite.hpp>
 
 #include <cmbml/types.hpp>
-#include <cmbml/writer.hpp>
+#include <cmbml/structure/writer.hpp>
 
 namespace cmbml {
 
@@ -25,8 +25,8 @@ namespace stateless_writer {
     //   DATA.readerId := ENTITYID_UNKNOWN;
     //   sendto the_reader_locator.locator, DATA;
     CacheChange next_change = e.locator.pop_next_unsent_change();
-    // TODO Fill out fields of SerializedData here or in constructor
-    SerializedData data(next_change, e.locator.expects_inline_qos);
+    // TODO Fill out fields of Data here or in constructor
+    Data data(next_change, e.locator.expects_inline_qos);
     e.locator.send(data);
 
     // Postcondition:
@@ -208,7 +208,7 @@ namespace stateful_writer {
     // send DATA;
     // }
     CacheChange change = e.reader_proxy.pop_next_unsent_change();
-    // SerializedData data(change);
+    // Data data(change);
   };
 
   // TODO

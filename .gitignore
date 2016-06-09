@@ -26,3 +26,13 @@
 *.exe
 *.out
 *.app
+
+# vim swap files
+*.swp
+*.swo
+
+# Compiled Python files
+*.pyc
+
+# YouCompleteMe
+.ycm_extra_conf.py

@@ -1,4 +1,4 @@
-#include <cmbml/writer.hpp>
+#include <cmbml/structure/writer.hpp>
 
 using namespace cmbml;
 

@@ -1,7 +1,7 @@
 #ifndef CMBML__READER__HPP_
 #define CMBML__READER__HPP_
 
-#include <cmbml/history.hpp>
+#include <cmbml/structure/history.hpp>
 
 // #include <cmbml/reader_state_machine.hpp>
 

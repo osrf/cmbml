@@ -1,4 +1,4 @@
-#include <cmbml/history.hpp>
+#include <cmbml/structure/history.hpp>
 
 using namespace cmbml;
 

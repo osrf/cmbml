@@ -1,4 +1,4 @@
-#include <cmbml/reader.hpp>
+#include <cmbml/structure/reader.hpp>
 
 using namespace cmbml;
 
