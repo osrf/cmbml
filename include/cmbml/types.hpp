@@ -31,6 +31,9 @@ namespace cmbml {
   static const VendorId_t cmbml_vendor_id = {0xf0, 0x9f};
   static const VendorId_t vendor_id_unknown = {0x0, 0x0};
 
+  using ProtocolId_t = std::array<char, 4>;
+  static const ProtocolId_t protocol_id = {'R', 'T', 'P', 'S'};
+
   // TODO: Figure out a better embedded-friendly sequence implementation.
   // are we going to pass around an allocator std vector?
   template<typename T, typename Allocator = std::allocator<T>>
@@ -68,6 +71,11 @@ namespace cmbml {
   // woah. Actually, time_t should be 64-bit ints then?
   constexpr static Time_t time_invalid = Time_t(-1, 0xffffffff);
   constexpr static Time_t time_infinite = Time_t(0x7fffffff, 0xffffffff);
+
+  struct SequenceNumber_t {
+    int32_t high;
+    uint32_t low;
+  };
 
   // 16-byte (128 bit) GUID
   struct GUID_t {

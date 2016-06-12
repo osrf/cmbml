@@ -5,6 +5,7 @@
 #include <cinttypes>
 
 #include <cmbml/types.hpp>
+#include <boost/hana/define_struct.hpp>
 
 namespace cmbml {
 
@@ -21,7 +22,6 @@ namespace cmbml {
   using KeyFlag = SubmessageFlag;
   using LivelinessFlag = SubmessageFlag;
   using MulticastFlag = SubmessageFlag;
-  // If Invalidate is not set to true,
   // using InvalidateFlag = SubmessageFlag;
 
 
@@ -38,7 +38,7 @@ namespace cmbml {
   using SerializedDataFragment = std::vector<Octet>;
 
 
-  enum class SubmessageKind {
+  enum SubmessageKind : uint8_t {
     data, gap, heartbeat, acknack, pad, info_ts, info_reply,
     info_dst, info_src, data_frag, nack_frag, heartbeat_frag
   };
@@ -51,9 +51,11 @@ namespace cmbml {
   };
 
   struct SubmessageHeader {
-    SubmessageKind submessage_id;
-    std::array<SubmessageFlag, 8> flags;
-    uint16_t submessage_length;
+    BOOST_HANA_DEFINE_STRUCT(SubmessageHeader,
+      (SubmessageKind, submessage_id),
+      (std::array<SubmessageFlag, 8>, flags),
+      (uint16_t, submessage_length)
+    );
   };
 
   // TODO write a utility templated on the type of the message to correctly interpret flags

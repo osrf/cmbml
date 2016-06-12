@@ -2,9 +2,19 @@
 #ifndef CMBML__SERIALIZER__HPP_
 #define CMBML__SERIALIZER__HPP_
 
+#include <boost/hana/map.hpp>
 #include <boost/hana/tuple.hpp>
+#include <boost/hana/fwd/flatten.hpp>
 
+#include <algorithm>
 #include <cassert>
+#include <climits>
+#include <functional>
+
+#include <cmbml/cdr/convert_representations.hpp>
+#include <cmbml/cdr/place_integral_type.hpp>
+
+namespace hana = boost::hana;
 
 namespace cmbml {
 
@@ -29,135 +39,99 @@ namespace cmbml {
 // |    ACKNACK    |X|X|X|X|X|X|F|E|        octetsToNextHeader
 //
 
+// Signedness
+// TODO verify if these functions are generalizable (make sure there are no weird conversion
+// errors, possibly catch using numeric_limits::is_signed
+
+// TODO CDR should be able to serialize 64-bit types.
 
 // if the type has a fixed size we know exactly how many bytes will be needed at compile time.
 // Decompose structs into tuples of primitive types (arrays of integral types)
 
+// On alignment: 
+
 // TODO: deduce message length from T, can this be done at compile time even with padding?
-// I contend that yes it can
+// Compile-time recursion is expensive
+// However we don't expect the serialized elements to be deeply nested (constant, max of ~3 levels)
+// 
+// IMPORTANT: We assume that dst is zero-initialized when receive it
+// maybe the initial serialize helper function should zero-initialize it?
+template<
+  typename T,
+  size_t MessageLength,
+  typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
+void serialize(const T element, std::array<uint32_t, MessageLength> & dst,
+    size_t & index,
+    size_t & subindex)
+{
+  // Observe CDR alignment rule: primitives must be aligned on their length.
+  if (auto remainder = subindex % number_of_bits<T>() != 0) {
+    // Pad subindex
+    subindex += remainder;
+  }
+
+  if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
+    ++index;
+    subindex = 0;
+  }
+  place_integral_type(element, dst[index], subindex);
+}
+
+template<
+  typename T,
+  size_t MessageLength,
+  typename std::enable_if<std::is_enum<T>::value>::type * = nullptr>
+void serialize(const T element, std::array<uint32_t, MessageLength> & dst,
+    size_t & index,
+    size_t & subindex)
+{
+  serialize(static_cast<typename std::underlying_type<T>::type>(element), dst, index, subindex);
+}
+
+template<typename T, size_t ArraySize, size_t MessageLength>
+void serialize(
+    const std::array<T, ArraySize> & element,
+    std::array<uint32_t, MessageLength> & dst,
+    size_t & index,
+    size_t & subindex)
+{
+  // TODO CDR Alignment
+  if (auto remainder = subindex % number_of_bits<T>() != 0) {
+    subindex += remainder;
+  }
+  if (remainder ) {
+  }
+  convert_representations(element, dst, dst.begin() + index);
+  index += sizeof(T)*ArraySize/sizeof(uint32_t);
+  // TODO subindex needs to be set based on the boundary of the placement
+  // subindex = 0;
+}
+
+
+//template<typename ...TupleArgs, size_t MessageLength>
+template<
+  typename T,
+  size_t MessageLength,
+  typename std::enable_if<hana::Foldable<T>::value>::type * = nullptr>
+void serialize(
+    const T & element,
+    std::array<uint32_t, MessageLength> & dst,
+    size_t & index,
+    size_t & subindex)
+{
+  // auto flat_tuple = hana::flatten(element);
+  hana::for_each(element, [&dst, &index, &subindex](auto pair){
+    serialize(hana::second(pair), dst, index, subindex);
+  });
+}
+
+// Convenience function because we cannot assign a default value to an lvalue reference
 template<typename T, size_t MessageLength>
-std::array<uint32_t, MessageLength> serialize_message(const T & element);
-
-template<typename ...TupleArgs, size_t MessageLength>
-std::array<uint32_t, MessageLength> serialize(boost::hana::tuple<TupleArgs...> & element)
+void serialize(const T & element, std::array<uint32_t, MessageLength> & dst)
 {
-  
-}
-
-// base case while serializing: primitive types
-// template<typename >
-
-// place an integral type into a long
-// i represents the bitwise placement index of src
-// start at low index, MSBs
-//
-// For example, suppose we are placing the byte 0x42 into a uint32 at bit index 8
-// that would result in a long with the following layout:
-// byte 0          | byte 1        | byte 2       | byte 3
-// 0...2...........7...............15.............23...............31
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-// 0 0 0 0 0 0 0 0 | 1 0 0 0 0 1 0 | ...
-//
-// Preserve the value of dst: only overwrite the bits we need to replace
-// TODO Unit test me
-template<typename IntegralType>
-void place_integral_type(const IntegralType src, uint32_t & dst, size_t i) {
-  // We must be able to fit the src type into dst
-  static_assert(
-      sizeof(IntegralType) <= sizeof(uint32_t),
-      "Couldn't fit serialized integral type into a uint32_t!");
-
-  // We need to fit something of size src into the long at the specified index
-  // We expect src to span from index i to index "i + sizeof(IntegralType)"
-  assert(i < sizeof(uint32_t) - sizeof(IntegralType));
-
-  uint32_t widened_src = src;
-  // Bitshift src to the index which it will land at 
-  widened_src = widened_src << i;
-
-  // zero the part of dst which we plan to replace
-  uint32_t mask = UINT32_MAX;
-  mask = mask << i;  // produces zeros until the first index
-  mask |= UINT32_MAX >> (i + sizeof(IntegralType));
-
-  dst &= mask;
-  // OR dst with the widened src
-  dst |= src;
-}
-
-// Specialization for uint32_t
-template<>
-void place_integral_type(const uint32_t src, uint32_t & dst, size_t i) {
-  assert(i == 0);
-  dst = src;
-}
-
-// Bool specialization for flags (TODO)
-template<>
-void place_integral_type(const bool src, uint32_t & dst, size_t i) {
-
-}
-
-// Specializations for primitive types
-// Concepts: SrcT and DestT are Integral types with the same signedness
-template<typename DstT, typename SrcT, size_t SrcLength,
-  typename std::enable_if<sizeof(DstT) < sizeof(SrcT)*SrcLength >::type * = nullptr>
-std::array<DstT, sizeof(SrcT)*SrcLength/sizeof(DstT)> convert_representations(
-    const std::array<SrcT, SrcLength> & src);
-
-// Specialization if the representation of the source type is smaller than the destination type
-// TODO Unit test me
-template<typename DstT, typename SrcT, size_t SrcLength,
-  typename std::enable_if<sizeof(SrcT) <= sizeof(DstT) - 1 >::type * = nullptr>
-std::array<DstT, sizeof(SrcT)*SrcLength/sizeof(DstT)> convert_representations(
-    const std::array<SrcT, SrcLength> & src)
-{
-  using ReturnType = std::array<DstT, sizeof(SrcT)*SrcLength/sizeof(DstT)>;
-  // How many SrcT's can we fit into a DstT?
-  const size_t pack_count = sizeof(DstT) % sizeof(SrcT);
-
-  size_t src_index = 0;
-
-  ReturnType dst;
-  dst.fill(0);
-
-  for (auto entry : dst) {
-    // Place the lower indices into the most significant bit.
-    for (size_t i = 0; i < pack_count; ++i) {
-      entry |= src[src_index + i] << (pack_count - 1 - i)*sizeof(SrcT);
-    }
-    src_index += pack_count;
-  }
-
-  return dst;
-}
-
-// Specialization if the representation of the destination type is smaller than the source type
-// TODO Unit test me
-template<typename DstT, typename SrcT, size_t SrcLength,
-  typename std::enable_if<sizeof(DstT) <= sizeof(SrcT) - 1 >::type * = nullptr>
-std::array<DstT, sizeof(SrcT)*SrcLength/sizeof(DstT)> convert_representations(
-    const std::array<SrcT, SrcLength> & src)
-{
-  using ReturnType = std::array<DstT, sizeof(SrcT)*SrcLength/sizeof(DstT)>;
-  // How many DstT's are split from a SrcT?
-  const size_t unpack_count = sizeof(SrcT) % sizeof(DstT);
-
-  ReturnType dst;
-  dst.fill(0);
-
-  size_t dst_index = 0;
-
-  for (auto entry : src) {
-    for (size_t i = 0; i < unpack_count; ++i) {
-      // MSB of entry goes into the lower index of dst
-      // TODO this is wrong
-      dst[dst_index + i] = entry >> (unpack_count - 1 - i)*sizeof(DstT);
-    }
-    dst_index += unpack_count;
-  }
-
-  return dst;
+  size_t index = 0;
+  size_t subindex = 0;
+  serialize(element, dst, index, subindex);
 }
 
 }

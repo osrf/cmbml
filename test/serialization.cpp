@@ -4,6 +4,8 @@
 
 #include <cmbml/cdr/serialize_anything.hpp>
 
+#include <cmbml/message/submessage.hpp>
+
 namespace hana = boost::hana;
 
 int main(int argc, char** argv) {
@@ -21,11 +23,26 @@ int main(int argc, char** argv) {
       });
   */
 
-  std::array<uint8_t, 4> example;
-  // incredibly, super basic test
-  auto converted_array = cmbml::convert_representations<uint32_t>(example);
+  std::array<uint8_t, 4> example_src;
+  std::array<uint32_t, 1> example_dst;
+  // incredibly, super basic test to see if it compiles
+  // cmbml::convert_representations<uint32_t>(example);
+  cmbml::convert_representations(example_src, example_dst, example_dst.begin());
 
   uint32_t dst = 0;
   uint8_t src = 1;
-  cmbml::place_integral_type(src, dst, 2);
+  size_t index = 0;
+  cmbml::place_integral_type(src, dst, index);
+
+  // Serialization test
+  // TODO compile-time inference of the serialized array for fixed sizes
+  //
+  std::array<uint32_t, 100> serialized_data;
+
+  cmbml::serialize(3, serialized_data);
+
+  cmbml::serialize(example_src, serialized_data);
+
+  cmbml::SubmessageHeader header;
+  cmbml::serialize(header, serialized_data);
 }

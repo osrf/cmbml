@@ -9,11 +9,6 @@ namespace cmbml {
   };
   using InstanceHandle_t = std::array<Octet, 16>;
 
-  struct SequenceNumber_t {
-    int32_t high;
-    uint32_t low;
-  };
-
   struct Data;
   struct CacheChange {
     CacheChange(const Data & data);

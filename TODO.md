@@ -18,6 +18,8 @@
   - [ ] Fix the clunky template patterns and figure out which endpoint parameters should be compile-time selectable
   - [ ] Decide on which dynamically sized data structures or pattern for compile-time selection of data structures and their allocators
   - [ ] Decide on patterns for an executor model
+  - [ ] Put constants in one header (?) and use std::integer_sequence for compile-time integer seqs
+  - [ ] general header reorg
 
 
 Optional behaviors
