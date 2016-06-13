@@ -18,6 +18,8 @@ constexpr auto max_value_map = hana::make_map(
     hana::make_pair(hana::type_c<uint32_t>, UINT32_MAX)
 );
 
+// TODO Make destination type generic for dynamically sized arrays...
+
 // If the representation of the source type is smaller than the destination type
 // TODO Unit test me
 template<typename DstT, typename SrcT, size_t SrcLength, size_t DstLength,
@@ -39,14 +41,14 @@ void convert_representations(
   size_t src_index = 0;
 
   std::for_each(begin_iterator, begin_iterator + converted_elements,
-        [src, &src_index, pack_count](auto & entry) {
-          // Place the lower indices into the most significant bit.
-          for (size_t i = 0; i < pack_count; ++i) {
-            entry |= src[src_index + i] << (pack_count - 1 - i)*number_of_bits<SrcT>();
-          }
-          src_index += pack_count;
-        }
-      );
+    [src, &src_index, pack_count](auto & entry) {
+      // Place the lower indices into the most significant bit.
+      for (size_t i = 0; i < pack_count; ++i) {
+        entry |= src[src_index + i] << (pack_count - 1 - i)*number_of_bits<SrcT>();
+      }
+      src_index += pack_count;
+    }
+  );
 }
 
 // Specialization if the representation of the destination type is smaller than the source type

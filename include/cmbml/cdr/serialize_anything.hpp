@@ -2,6 +2,8 @@
 #ifndef CMBML__SERIALIZER__HPP_
 #define CMBML__SERIALIZER__HPP_
 
+#include <boost/hana/pair.hpp>
+#include <boost/hana/eval_if.hpp>
 #include <boost/hana/map.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/fwd/flatten.hpp>
@@ -13,13 +15,15 @@
 
 #include <cmbml/cdr/convert_representations.hpp>
 #include <cmbml/cdr/place_integral_type.hpp>
+#include <cmbml/cdr/template_utilities.hpp>
+#include <cmbml/types.hpp>  // Provides "List" type
 
 namespace hana = boost::hana;
 
 namespace cmbml {
 
 // Must enforce alignment: we always align to a 32-bit boundary
-// and we never split a struct across that boundary
+// never split a field across a 32-bit boundary
 
 // Endianness
 // Endianness of serialization SHOULD be configurable
@@ -51,16 +55,17 @@ namespace cmbml {
 // On alignment: 
 
 // TODO: deduce message length from T, can this be done at compile time even with padding?
+// Yes, for fixed-size messages
 // Compile-time recursion is expensive
 // However we don't expect the serialized elements to be deeply nested (constant, max of ~3 levels)
 // 
 // IMPORTANT: We assume that dst is zero-initialized when receive it
-// maybe the initial serialize helper function should zero-initialize it?
+// maybe the initial serialize helper function should zero-initialize it.
 template<
   typename T,
-  size_t MessageLength,
+  typename DstT,
   typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
-void serialize(const T element, std::array<uint32_t, MessageLength> & dst,
+void serialize(const T element, DstT & dst,
     size_t & index,
     size_t & subindex)
 {
@@ -79,55 +84,85 @@ void serialize(const T element, std::array<uint32_t, MessageLength> & dst,
 
 template<
   typename T,
-  size_t MessageLength,
+  typename DstT,
   typename std::enable_if<std::is_enum<T>::value>::type * = nullptr>
-void serialize(const T element, std::array<uint32_t, MessageLength> & dst,
+void serialize(const T element, DstT & dst,
     size_t & index,
     size_t & subindex)
 {
   serialize(static_cast<typename std::underlying_type<T>::type>(element), dst, index, subindex);
 }
 
-template<typename T, size_t ArraySize, size_t MessageLength>
+template<typename T, size_t ArraySize, typename DstT,
+  typename std::enable_if<std::is_integral<T>::value || std::is_enum<T>::value>::type * = nullptr>
 void serialize(
     const std::array<T, ArraySize> & element,
-    std::array<uint32_t, MessageLength> & dst,
+    DstT & dst,
     size_t & index,
     size_t & subindex)
 {
-  // TODO CDR Alignment
   if (auto remainder = subindex % number_of_bits<T>() != 0) {
     subindex += remainder;
   }
-  if (remainder ) {
+
+  if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
+    ++index;
+    subindex = 0;
   }
   convert_representations(element, dst, dst.begin() + index);
   index += sizeof(T)*ArraySize/sizeof(uint32_t);
-  // TODO subindex needs to be set based on the boundary of the placement
-  // subindex = 0;
+
+  subindex = number_of_bits<T>() % number_of_bits<uint32_t>();
 }
 
-
-//template<typename ...TupleArgs, size_t MessageLength>
-template<
-  typename T,
-  size_t MessageLength,
-  typename std::enable_if<hana::Foldable<T>::value>::type * = nullptr>
+// TODO sometimes we serialize the length of variable-length lists and sometimes we don't;
+// clarify when this happens.
+// this is for std::vector and std::array of non-primitive types
+template<typename ContainerT, typename DstT,
+  class = typename ContainerT::iterator>  // Enable specialization if ContainerT is Iterable
 void serialize(
-    const T & element,
-    std::array<uint32_t, MessageLength> & dst,
+    const ContainerT & src,
+    DstT & dst,
     size_t & index,
     size_t & subindex)
 {
-  // auto flat_tuple = hana::flatten(element);
-  hana::for_each(element, [&dst, &index, &subindex](auto pair){
-    serialize(hana::second(pair), dst, index, subindex);
+  for (const auto & element : src) {
+    serialize(element, dst, index, subindex);
+  }
+}
+
+template<
+  typename DstT,
+  typename ... TupleArgs>
+void serialize(
+    const hana::tuple<TupleArgs...> & element,
+    DstT & dst,
+    size_t & index,
+    size_t & subindex)
+{
+  hana::for_each(element, [&dst, &index, &subindex](const auto x){
+    serialize(x, dst, index, subindex);
+  });
+}
+
+template<
+  typename T,
+  typename DstT,
+  typename std::enable_if<hana::Foldable<T>::value>::type * = nullptr>
+void serialize(
+    const T & element,
+    DstT & dst,
+    size_t & index,
+    size_t & subindex)
+{
+  hana::for_each(element, [&dst, &index, &subindex](const auto x){
+    serialize(hana::second(x), dst, index, subindex);
   });
 }
 
 // Convenience function because we cannot assign a default value to an lvalue reference
-template<typename T, size_t MessageLength>
-void serialize(const T & element, std::array<uint32_t, MessageLength> & dst)
+template<typename T, typename DstT>
+void serialize(const T & element, DstT & dst)
 {
   size_t index = 0;
   size_t subindex = 0;

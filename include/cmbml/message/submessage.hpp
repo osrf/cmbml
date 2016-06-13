@@ -64,31 +64,32 @@ namespace cmbml {
   // Submessage Elements
 
   // Bitmap representation of a set of sequence numbers
+  // For all elements in the set,
+  // base <= element <= base+255
   template<typename T>
   struct IntegralSet {
-    T base;
-    // For all elements in the set,
-    // base <= element <= base+255
-    List<T> set;
+    BOOST_HANA_DEFINE_STRUCT(IntegralSet,
+      (T, base),
+      (List<T>, set));
   };
 
   using SequenceNumberSet = IntegralSet<SequenceNumber_t>;
   using FragmentNumberSet = IntegralSet<FragmentNumber_t>;
 
-  struct ParameterIt {
+  struct Parameter {
+    BOOST_HANA_DEFINE_STRUCT(Parameter,
+    (ParameterId_t, id),
+    (List<Octet>, value));
   };
 
-  template<uint16_t Length>
-  struct Parameter : ParameterIt {
-    ParameterId_t id;
-    static const uint16_t length = Length;
-    std::array<Octet, length> value;
-  };
-
+  // TODO Add a type trait so that only types with the "Subelement" Concept can specialize
+  // (that is, all the structs defined in "data.hpp"
   template<typename SubmessageElement>
   struct Submessage {
-    SubmessageHeader header;
-    SubmessageElement element;
+    BOOST_HANA_DEFINE_STRUCT(Submessage,
+      (SubmessageHeader, header),
+      (SubmessageElement, element)
+    );
   };
 
 

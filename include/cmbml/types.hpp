@@ -5,6 +5,8 @@
 #ifndef CMBML__TYPES__HPP_
 #define CMBML__TYPES__HPP_
 
+#include <boost/hana/define_struct.hpp>
+
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -61,8 +63,11 @@ namespace cmbml {
 
   // Interesting, a fixed-point time representation (IETF RFC 1305)
   struct Time_t {
-    int32_t seconds;
-    uint32_t fraction;  // represents sec/2^32
+    BOOST_HANA_DEFINE_STRUCT(Time_t,
+    (int32_t, seconds),
+    (uint32_t, fraction));  // represents sec/2^32
+    Time_t() : seconds(0), fraction(0) {};
+
     constexpr Time_t(int32_t sec, uint32_t frac) : seconds(sec), fraction(frac) {};
   };
 
@@ -73,8 +78,9 @@ namespace cmbml {
   constexpr static Time_t time_infinite = Time_t(0x7fffffff, 0xffffffff);
 
   struct SequenceNumber_t {
-    int32_t high;
-    uint32_t low;
+    BOOST_HANA_DEFINE_STRUCT(SequenceNumber_t,
+    (int32_t, high),
+    (uint32_t, low));
   };
 
   // 16-byte (128 bit) GUID
@@ -92,14 +98,16 @@ namespace cmbml {
   };
 
   struct Locator_t {
-    int32_t kind;
-    uint32_t port;
-    std::array<Octet, 16> address;
+    BOOST_HANA_DEFINE_STRUCT(Locator_t,
+    (int32_t, kind),
+    (uint32_t, port),
+    (std::array<Octet, 16>, address));
   };
 
   struct ProtocolVersion_t {
-    Octet major;
-    Octet minor;
+    BOOST_HANA_DEFINE_STRUCT(ProtocolVersion_t,
+    (Octet, major),
+    (Octet, minor));
   };
   // lower protocol versions are not supported
   static const ProtocolVersion_t rtps_protocol_version = {2, 2};

@@ -1,10 +1,15 @@
+#include <iostream>
+
 #include <array>
+#include <cassert>
 
 #include <boost/hana/for_each.hpp>
 
 #include <cmbml/cdr/serialize_anything.hpp>
+#include <cmbml/cdr/deserialize_anything.hpp>
 
 #include <cmbml/message/submessage.hpp>
+#include <cmbml/message/message.hpp>
 
 namespace hana = boost::hana;
 
@@ -43,6 +48,12 @@ int main(int argc, char** argv) {
 
   cmbml::serialize(example_src, serialized_data);
 
-  cmbml::SubmessageHeader header;
-  cmbml::serialize(header, serialized_data);
+  cmbml::SubmessageHeader sub_header;
+  cmbml::serialize(sub_header, serialized_data);
+
+  cmbml::Message<cmbml::AckNack, cmbml::Data, cmbml::DataFrag, cmbml::Gap,
+    cmbml::Heartbeat, cmbml::HeartbeatFrag, cmbml::InfoDestination,
+    cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> message;
+
+  cmbml::serialize(message, serialized_data);
 }
