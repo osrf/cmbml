@@ -37,10 +37,20 @@ namespace cmbml {
 
   using SerializedDataFragment = std::vector<Octet>;
 
-
   enum SubmessageKind : uint8_t {
-    data, gap, heartbeat, acknack, pad, info_ts, info_reply,
-    info_dst, info_src, data_frag, nack_frag, heartbeat_frag
+    pad = 0x1,
+    acknack = 0x06,
+    heartbeat = 0x07,
+    gap = 0x08,
+    info_ts = 0x09,
+    info_src = 0x0c,
+    info_reply_ip4 = 0x0d,  // TODO need to propagate ipv4 vs. ipv6 to locator_list?
+    info_dst = 0x0e,
+    info_reply = 0x0f,  // TODO need to propagate ipv4 vs. ipv6 to locator_list?
+    nack_frag = 0x12,
+    heartbeat_frag = 0x13,
+    data = 0x15,
+    data_frag = 0x16
   };
 
   enum Endianness : bool {
@@ -82,16 +92,18 @@ namespace cmbml {
     (List<Octet>, value));
   };
 
-  // TODO Add a type trait so that only types with the "Subelement" Concept can specialize
-  // (that is, all the structs defined in "data.hpp"
-  template<typename SubmessageElement>
+  struct SubmessageElement {
+    BOOST_HANA_DEFINE_STRUCT(SubmessageElement,
+      (Endianness, endianness_flag)
+    );
+  };
+
   struct Submessage {
     BOOST_HANA_DEFINE_STRUCT(Submessage,
       (SubmessageHeader, header),
       (SubmessageElement, element)
     );
   };
-
 
 }
 

@@ -18,6 +18,10 @@
 #include <cmbml/cdr/template_utilities.hpp>
 #include <cmbml/types.hpp>  // Provides "List" type
 
+#include <cmbml/message/data.hpp>
+#include <cmbml/message/submessage.hpp>
+
+
 namespace hana = boost::hana;
 
 namespace cmbml {
@@ -75,11 +79,18 @@ void serialize(const T element, DstT & dst,
     subindex += remainder;
   }
 
+  // This is subtly less general that it seems because it still assumes that Dst
+  // is an iterable of unsigned 32-bit integers
   if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
     ++index;
     subindex = 0;
   }
   place_integral_type(element, dst[index], subindex);
+  if (subindex >= number_of_bits<uint32_t>()) {
+    // We went over a boundary
+    index++;
+    subindex = 0;
+  }
 }
 
 template<
@@ -115,6 +126,10 @@ void serialize(
   subindex = number_of_bits<T>() % number_of_bits<uint32_t>();
 }
 
+// TODO Specialization for ParameterList. Parameters currently do not conform to CDR spec
+
+// TODO Specialization for LocatorList. does not conform to CDR spec
+
 // TODO sometimes we serialize the length of variable-length lists and sometimes we don't;
 // clarify when this happens.
 // this is for std::vector and std::array of non-primitive types
@@ -126,6 +141,7 @@ void serialize(
     size_t & index,
     size_t & subindex)
 {
+  // serialize(src.size(), dst, index, subindex);
   for (const auto & element : src) {
     serialize(element, dst, index, subindex);
   }
@@ -158,6 +174,60 @@ void serialize(
   hana::for_each(element, [&dst, &index, &subindex](const auto x){
     serialize(hana::second(x), dst, index, subindex);
   });
+}
+
+#define CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Type) \
+  { \
+    auto * element = static_cast<const Type *>(&submessage.element); \
+    assert(element); \
+    serialize(*element, dst, index, subindex); \
+  } \
+
+template<typename DstT>
+void serialize(const Submessage & submessage, DstT & dst, size_t & index, size_t & subindex) {
+  // Get a header out of there
+  serialize(submessage.header, dst, index, subindex);
+
+  switch (submessage.header.submessage_id) {
+    case SubmessageKind::acknack:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(AckNack);
+      break;
+    case SubmessageKind::heartbeat:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Heartbeat);
+      break;
+    case SubmessageKind::gap:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Gap);
+      break;
+    case SubmessageKind::info_ts:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoTimestamp);
+      break;
+    case SubmessageKind::info_src:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoSource);
+      break;
+    case SubmessageKind::info_reply_ip4:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
+      break;
+    case SubmessageKind::info_reply:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
+      break;
+    case SubmessageKind::info_dst:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoDestination);
+      break;
+    case SubmessageKind::nack_frag:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(NackFrag);
+      break;
+    case SubmessageKind::heartbeat_frag:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(HeartbeatFrag);
+      break;
+    case SubmessageKind::data:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Data);
+      break;
+    case SubmessageKind::data_frag:
+      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(DataFrag);
+      break;
+    default:
+      assert(false);
+  }
 }
 
 // Convenience function because we cannot assign a default value to an lvalue reference

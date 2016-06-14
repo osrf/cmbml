@@ -7,6 +7,7 @@
 
 #include <cmbml/cdr/serialize_anything.hpp>
 #include <cmbml/cdr/deserialize_anything.hpp>
+#include <cmbml/cdr/deserialize_submessage.hpp>
 
 #include <cmbml/message/submessage.hpp>
 #include <cmbml/message/message.hpp>
@@ -37,12 +38,12 @@ int main(int argc, char** argv) {
   uint32_t dst = 0;
   uint8_t src = 1;
   size_t index = 0;
-  cmbml::place_integral_type(src, dst, index);
+  // cmbml::place_integral_type(src, dst, index);
 
   // Serialization test
   // TODO compile-time inference of the serialized array for fixed sizes
   //
-  std::array<uint32_t, 100> serialized_data;
+  std::array<uint32_t, 512> serialized_data;
 
   cmbml::serialize(3, serialized_data);
 
@@ -51,9 +52,27 @@ int main(int argc, char** argv) {
   cmbml::SubmessageHeader sub_header;
   cmbml::serialize(sub_header, serialized_data);
 
+  /*
   cmbml::Message<cmbml::AckNack, cmbml::Data, cmbml::DataFrag, cmbml::Gap,
     cmbml::Heartbeat, cmbml::HeartbeatFrag, cmbml::InfoDestination,
     cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> message;
+  */
+  cmbml::Message message;
+  hana::tuple<cmbml::AckNack, cmbml::Data, cmbml::DataFrag, cmbml::Gap,
+    cmbml::Heartbeat, cmbml::HeartbeatFrag, cmbml::InfoDestination,
+    cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> types;
+
+  hana::for_each(types, [&message](const auto x) {
+      // Instantiate something with the specified type.
+      cmbml::Submessage s;
+      s.element = x;
+      message.messages.push_back(s);
+    });
+
 
   cmbml::serialize(message, serialized_data);
+
+  // Packet comes in: we can't deduce the return type from its value
+  
+  cmbml::deserialize(serialized_data, message);
 }

@@ -2,6 +2,7 @@
 #define CMBML__DATA__HPP_
 
 #include <boost/hana/define_struct.hpp>
+#include <boost/hana/map.hpp>
 
 #include <cmbml/structure/history.hpp>
 #include <cmbml/types.hpp>
@@ -10,9 +11,8 @@
 
 namespace cmbml {
 
-  struct AckNack {
+  struct AckNack : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(AckNack,
-      (Endianness, endianness_flag),
       (FinalFlag, final_flag),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
@@ -21,9 +21,8 @@ namespace cmbml {
   };
 
   // TODO How to propagate Parameter type upwards
-  struct Data {
+  struct Data : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(Data,
-      (Endianness, endianness_flag),
       (InlineQosFlag, expects_inline_qos),
       (DataFlag, has_data),
       (KeyFlag, has_key),
@@ -42,9 +41,8 @@ namespace cmbml {
     }
   };
 
-  struct DataFrag {
+  struct DataFrag : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(DataFrag,
-      (Endianness, endianness_flag),
       (InlineQosFlag, expects_inline_qos),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
@@ -57,18 +55,16 @@ namespace cmbml {
       (SerializedData, payload));
   };
 
-  struct Gap {
+  struct Gap : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(Gap,
-      (Endianness, endianness_flag),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
       (SequenceNumber_t, gap_start),
       (SequenceNumberSet, gap_list));
   };
 
-  struct Heartbeat {
+  struct Heartbeat : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(Heartbeat,
-      (Endianness, endianness_flag),
       (FinalFlag, final_flag),
       (LivelinessFlag, liveliness_flag),
       (EntityId_t, reader_id),
@@ -87,9 +83,8 @@ namespace cmbml {
     }
   };
 
-  struct HeartbeatFrag {
+  struct HeartbeatFrag : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(HeartbeatFrag,
-      (Endianness, endianness_flag),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
       (SequenceNumber_t, writer_seq),
@@ -97,44 +92,58 @@ namespace cmbml {
       (Count_t, count));
   };
 
-  struct InfoDestination {
+  struct InfoDestination : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(InfoDestination,
-      (Endianness, endianness_flag),
       (GuidPrefix_t, guid_prefix));
   };
 
-  struct InfoReply {
+  struct InfoReply : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(InfoReply,
-      (Endianness, endianness_flag),
       (MulticastFlag, multicast_flag),
       (List<Locator_t>, unicast_locator_list),
       (List<Locator_t>, multicast_locator_list));
   };
 
-  struct InfoSource {
+  struct InfoSource : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(InfoSource,
-      (Endianness, endianness_flag),
       (ProtocolVersion_t, protocol_version),
       (VendorId_t, vendor_id),
       (GuidPrefix_t, guid_prefix));
   };
 
-  struct InfoTimestamp {
+  struct InfoTimestamp : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(InfoTimestamp,
-      (Endianness, endianness_flag),
       (InvalidateFlag, invalidate_flag),
       (Timestamp, timestamp));
   };
 
-  struct NackFrag {
+  struct NackFrag : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(NackFrag,
-      (Endianness, endianness_flag),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
       (SequenceNumber_t, writer_seq),
       (FragmentNumberSet, fragment_number_state),
       (Count_t, count));
   };
+
+
+  // This map really isn't that useful unless the submessage ID is going to be a constexpr.
+  namespace hana = boost::hana;
+  constexpr auto subelement_type_id_map = boost::hana::make_map(
+    // hana::make_pair(SubmessageKind::pad, hana::type_c<Pad>),
+    hana::make_pair(hana::uint_c<SubmessageKind::acknack>, hana::type_c<AckNack>),
+    hana::make_pair(hana::uint_c<SubmessageKind::heartbeat>, hana::type_c<Heartbeat>),
+    hana::make_pair(hana::uint_c<SubmessageKind::gap>, hana::type_c<Gap>),
+    hana::make_pair(hana::uint_c<SubmessageKind::info_ts>, hana::type_c<InfoTimestamp>),
+    hana::make_pair(hana::uint_c<SubmessageKind::info_src>, hana::type_c<InfoSource>),
+    hana::make_pair(hana::uint_c<SubmessageKind::info_reply_ip4>, hana::type_c<InfoReply>),
+    hana::make_pair(hana::uint_c<SubmessageKind::info_reply>, hana::type_c<InfoReply>),
+    hana::make_pair(hana::uint_c<SubmessageKind::info_dst>, hana::type_c<InfoDestination>),
+    hana::make_pair(hana::uint_c<SubmessageKind::nack_frag>, hana::type_c<NackFrag>),
+    hana::make_pair(hana::uint_c<SubmessageKind::heartbeat_frag>, hana::type_c<HeartbeatFrag>),
+    hana::make_pair(hana::uint_c<SubmessageKind::data>, hana::type_c<Data>),
+    hana::make_pair(hana::uint_c<SubmessageKind::data_frag>, hana::type_c<DataFrag>)
+  );
 
 }
 

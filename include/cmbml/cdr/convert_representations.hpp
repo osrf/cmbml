@@ -3,20 +3,9 @@
 
 #include <type_traits>
 
-#include <boost/hana/map.hpp>
-
 #include <cmbml/cdr/place_integral_type.hpp>
 
-namespace hana = boost::hana;
-
 namespace cmbml {
-
-// I couldn't find a compile-time association like this in the standard library.
-constexpr auto max_value_map = hana::make_map(
-    hana::make_pair(hana::type_c<uint8_t>, UINT8_MAX),
-    hana::make_pair(hana::type_c<uint16_t>, UINT16_MAX),
-    hana::make_pair(hana::type_c<uint32_t>, UINT32_MAX)
-);
 
 // TODO Make destination type generic for dynamically sized arrays...
 
