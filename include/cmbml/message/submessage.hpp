@@ -1,6 +1,7 @@
 #ifndef CMBML__SUBMESSAGE__HPP_
 #define CMBML__SUBMESSAGE__HPP_
 
+#include <memory>
 #include <vector>
 #include <cinttypes>
 
@@ -96,13 +97,25 @@ namespace cmbml {
     BOOST_HANA_DEFINE_STRUCT(SubmessageElement,
       (Endianness, endianness_flag)
     );
+
+    virtual ~SubmessageElement() {};
   };
 
   struct Submessage {
     BOOST_HANA_DEFINE_STRUCT(Submessage,
       (SubmessageHeader, header),
-      (SubmessageElement, element)
+      (std::unique_ptr<SubmessageElement>, element)
     );
+
+    Submessage() {
+    }
+
+    explicit Submessage(SubmessageElement * element_ptr) {
+      element.reset(element_ptr);
+    }
+    explicit Submessage(std::unique_ptr<SubmessageElement> element_ptr) {
+      element.reset(element_ptr.get());
+    }
   };
 
 }

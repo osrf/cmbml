@@ -29,6 +29,8 @@ void deserialize(const SrcT & src, DstT & dst, size_t & index, size_t & subindex
     subindex = 0;
   }
 
+  assert(src.begin() + index < src.end());
+
   place_integral_type(src[index], dst, subindex);
   if (subindex >= number_of_bits<uint32_t>()) {
     // We went over a boundary
@@ -65,7 +67,7 @@ void deserialize(
   for (auto & entry : dst) {
     place_integral_type(src[index], entry, subindex);
 
-    if (subindex >= number_of_bits<uint32_t>()) {
+    if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
       // We went over a boundary
       index++;
       subindex = 0;
@@ -126,7 +128,7 @@ void deserialize(
 
 #define CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(Type) \
   { \
-    auto * element = static_cast<const Type *>(&dst.element); \
+    auto * element = static_cast<const Type *>(dst.element.get()); \
     assert(element); \
     deserialize(src, *element, index, subindex); \
   } \
@@ -193,7 +195,7 @@ void deserialize(const std::array<uint32_t, PayloadLength> & src,
   while (index < PayloadLength) {
     Submessage submessage;
     deserialize(src, submessage, index, subindex);
-    dst.messages.push_back(submessage);
+    dst.messages.push_back(std::move(submessage));
   }
 }
 

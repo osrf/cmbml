@@ -20,6 +20,7 @@
 
 #include <cmbml/message/data.hpp>
 #include <cmbml/message/submessage.hpp>
+#include <cmbml/message/message.hpp>
 
 
 namespace hana = boost::hana;
@@ -141,7 +142,7 @@ void serialize(
     size_t & index,
     size_t & subindex)
 {
-  // serialize(src.size(), dst, index, subindex);
+  serialize(src.size(), dst, index, subindex);
   for (const auto & element : src) {
     serialize(element, dst, index, subindex);
   }
@@ -178,7 +179,7 @@ void serialize(
 
 #define CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Type) \
   { \
-    auto * element = static_cast<const Type *>(&submessage.element); \
+    auto * element = dynamic_cast<const Type *>(submessage.element.get()); \
     assert(element); \
     serialize(*element, dst, index, subindex); \
   } \
@@ -229,6 +230,21 @@ void serialize(const Submessage & submessage, DstT & dst, size_t & index, size_t
       assert(false);
   }
 }
+
+template<size_t PayloadLength>
+void serialize(
+    const Message & message,
+    const std::array<uint32_t, PayloadLength> & dst,
+    size_t & index,
+    size_t & subindex)
+{
+  serialize(message.header, dst, index, subindex);
+  for (const auto & submessage : message.messages) {
+    serialize(submessage, dst, index, subindex);
+    // TODO Make sure that the end of a submessage aligns on a 32-bit boundary?
+  }
+}
+
 
 // Convenience function because we cannot assign a default value to an lvalue reference
 template<typename T, typename DstT>

@@ -57,7 +57,6 @@ template<
       !std::is_same<SrcT, bool>::value && !std::is_same<DstT, bool>::value
       >::type * = nullptr>
 void place_integral_type(const SrcT src, DstT & dst, size_t & i) {
-  dst = 0;
   if (sizeof(SrcT) <= sizeof(DstT)) {
 
     // We need to fit something of size src into the long at the specified index
@@ -69,22 +68,26 @@ void place_integral_type(const SrcT src, DstT & dst, size_t & i) {
     widened_src = widened_src << i;
 
     // zero the part of dst which we plan to replace
+    // Assume dst is already zerod
     DstT mask = max_value_map[hana::type_c<DstT>];
+    // TODO this bitshifting seems wrong to me
     mask = mask << i;  // produces zeros until the first index
-    mask |= max_value_map[hana::type_c<DstT>] >> (i + number_of_bits<SrcT>());
+    mask &= max_value_map[hana::type_c<DstT>] >> (i + number_of_bits<SrcT>());
+    dst &= ~mask;
 
-    dst &= mask;
+    // dst &= mask;
     // OR dst with the widened src
-    dst |= src;
+    dst |= widened_src;
     //i = (i + number_of_bits<SrcT>()) % number_of_bits<DstT>();
     i += number_of_bits<SrcT>();
   } else {  // Narrow
+    dst = 0;
     assert(i <= number_of_bits<SrcT>() - number_of_bits<DstT>());
     // i refers to the index of src from which we will extract the bits to place into dst
     // Make a copy of src, bitshift, then mask
     SrcT copy = src;
     // 
-    copy = copy >> (number_of_bits<SrcT>() - (i + number_of_bits<DstT>()));
+    copy = copy >> i;
     SrcT mask = max_value_map[hana::type_c<SrcT>];
     mask = mask >> (number_of_bits<SrcT>() - number_of_bits<DstT>());
     copy &= mask;

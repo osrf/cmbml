@@ -24,6 +24,15 @@ struct Message{
     (Header, header),
     (List<Submessage>, messages)
   );
+
+  Message () {
+  }
+
+  explicit Message(const Message & m) {
+    // Header is a POD, fine to copy
+    header = m.header;
+    // Don't copy the messages?
+  }
 };
 
 }
