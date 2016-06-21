@@ -81,6 +81,42 @@ namespace cmbml {
     BOOST_HANA_DEFINE_STRUCT(SequenceNumber_t,
     (int32_t, high),
     (uint32_t, low));
+
+    uint64_t value() const {
+      return high*multiplicand + low;
+    }
+
+    constexpr static bool less_than(const SequenceNumber_t & a, const SequenceNumber_t & b) {
+      return a.value() < b.value();
+    }
+    constexpr bool operator<(const SequenceNumber_t & a) {
+      return this->value() < a.value();
+    }
+    constexpr bool operator<=(const SequenceNumber_t & a) {
+      return this->value() <= a.value();
+    }
+    constexpr bool operator>(const SequenceNumber_t & a) {
+      return this->value() > a.value();
+    }
+    constexpr static bool equal(const SequenceNumber_t & a, const SequenceNumber_t & b) {
+      return a.value() == b.value();
+    }
+    template<typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
+    constexpr SequenceNumber_t operator+(const T i) const {
+      // TODO Overflow
+      return SequenceNumber_t({this->high, this->low+static_cast<uint32_t>(i)});
+    }
+    static const uint64_t multiplicand = static_cast<uint64_t>(1) << 32;
+  };
+
+
+  constexpr static SequenceNumber_t minimum_sequence_number = {INT32_MAX, UINT32_MAX};
+  constexpr static SequenceNumber_t maximum_sequence_number = {INT32_MIN, 0};
+
+  struct SequenceNumberCompare {
+    constexpr bool operator()(const SequenceNumber_t & a, const SequenceNumber_t & b) {
+      return SequenceNumber_t::less_than(a, b);
+    }
   };
 
   // 16-byte (128 bit) GUID
@@ -89,6 +125,25 @@ namespace cmbml {
     GuidPrefix_t prefix;
     // Uniquely identifies the Entity within the Participant.
     EntityId_t entity_id;
+  };
+
+  // TODO: collisions with endpoints outside of participant
+  struct GUIDCompare {
+    constexpr bool operator()(const GUID_t & a, const GUID_t & b) {
+      bool less = true;
+      for (size_t i = 0; i < 4; ++i) {
+        if (a.entity_id[i] > b.entity_id[i]) {
+          return false;
+        }
+      }
+      for (size_t i = 0; i < 12; ++i) {
+        if (a.prefix[i] > b.prefix[i]) {
+          return false;
+        }
+      }
+
+      return true;
+    }
   };
 
   struct Entity {
@@ -135,15 +190,6 @@ namespace cmbml {
     List<Locator_t> multicast_locator_list;
     static const ReliabilityKind_t reliability_level = EndpointParams::reliability_level;
     static const TopicKind_t topic_kind = EndpointParams::topic_kind;
-  };
-
-  enum class ChangeForReaderStatusKind {
-    unsent, unacknowledged, requested, acknowledged, underway
-  };
-
-  struct ChangeForReader {
-    ChangeForReaderStatusKind status;
-    bool is_relevant;
   };
 
 }

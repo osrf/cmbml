@@ -7,6 +7,15 @@
 
 namespace cmbml {
 
+  enum class ChangeForReaderStatusKind {
+    unsent, unacknowledged, requested, acknowledged, underway
+  };
+
+  struct ChangeForReader : CacheChange {
+    ChangeForReaderStatusKind status;
+    bool is_relevant;
+  };
+
 
   // ReaderLocator is MoveAssignable and MoveConstructible
   struct ReaderLocator {

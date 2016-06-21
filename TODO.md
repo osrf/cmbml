@@ -1,6 +1,7 @@
 - Message Module
   - [ ] Generic serialization ("meta-cdr")
     - e.g. a "Serializable" concept on types which allows it to be arbitrarily serialized to binary format
+  - [ ] Deserialization: implement std::forward(callback) in deserialize as suggested by Arthur
   - [ ] Parameters
 - Behavior Module
   - [ ] Finish missing functions in writer state machines
@@ -25,3 +26,4 @@
 Optional behaviors
   - [ ] Fragmentation
   - [ ] Implement DDS QoS features using RTPS (section 8.7)
+

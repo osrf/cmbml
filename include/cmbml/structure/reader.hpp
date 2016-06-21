@@ -1,7 +1,11 @@
 #ifndef CMBML__READER__HPP_
 #define CMBML__READER__HPP_
 
+// #include <cmbml/behavior/reader_state_machine.hpp>
 #include <cmbml/structure/history.hpp>
+
+#include <cassert>
+#include <map>
 
 // #include <cmbml/reader_state_machine.hpp>
 
@@ -9,8 +13,14 @@
 
 
 namespace cmbml {
-  enum class ChangeFromWriterStatusKind {
+  enum class ChangeFromWriterStatus {
     lost, missing, received, unknown
+  };
+
+  // TODO Give copy conversions to and from CacheChange objects
+  struct ChangeFromWriter : CacheChange {
+    ChangeFromWriterStatus status;
+    bool is_relevant;
   };
 
   struct WriterProxy {
@@ -22,18 +32,21 @@ namespace cmbml {
       unicast_locator_list(unicast_locators),
       multicast_locator_list(multicast_locators) {}
 
-    SequenceNumber_t max_available_changes();
-    void set_irrelevant_change(SequenceNumber_t seq_num);
-    void update_lost_changes(SequenceNumber_t first_available_seq_num);
-    void update_missing_changes(SequenceNumber_t last_available_seq_num);
-    void set_received_change(SequenceNumber_t seq_num);
+    const SequenceNumber_t & max_available_changes();
+    void set_irrelevant_change(const SequenceNumber_t & seq_num);
+    void set_irrelevant_change(const int64_t seq_num);
+    void update_lost_changes(const SequenceNumber_t & first_available_seq_num);
+    void update_missing_changes(const SequenceNumber_t & last_available_seq_num);
+    void set_received_change(const SequenceNumber_t & seq_num);
+    const List<ChangeFromWriter> & missing_changes();
+    const GUID_t & get_guid();
 
   private:
     GUID_t remote_writer_guid;
     List<Locator_t> unicast_locator_list;
     List<Locator_t> multicast_locator_list;
-    List<CacheChange> changes_from_writer;
-    List<SequenceNumber_t> missing_changes;
+    // TODO relationship between CacheChange and this data structure could be clearer
+    std::map<uint64_t, ChangeFromWriter> changes_from_writer;
   };
 
 
@@ -52,9 +65,9 @@ namespace cmbml {
 
   //TODO decide if inheritance or template-bool for Stateful/Stateless is better...
 
+  // TODO Methods yo
   template<bool Stateful, typename ReaderParams, typename EndpointParams>
   struct Reader : Endpoint<EndpointParams>, ReaderParams {
-    // ReaderMsm state_machine;
     Reader() {
       // state_machine.configure<Stateful, EndpointParams::reliability_level>();
     }
@@ -70,18 +83,28 @@ namespace cmbml {
   template<typename ReaderParams, typename EndpointParams>
   struct Reader<true, ReaderParams, EndpointParams> : Endpoint<EndpointParams>, ReaderParams {
     static const bool stateful = true;
-    // ReaderMsm state_machine;
     Reader() {
-      // state_machine.configure<true, Endpoint<EndpointParams>::reliability_level>();
     }
 
-    void add_matched_writer(WriterProxy && writer_proxy);
+    void add_matched_writer(WriterProxy && writer_proxy) {
+      matched_writers.insert(std::make_pair(writer_proxy.get_guid(), std::move(writer_proxy)));
+    }
     // Why not remove by GUID?
-    void remove_matched_writer(WriterProxy * writer_proxy);
-    WriterProxy matched_writer_lookup(const GUID_t writer_guid) const;
+    void remove_matched_writer(WriterProxy * writer_proxy) {
+      assert(writer_proxy);
+      matched_writers.erase(writer_proxy->get_guid());
+    }
+
+    WriterProxy * matched_writer_lookup(const GUID_t & writer_guid) {
+      if (!matched_writers.count(writer_guid)) {
+        return nullptr;
+      }
+      return matched_writers[writer_guid];
+    }
+
     HistoryCache reader_cache;
   private:
-    List<WriterProxy> matched_writers;
+    std::map<GUID_t, WriterProxy, GUIDCompare> matched_writers;
   };
 
   template<typename... Params>

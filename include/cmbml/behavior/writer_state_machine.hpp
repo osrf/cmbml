@@ -59,8 +59,8 @@ namespace stateless_writer {
   };
 
   auto on_heartbeat = [](auto e) {
-    SequenceNumber_t & seq_min = e.writer.writer_cache.get_min_sequence_number();
-    SequenceNumber_t & seq_max = e.writer.writer_cache.get_max_sequence_number();
+    const SequenceNumber_t & seq_min = e.writer.writer_cache.get_min_sequence_number();
+    const SequenceNumber_t & seq_max = e.writer.writer_cache.get_max_sequence_number();
     // seq_num_min := the_rtps_writer.writer_cache.get_seq_num_min();
     // seq_num_max := the_rtps_writer.writer_cache.get_seq_num_max();
     Heartbeat heartbeat(e.writer.guid, seq_min, seq_max);
@@ -227,10 +227,8 @@ namespace stateful_writer {
 
   // TODO
   auto on_heartbeat = [](auto e) {
-    SequenceNumber_t & seq_min = e.writer.writer_cache.get_min_sequence_number();
-    SequenceNumber_t & seq_max = e.writer.writer_cache.get_max_sequence_number();
-    // seq_num_min := the_rtps_writer.writer_cache.get_seq_num_min();
-    // seq_num_max := the_rtps_writer.writer_cache.get_seq_num_max();
+    const SequenceNumber_t & seq_min = e.writer.writer_cache.get_min_sequence_number();
+    const SequenceNumber_t & seq_max = e.writer.writer_cache.get_max_sequence_number();
     Heartbeat heartbeat(e.writer.guid, seq_min, seq_max);
 
     // HEARTBEAT := new HEARTBEAT(the_rtps_writer.writerGuid, seq_num_min, seq_num_max);

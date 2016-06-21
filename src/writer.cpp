@@ -16,15 +16,22 @@ CacheChange ReaderLocator::pop_next_requested_change() {
 CacheChange ReaderLocator::pop_next_unsent_change() {
   return std::move(pop_next(unsent_changes_list));
 }
+
+// TODO
 List<CacheChange> * ReaderLocator::requested_changes() const {
   return nullptr;
 }
+
+// TODO
 void ReaderLocator::set_requested_changes(List<SequenceNumber_t> & request_seq_numbers) {
 }
+
+// TODO
 List<CacheChange> * ReaderLocator::unsent_changes() const {
   return nullptr;
 }
 
+// TODO
 SequenceNumber_t ReaderProxy::set_acked_changes() {
   return {0, 0};
 }
@@ -35,8 +42,11 @@ CacheChange ReaderProxy::pop_next_unsent_change() {
   return std::move(pop_next(unsent_changes_list));
 }
 
+// TODO
 void ReaderProxy::set_requested_changes(List<SequenceNumber_t> & request_seq_numbers) {
 }
+
+// TODO
 List<ChangeForReader> * ReaderProxy::unacked_changes() const {
   return nullptr;
 }

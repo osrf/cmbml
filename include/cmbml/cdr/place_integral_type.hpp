@@ -58,7 +58,6 @@ template<
       >::type * = nullptr>
 void place_integral_type(const SrcT src, DstT & dst, size_t & i) {
   if (sizeof(SrcT) <= sizeof(DstT)) {
-
     // We need to fit something of size src into the long at the specified index
     // We expect src to span from index i to index "i + sizeof(IntegralType)"
     assert(i <= number_of_bits<DstT>() - number_of_bits<SrcT>());
