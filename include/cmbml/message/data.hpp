@@ -38,8 +38,18 @@ namespace cmbml {
     virtual ~Data() {};
 
     // Construct a serialized message from a cache change.
-    Data(const CacheChange & change, bool expects_inline_qos) {
-      // TODO
+    // Wooo
+    Data(const CacheChange && change, bool inline_qos, bool key) :
+      expects_inline_qos(inline_qos), has_data(!change.data.empty()),
+      has_key(key), writer_id(change.writer_guid.entity_id), payload(change.data)
+    {
+      // TODO: writer_sn_state?
+    }
+    Data(const ChangeForReader && change, bool inline_qos, bool key) :
+      expects_inline_qos(inline_qos), has_data(!change.data.empty()),
+      has_key(key), writer_id(change.writer_guid.entity_id), payload(change.data)
+    {
+      // TODO: writer_sn_state?
     }
   };
 
@@ -64,6 +74,10 @@ namespace cmbml {
       (EntityId_t, writer_id),
       (SequenceNumber_t, gap_start),
       (SequenceNumberSet, gap_list));
+    Gap() {}
+    Gap(const EntityId_t & r_id, const EntityId_t w_id, const SequenceNumber_t & start)
+      : reader_id(r_id), writer_id(w_id), gap_start(start)
+    {}
     virtual ~Gap() {};
   };
 
@@ -137,38 +151,21 @@ namespace cmbml {
     virtual ~NackFrag() {};
   };
 
-
-  // This map really isn't that useful unless the submessage ID is going to be a constexpr.
   namespace hana = boost::hana;
-  constexpr auto subelement_type_id_map = boost::hana::make_map(
-    // hana::make_pair(SubmessageKind::pad, hana::type_c<Pad>),
-    hana::make_pair(hana::uint_c<SubmessageKind::acknack>, hana::type_c<AckNack>),
-    hana::make_pair(hana::uint_c<SubmessageKind::heartbeat>, hana::type_c<Heartbeat>),
-    hana::make_pair(hana::uint_c<SubmessageKind::gap>, hana::type_c<Gap>),
-    hana::make_pair(hana::uint_c<SubmessageKind::info_ts>, hana::type_c<InfoTimestamp>),
-    hana::make_pair(hana::uint_c<SubmessageKind::info_src>, hana::type_c<InfoSource>),
-    hana::make_pair(hana::uint_c<SubmessageKind::info_reply_ip4>, hana::type_c<InfoReply>),
-    hana::make_pair(hana::uint_c<SubmessageKind::info_reply>, hana::type_c<InfoReply>),
-    hana::make_pair(hana::uint_c<SubmessageKind::info_dst>, hana::type_c<InfoDestination>),
-    hana::make_pair(hana::uint_c<SubmessageKind::nack_frag>, hana::type_c<NackFrag>),
-    hana::make_pair(hana::uint_c<SubmessageKind::heartbeat_frag>, hana::type_c<HeartbeatFrag>),
-    hana::make_pair(hana::uint_c<SubmessageKind::data>, hana::type_c<Data>),
-    hana::make_pair(hana::uint_c<SubmessageKind::data_frag>, hana::type_c<DataFrag>)
-  );
   constexpr auto submessage_kind_map = boost::hana::make_map(
     // hana::make_pair(SubmessageKind::pad, hana::type_c<Pad>),
-    hana::make_pair(hana::type_c<AckNack>, SubmessageKind::acknack),
-    hana::make_pair(hana::type_c<Heartbeat>, SubmessageKind::heartbeat),
-    hana::make_pair(hana::type_c<Gap>, SubmessageKind::gap),
-    hana::make_pair(hana::type_c<InfoTimestamp>, SubmessageKind::info_ts),
-    hana::make_pair(hana::type_c<InfoSource>, SubmessageKind::info_src),
-    hana::make_pair(hana::type_c<InfoReply>, SubmessageKind::info_reply_ip4),
-    hana::make_pair(hana::type_c<InfoReply>, SubmessageKind::info_reply),
-    hana::make_pair(hana::type_c<InfoDestination>, SubmessageKind::info_dst),
-    hana::make_pair(hana::type_c<NackFrag>, SubmessageKind::nack_frag),
-    hana::make_pair(hana::type_c<HeartbeatFrag>, SubmessageKind::heartbeat_frag),
-    hana::make_pair(hana::type_c<Data>, SubmessageKind::data),
-    hana::make_pair(hana::type_c<DataFrag>, SubmessageKind::data_frag)
+    hana::make_pair(hana::type_c<AckNack>, SubmessageKind::acknack_id),
+    hana::make_pair(hana::type_c<Heartbeat>, SubmessageKind::heartbeat_id),
+    hana::make_pair(hana::type_c<Gap>, SubmessageKind::gap_id),
+    hana::make_pair(hana::type_c<InfoTimestamp>, SubmessageKind::info_ts_id),
+    hana::make_pair(hana::type_c<InfoSource>, SubmessageKind::info_src_id),
+    hana::make_pair(hana::type_c<InfoReply>, SubmessageKind::info_reply_ip4_id),
+    hana::make_pair(hana::type_c<InfoReply>, SubmessageKind::info_reply_id),
+    hana::make_pair(hana::type_c<InfoDestination>, SubmessageKind::info_dst_id),
+    hana::make_pair(hana::type_c<NackFrag>, SubmessageKind::nack_frag_id),
+    hana::make_pair(hana::type_c<HeartbeatFrag>, SubmessageKind::heartbeat_frag_id),
+    hana::make_pair(hana::type_c<Data>, SubmessageKind::data_id),
+    hana::make_pair(hana::type_c<DataFrag>, SubmessageKind::data_frag_id)
   );
 }
 

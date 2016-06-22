@@ -37,6 +37,7 @@ namespace cmbml {
 
   auto on_gap = [](auto e) {
     // Does the spec describe a range or a pair? Look at other impls
+    // I think it's safe to say it's a pair
     for (const auto & seq_num : {e.gap.gap_start.value(), e.gap.gap_list.base.value() - 1}) {
       e.writer.set_irrelevant_change(seq_num);
     }
@@ -51,9 +52,15 @@ namespace cmbml {
     for (const auto & change : e.writer.missing_changes()) {
       missing_seq_num_set.set.push_back(change.sequence_number);
     }
-    // TODO Implement send and the right constructor for ACKNACK
-    // send ACKNACK(missing_seq_num_set);
-    // TODO see spec page  127 for special capacity handling behavior
+    // TODO Implement send and maybe a constructor for acknack
+    // TODO see spec page  127 for capacity handling behavior in sequence set
+    AckNack acknack;
+    acknack.reader_id = e.reader_id;
+    acknack.writer_id = e.writer.get_guid().entity_id;
+    acknack.reader_sn_state = std::move(missing_seq_num_set);
+    // Current setting final=1, which means we do not expect a response from the writer
+    acknack.final_flag = 1;
+    e.writer.send(std::move(acknack));
   };
 
   // TODO! Receiver source???

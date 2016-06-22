@@ -3,6 +3,7 @@
 
 // #include <cmbml/behavior/reader_state_machine.hpp>
 #include <cmbml/structure/history.hpp>
+#include <cmbml/message/data.hpp>
 
 #include <cassert>
 #include <map>
@@ -13,16 +14,6 @@
 
 
 namespace cmbml {
-  enum class ChangeFromWriterStatus {
-    lost, missing, received, unknown
-  };
-
-  // TODO Give copy conversions to and from CacheChange objects
-  struct ChangeFromWriter : CacheChange {
-    ChangeFromWriterStatus status;
-    bool is_relevant;
-  };
-
   struct WriterProxy {
     WriterProxy(
         GUID_t guid,
@@ -41,12 +32,16 @@ namespace cmbml {
     const List<ChangeFromWriter> & missing_changes();
     const GUID_t & get_guid();
 
+    // TODO Must increment acknack_count and set acknack.count
+    void send(AckNack && acknack);
+
   private:
     GUID_t remote_writer_guid;
     List<Locator_t> unicast_locator_list;
     List<Locator_t> multicast_locator_list;
     // TODO relationship between CacheChange and this data structure could be clearer
     std::map<uint64_t, ChangeFromWriter> changes_from_writer;
+    uint32_t acknack_count = 0;
   };
 
 

@@ -50,6 +50,7 @@ namespace reader_events {
 
   struct heartbeat_response_delay {
     WriterProxy & writer;
+    EntityId_t & reader_id;
   };
 
   struct missing_changes_empty {};

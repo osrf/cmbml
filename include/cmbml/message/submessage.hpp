@@ -39,19 +39,19 @@ namespace cmbml {
   using SerializedDataFragment = std::vector<Octet>;
 
   enum SubmessageKind : uint8_t {
-    pad = 0x1,
-    acknack = 0x06,
-    heartbeat = 0x07,
-    gap = 0x08,
-    info_ts = 0x09,
-    info_src = 0x0c,
-    info_reply_ip4 = 0x0d,  // TODO need to propagate ipv4 vs. ipv6 to locator_list?
-    info_dst = 0x0e,
-    info_reply = 0x0f,  // TODO need to propagate ipv4 vs. ipv6 to locator_list?
-    nack_frag = 0x12,
-    heartbeat_frag = 0x13,
-    data = 0x15,
-    data_frag = 0x16
+    pad_id = 0x1,
+    acknack_id = 0x06,
+    heartbeat_id = 0x07,
+    gap_id = 0x08,
+    info_ts_id = 0x09,
+    info_src_id = 0x0c,
+    info_reply_ip4_id = 0x0d,  // TODO need to propagate ipv4 vs. ipv6 to locator_list?
+    info_dst_id = 0x0e,
+    info_reply_id = 0x0f,  // TODO need to propagate ipv4 vs. ipv6 to locator_list?
+    nack_frag_id = 0x12,
+    heartbeat_frag_id = 0x13,
+    data_id = 0x15,
+    data_frag_id = 0x16
   };
 
   enum Endianness : bool {

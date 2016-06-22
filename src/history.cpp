@@ -10,7 +10,7 @@ void HistoryCache::add_change(CacheChange && change) {
   changes.emplace(std::make_pair(change.sequence_number.value(), std::move(change)));
 }
 
-CacheChange HistoryCache::remove_change(const int64_t seq) {
+CacheChange HistoryCache::remove_change(const uint64_t seq) {
   assert(changes.count(seq) != 0);
   if (seq == min_seq.value()) {
     // recompute min_seq
@@ -30,6 +30,15 @@ CacheChange HistoryCache::remove_change(const int64_t seq) {
 // didn't we decide that this should have pop semantics at some point?
 CacheChange HistoryCache::remove_change(const SequenceNumber_t & seq) {
   return remove_change(seq.value());
+}
+
+
+bool HistoryCache::contains_change(const SequenceNumber_t & seq) const {
+  return changes.count(seq.value());
+}
+
+bool HistoryCache::contains_change(uint64_t seq) const {
+  return changes.count(seq);
 }
 
 const SequenceNumber_t & HistoryCache::get_min_sequence_number() const {

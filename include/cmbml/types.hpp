@@ -29,6 +29,7 @@ namespace cmbml {
   static const GuidPrefix_t guid_prefix_unknown = {0};
   // 4 octets
   using EntityId_t = std::array<Octet, 4>;
+  static const EntityId_t entity_id_unknown = {0x00, 0x00, 0x00, 0x00};
   using VendorId_t = std::array<Octet, 2>;
   static const VendorId_t cmbml_vendor_id = {0xf0, 0x9f};
   static const VendorId_t vendor_id_unknown = {0x0, 0x0};
@@ -107,7 +108,13 @@ namespace cmbml {
     template<typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
     constexpr SequenceNumber_t operator+(const T i) const {
       // TODO Overflow
-      return SequenceNumber_t({this->high, this->low+static_cast<uint32_t>(i)});
+      return SequenceNumber_t({this->high, this->low + static_cast<uint32_t>(i)});
+    }
+
+    template<typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
+    constexpr SequenceNumber_t operator-(const T i) const {
+      // TODO Overflow
+      return SequenceNumber_t({this->high, this->low - static_cast<uint32_t>(i)});
     }
     static const uint64_t multiplicand = static_cast<uint64_t>(1) << 32;
   };
@@ -128,6 +135,20 @@ namespace cmbml {
     GuidPrefix_t prefix;
     // Uniquely identifies the Entity within the Participant.
     EntityId_t entity_id;
+
+    bool operator==(const GUID_t & b) {
+      for (size_t i = 0; i < entity_id.size(); ++i) {
+        if (entity_id[i] != b.entity_id[i]) {
+          return false;
+        }
+      }
+      for (size_t i = 0; i < prefix.size(); ++i) {
+        if (prefix[i] != b.prefix[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
   };
 
   // TODO: collisions with endpoints outside of participant

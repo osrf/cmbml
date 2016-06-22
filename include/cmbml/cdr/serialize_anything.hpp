@@ -189,40 +189,40 @@ void serialize(const Submessage & submessage, DstT & dst, size_t & index, size_t
   serialize(submessage.header, dst, index, subindex);
 
   switch (submessage.header.submessage_id) {
-    case SubmessageKind::acknack:
+    case SubmessageKind::acknack_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(AckNack);
       break;
-    case SubmessageKind::heartbeat:
+    case SubmessageKind::heartbeat_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Heartbeat);
       break;
-    case SubmessageKind::gap:
+    case SubmessageKind::gap_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Gap);
       break;
-    case SubmessageKind::info_ts:
+    case SubmessageKind::info_ts_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoTimestamp);
       break;
-    case SubmessageKind::info_src:
+    case SubmessageKind::info_src_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoSource);
       break;
-    case SubmessageKind::info_reply_ip4:
+    case SubmessageKind::info_reply_ip4_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
       break;
-    case SubmessageKind::info_reply:
+    case SubmessageKind::info_reply_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
       break;
-    case SubmessageKind::info_dst:
+    case SubmessageKind::info_dst_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoDestination);
       break;
-    case SubmessageKind::nack_frag:
+    case SubmessageKind::nack_frag_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(NackFrag);
       break;
-    case SubmessageKind::heartbeat_frag:
+    case SubmessageKind::heartbeat_frag_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(HeartbeatFrag);
       break;
-    case SubmessageKind::data:
+    case SubmessageKind::data_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Data);
       break;
-    case SubmessageKind::data_frag:
+    case SubmessageKind::data_frag_id:
       CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(DataFrag);
       break;
     default:

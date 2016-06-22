@@ -3,6 +3,7 @@
 
 #include <map>
 
+#include <cmbml/message/submessage.hpp>
 #include <cmbml/types.hpp>
 
 namespace cmbml {
@@ -25,6 +26,7 @@ namespace cmbml {
     // optional
     // if present, represents the serialized data stored in history
     // Data data_value;
+    SerializedData data;
   };
 
   bool compare_cache_change_seq(
@@ -39,13 +41,42 @@ namespace cmbml {
     // addChange should move the input cache change
     void add_change(CacheChange && change);
     CacheChange remove_change(const SequenceNumber_t & sequence_number);
-    CacheChange remove_change(const int64_t sequence_number);
+    CacheChange remove_change(const uint64_t sequence_number);
+
+    CacheChange copy_change(const SequenceNumber_t & sequence_number) const;
+    CacheChange copy_change(const uint64_t sequence_number) const;
+
+    bool contains_change(const SequenceNumber_t & seq_num) const;
+    bool contains_change(uint64_t seq_num) const;
     const SequenceNumber_t & get_min_sequence_number() const;
     const SequenceNumber_t & get_max_sequence_number() const;
   private:
     std::map<uint64_t, CacheChange> changes;
     SequenceNumber_t min_seq = {INT32_MAX, INT32_MAX};
     SequenceNumber_t max_seq = {INT32_MIN, 0};
+  };
+
+  // TODO Again, I think inheritance is too expensive here and composition should be used instead!
+  enum class ChangeForReaderStatus {
+    unsent, unacknowledged, requested, acknowledged, underway
+  };
+
+  struct ChangeForReader : CacheChange {
+    ChangeForReaderStatus status = ChangeForReaderStatus::unsent;
+    bool is_relevant = true;
+
+    ChangeForReader(CacheChange && change) : CacheChange(change) {
+    }
+  };
+
+  enum class ChangeFromWriterStatus {
+    lost, missing, received, unknown
+  };
+
+  // TODO Give copy conversions to and from CacheChange objects
+  struct ChangeFromWriter : CacheChange {
+    ChangeFromWriterStatus status;
+    bool is_relevant;
   };
 }
 
