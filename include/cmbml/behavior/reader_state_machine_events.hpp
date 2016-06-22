@@ -5,6 +5,7 @@
 #include <cmbml/types.hpp>
 #include <cmbml/structure/history.hpp>
 #include <cmbml/message/data.hpp>
+#include <cmbml/message/message_receiver.hpp>
 
 namespace cmbml {
 
@@ -18,10 +19,12 @@ namespace reader_events {
     List<Locator_t> & multicast_locators;
   };
 
+  // TODO May need to make another event to avoid providing an unnecessary ref to receiver
   template<typename ReaderT>
   struct data_received {
     ReaderT & reader;
     Data & data;
+    MessageReceiver & receiver;
   };
 
   template<typename ReaderT>

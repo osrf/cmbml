@@ -60,6 +60,7 @@ namespace cmbml {
   auto on_data_received_stateful = [](auto e) {
     CacheChange change(e.data);
     // writer_guid := {Receiver.SourceGuidPrefix, DATA.writerId};
+    GUID_t writer_guid = {e.receiver.source_guid_prefix, e.data.writer_id};
     // writer_proxy := the_rtps_reader.matched_writer_lookup(writer_guid);
     // expected_seq_num := writer_proxy.available_changes_max() + 1;
     // if ( a_change.sequenceNumber >= expected_seq_num ) {
