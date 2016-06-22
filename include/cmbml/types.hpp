@@ -82,20 +82,23 @@ namespace cmbml {
     (int32_t, high),
     (uint32_t, low));
 
-    uint64_t value() const {
+    constexpr uint64_t value() const {
       return high*multiplicand + low;
     }
 
     constexpr static bool less_than(const SequenceNumber_t & a, const SequenceNumber_t & b) {
       return a.value() < b.value();
     }
-    constexpr bool operator<(const SequenceNumber_t & a) {
+    bool operator<(const SequenceNumber_t & a) {
       return this->value() < a.value();
     }
-    constexpr bool operator<=(const SequenceNumber_t & a) {
+    bool operator>=(const SequenceNumber_t & a) const {
+      return this->value() >= a.value();
+    }
+    bool operator<=(const SequenceNumber_t & a) const {
       return this->value() <= a.value();
     }
-    constexpr bool operator>(const SequenceNumber_t & a) {
+    bool operator>(const SequenceNumber_t & a) const {
       return this->value() > a.value();
     }
     constexpr static bool equal(const SequenceNumber_t & a, const SequenceNumber_t & b) {
@@ -129,7 +132,7 @@ namespace cmbml {
 
   // TODO: collisions with endpoints outside of participant
   struct GUIDCompare {
-    constexpr bool operator()(const GUID_t & a, const GUID_t & b) {
+    constexpr bool operator()(const GUID_t & a, const GUID_t & b) const {
       bool less = true;
       for (size_t i = 0; i < 4; ++i) {
         if (a.entity_id[i] > b.entity_id[i]) {

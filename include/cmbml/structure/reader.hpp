@@ -99,7 +99,7 @@ namespace cmbml {
       if (!matched_writers.count(writer_guid)) {
         return nullptr;
       }
-      return matched_writers[writer_guid];
+      return &matched_writers.at(writer_guid);
     }
 
     HistoryCache reader_cache;

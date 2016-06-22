@@ -59,20 +59,19 @@ namespace cmbml {
   // TODO! Receiver source???
   auto on_data_received_stateful = [](auto e) {
     CacheChange change(e.data);
-    // writer_guid := {Receiver.SourceGuidPrefix, DATA.writerId};
     GUID_t writer_guid = {e.receiver.source_guid_prefix, e.data.writer_id};
-    // writer_proxy := the_rtps_reader.matched_writer_lookup(writer_guid);
-    // expected_seq_num := writer_proxy.available_changes_max() + 1;
-    // if ( a_change.sequenceNumber >= expected_seq_num ) {
-    // the_rtps_reader.reader_cache.add_change(a_change);
-    // writer_proxy.received_change_set(a_change.sequenceNumber);
-    // if ( a_change.sequenceNumber > expected_seq_num ) {
-    // writer_proxy.lost_changes_update(a_change.sequenceNumber);
-    // }
-    // }
-    // After the transition the following post-conditions hold:
-    // writer_proxy.available_changes_max() >= a_change.sequenceNumber
+    WriterProxy * writer_proxy = e.reader.matched_writer_lookup(writer_guid);
+    assert(writer_proxy);
+    const SequenceNumber_t & seq = change.sequence_number;  // XXX: This is only needed for the assert at the end
+    SequenceNumber_t expected_seq_num = writer_proxy->max_available_changes() + 1;
+    if (change.sequence_number >= expected_seq_num) {
+      writer_proxy->set_received_change(change.sequence_number);
+      if (change.sequence_number > expected_seq_num) {
+        writer_proxy->update_lost_changes(change.sequence_number);
+      }
+      e.reader.reader_cache.add_change(std::move(change));
+    }
+    assert(writer_proxy->max_available_changes() >= seq);
   };
-
 }
 #endif  // CMBML__READER_STATE_MACHINE_ACTIONS__HPP_
