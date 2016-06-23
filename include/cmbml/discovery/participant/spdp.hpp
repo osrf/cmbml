@@ -4,16 +4,28 @@
 #include <cmbml/structure/writer.hpp>
 #include <cmbml/structure/reader.hpp>
 
+#include <cmbml/discovery/participant/spdp_disco_data.hpp>
+
 namespace cmbml {
 
-  // not sure if needs key or not
-  template<typename resendDataPeriod, typename WriterParams>
+
+  // TODO Set defaults based on spec plug 'n play parameters
+  template<typename PSM = udp::Context,
+    typename resendDataPeriod = PSM::default_resend_data_period,
+    typename WriterParams>
   struct SpdpParticipantWriter :
     StatelessWriter<resendDataPeriod, WriterParams, ReliabilityKind_t::best_effort,
     TopicKind_t::with_key>
   {
-    // TODO Specific behavior here
-    // Otherwise this could just be an alias.
+    // Default constructor
+    SpdpParticipantWriter() {
+      // add_reader_locator();
+    }
+
+    // TODO Specific API calls here?
+    // Initialize default locators
+    // Template on the PSM type?
+    // need to start a thread to periodically send the spdp disco data
   };
 
   template<typename ReaderParams>
@@ -21,6 +33,7 @@ namespace cmbml {
     StatelessReader<ReaderParams, ReliablityKind_t::best_effort, TopicKind_t::with_key>
   {
     // TODO
+    // Initialize default locators and parameters
   };
 
 }

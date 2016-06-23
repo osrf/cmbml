@@ -30,6 +30,10 @@ void ReaderCacheAccessor::set_requested_changes(const List<SequenceNumber_t> & r
   }
 }
 
+void ReaderLocator::reset_unsent_changes() {
+  highest_seq_num_sent = writer_cache->get_min_sequence_number();
+}
+
 bool ReaderLocator::locator_compare(const Locator_t & loc) {
   for (size_t i = 0; i < 16; ++i) {
     if (loc.address[i] != locator.address[i]) {

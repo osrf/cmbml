@@ -20,14 +20,15 @@ namespace cmbml {
     // (removes the change from the unsent_changes list and moves it out of the function.)
     CacheChange pop_next_unsent_change();
 
-    // TODO This might need to be a SequenceNumberSet
     void set_requested_changes(const List<SequenceNumber_t> & request_seq_numbers);
 
     // Probably more efficient to store as a uint64_t here
     SequenceNumber_t highest_seq_num_sent = {0, 0};
     SequenceNumber_t lowest_requested_seq_num;
     // Ideally, this would be ordered
+    // TODO Yeah, I think we need to change this to enforce order
     std::deque<SequenceNumber_t> requested_seq_num_set;
+    // TODO In order to make multithreading safe, how to express synchronization between readers?
     HistoryCache * writer_cache;
   };
 
@@ -37,12 +38,18 @@ namespace cmbml {
     ReaderLocator(bool inline_qos, HistoryCache * cache) : ReaderCacheAccessor(cache),
       expects_inline_qos(inline_qos) {}
 
+    ReaderLocator(Locator_t && loc, bool inline_qos, HistoryCache * cache) :
+      locator(loc),
+      ReaderCacheAccessor(cache),
+      expects_inline_qos(inline_qos) {}
+
     // I suspect this could just be a template
     // TODO
     void send(const Data && data);
     void send(const Heartbeat && heartbeat);
     void send(const Gap && gap);
     bool locator_compare(const Locator_t & loc);
+    void reset_unsent_changes();
 
     // TODO see below note in ReaderProxy about compile-time behavior here
     bool expects_inline_qos;
@@ -141,6 +148,12 @@ namespace cmbml {
         }
       }
       assert(false);
+    }
+
+    void reset_unsent_changes() {
+      for (auto & reader : reader_locators) {
+        reader.reset_unsent_changes();
+      }
     }
 
     static constexpr Duration_t resend_data_period = DurationFactory<resendDataPeriod>();

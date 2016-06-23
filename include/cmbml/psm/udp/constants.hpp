@@ -22,22 +22,9 @@ namespace udp {
     reader_with_key = 0xc7
   }
 
-  static const EntityId_t participant_id        = {0x0, 0x00, 0x01, BuiltinEntity::participant};
-  static const EntityId_t sedp_topic_writer_id  = {0x0, 0x00, 0x02, BuiltinEntity::writer_with_key};
-  static const EntityId_t sedp_topic_reader_id  = {0x0, 0x00, 0x02, BuiltinEntity::reader_with_key};
-  static const EntityId_t sedp_pub_writer_id    = {0x0, 0x00, 0x03, BuiltinEntity::writer_with_key};
-  static const EntityId_t sedp_pub_reader_id    = {0x0, 0x00, 0x03, BuiltinEntity::reader_with_key};
-  static const EntityId_t sedp_sub_writer_id    = {0x0, 0x00, 0x04, BuiltinEntity::writer_with_key};
-  static const EntityId_t sedp_sub_reader_id    = {0x0, 0x00, 0x04, BuiltinEntity::reader_with_key};
-  static const EntityId_t spdp_writer_id        = {0x0, 0x01, 0x00, BuiltinEntity::writer_with_key};
-  static const EntityId_t spdp_reader_id        = {0x0, 0x01, 0x00, BuiltinEntity::reader_with_key};
-  static const EntityId_t participant_writer_id = {0x0, 0x02, 0x00, BuiltinEntity::writer_with_key};
-  static const EntityId_t participant_reader_id = {0x0, 0x02, 0x00, BuiltinEntity::reader_with_key};
-
-
   // This is truly amazing
   // Think about your life and your choiches
-  using BuiltinEndpointSet_t = uint32_t;
+  // May need to make this mapping available in udp/Context
   #define DISC_BUILTIN_ENDPOINT_PARTICIPANT_ANNOUNCER 0x00000001 << 0;
   #define DISC_BUILTIN_ENDPOINT_PARTICIPANT_DETECTOR 0x00000001 << 1;
   #define DISC_BUILTIN_ENDPOINT_PUBLICATION_ANNOUNCER 0x00000001 << 2;
@@ -57,31 +44,6 @@ namespace udp {
   #define LOCATOR_KIND_UDPv4 1
   #define LOCATOR_KIND_UDPv6 2
 
-
-  struct LocatorUDPv4_t {
-    uint32_t address;
-    uint32_t port;
-
-    constexpr static uint32_t address_from_dot_notation(
-        const std::array<Octet, 4> & adr)
-    {
-      address = (((adr[0] * 256 + b) * 256) + c) * 256 + d;
-    }
-
-    void set_address_dot_notation(const std::array<Octet, 4> & adr) {
-      address = address_from_dot_notation(adr);
-    }
-
-    static const invalid_locator = {0};
-  };
-
-  struct InfoReplyIp4 {
-    BOOST_HANA_DEFINE_STRUCT(InfoReply,
-      (MulticastFlag, multicast_flag),
-      (Locator_t, unicast_locator),
-      (Locator_t, multicast_locator));
-    static const SubmessageKind id = SubmessageKind::info_reply_ip4_id;
-  };
 
 }  // namespace udp
 }  // namespace cmbml

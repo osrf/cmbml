@@ -4,15 +4,18 @@
 #include <cmbml/types.hpp>
 
 namespace cmbml {
+using BuiltinEndpointSet_t = std::bitset<6>;
 
-enum class BuiltinEndpointSet_t {
+enum class BuiltinEndpointKind {
   publications_reader,
   publications_writer,
   subscriptions_reader,
   subscriptions_writer,
-  topic_reader, topic_writer
+  topic_reader,
+  topic_writer
 };
 
+// Make serializable
 struct SpdpDiscoData {
   ProtocolVersion_t protocol_version;
   GuidPrefix_t guid_prefix;
@@ -23,8 +26,7 @@ struct SpdpDiscoData {
   List<Locator_t> default_unicast_locator_list;
   List<Locator_t> default_multicast_locator_list;
 
-  // TODO is this actually a set or one value??
-  BuiltinEndpointSet_t available_builtin_endpoints;
+  BuiltinEndpointSet_t available_builtin_endpoints;  // This should get aligned to a byte anyway
   Duration_t leaseDuration;
   Count_t manual_liveliness_count;
 };
