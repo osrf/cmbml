@@ -14,13 +14,17 @@
 namespace cmbml {
   // long is always 32 bits. there are no 64-bit int types except maybe to avoid overflow.
 
+  // TODO Domain ID ruins a lot of our constexpr niceness
+  // may have an addon for 
+  static const uint32_t cmbml_test_domain_id = 1337;
+
   enum class ReliabilityKind_t {
-    best_effort,
-    reliable
+    best_effort = 1,
+    reliable = 3
   };
   enum class TopicKind_t {
-    no_key,
-    with_key
+    no_key = 1,
+    with_key = 2
   };
 
   using Octet = uint8_t;
@@ -131,10 +135,13 @@ namespace cmbml {
 
   // 16-byte (128 bit) GUID
   struct GUID_t {
-    // Uniquely identifies the Participant within the Domain.
-    GuidPrefix_t prefix;
-    // Uniquely identifies the Entity within the Participant.
-    EntityId_t entity_id;
+    // TODO Prefix always sets the first 2 bytes to vendor ID
+    // prefix: Uniquely identifies the Participant within the Domain.
+    // entity_id: Uniquely identifies the Entity within the Participant.
+    BOOST_HANA_DEFINE_STRUCT(GUID_t,
+      (GuidPrefix_t, prefix),
+      (EntityId_t, entity_id)
+    );
 
     bool operator==(const GUID_t & b) {
       for (size_t i = 0; i < entity_id.size(); ++i) {
@@ -196,6 +203,7 @@ namespace cmbml {
     // Lists of endpoints. 
     List<Locator_t> default_unicast_locator_list;
     List<Locator_t> default_multicast_locator_list;
+    uint32_t participant_id;
     //static constexpr ProtocolVersion_t protocol_version = rtps_protocol_version;
     //static constexpr VendorId_t vendor_id = cmbml_vendor_id;
   };

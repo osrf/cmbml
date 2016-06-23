@@ -18,6 +18,7 @@ namespace cmbml {
       (EntityId_t, writer_id),
       (SequenceNumberSet, reader_sn_state),
       (Count_t, count));
+    static const SubmessageKind id = SubmessageKind::acknack_id;
     virtual ~AckNack() {};
   };
 
@@ -33,6 +34,7 @@ namespace cmbml {
       (List<Parameter>, inline_qos),
       (SerializedData, payload)
     );
+    static const SubmessageKind id = SubmessageKind::data_id;
 
     Data() {}
     virtual ~Data() {};
@@ -65,6 +67,7 @@ namespace cmbml {
       (uint16_t, fragment_size),
       (List<Parameter>, inline_qos),
       (SerializedData, payload));
+    static const SubmessageKind id = SubmessageKind::data_frag_id;
     virtual ~DataFrag() {};
   };
 
@@ -74,6 +77,7 @@ namespace cmbml {
       (EntityId_t, writer_id),
       (SequenceNumber_t, gap_start),
       (SequenceNumberSet, gap_list));
+    static const SubmessageKind id = SubmessageKind::gap_id;
     Gap() {}
     Gap(const EntityId_t & r_id, const EntityId_t w_id, const SequenceNumber_t & start)
       : reader_id(r_id), writer_id(w_id), gap_start(start)
@@ -91,6 +95,7 @@ namespace cmbml {
       (SequenceNumber_t, last_sn),
       (Count_t, count));
 
+    static const SubmessageKind id = SubmessageKind::heartbeat_id;
     Heartbeat() {}
     Heartbeat(
       const GUID_t & writer_guid,
@@ -109,12 +114,14 @@ namespace cmbml {
       (SequenceNumber_t, writer_seq),
       (FragmentNumber_t, last_fragment_num),
       (Count_t, count));
+    static const SubmessageKind id = SubmessageKind::heartbeat_frag_id;
     virtual ~HeartbeatFrag() {};
   };
 
   struct InfoDestination : SubmessageElement {
     BOOST_HANA_DEFINE_STRUCT(InfoDestination,
       (GuidPrefix_t, guid_prefix));
+    static const SubmessageKind id = SubmessageKind::info_dst_id;
     virtual ~InfoDestination() {};
   };
 
@@ -123,6 +130,7 @@ namespace cmbml {
       (MulticastFlag, multicast_flag),
       (List<Locator_t>, unicast_locator_list),
       (List<Locator_t>, multicast_locator_list));
+    static const SubmessageKind id = SubmessageKind::info_reply_id;
     virtual ~InfoReply() {};
   };
 
@@ -131,6 +139,7 @@ namespace cmbml {
       (ProtocolVersion_t, protocol_version),
       (VendorId_t, vendor_id),
       (GuidPrefix_t, guid_prefix));
+    static const SubmessageKind id = SubmessageKind::info_src_id;
     virtual ~InfoSource() {};
   };
 
@@ -138,6 +147,7 @@ namespace cmbml {
     BOOST_HANA_DEFINE_STRUCT(InfoTimestamp,
       (InvalidateFlag, invalidate_flag),
       (Timestamp, timestamp));
+    static const SubmessageKind id = SubmessageKind::info_ts_id;
     virtual ~InfoTimestamp() {};
   };
 
@@ -148,25 +158,9 @@ namespace cmbml {
       (SequenceNumber_t, writer_seq),
       (FragmentNumberSet, fragment_number_state),
       (Count_t, count));
+    static const SubmessageKind id = SubmessageKind::nack_frag_id;
     virtual ~NackFrag() {};
   };
-
-  namespace hana = boost::hana;
-  constexpr auto submessage_kind_map = boost::hana::make_map(
-    // hana::make_pair(SubmessageKind::pad, hana::type_c<Pad>),
-    hana::make_pair(hana::type_c<AckNack>, SubmessageKind::acknack_id),
-    hana::make_pair(hana::type_c<Heartbeat>, SubmessageKind::heartbeat_id),
-    hana::make_pair(hana::type_c<Gap>, SubmessageKind::gap_id),
-    hana::make_pair(hana::type_c<InfoTimestamp>, SubmessageKind::info_ts_id),
-    hana::make_pair(hana::type_c<InfoSource>, SubmessageKind::info_src_id),
-    hana::make_pair(hana::type_c<InfoReply>, SubmessageKind::info_reply_ip4_id),
-    hana::make_pair(hana::type_c<InfoReply>, SubmessageKind::info_reply_id),
-    hana::make_pair(hana::type_c<InfoDestination>, SubmessageKind::info_dst_id),
-    hana::make_pair(hana::type_c<NackFrag>, SubmessageKind::nack_frag_id),
-    hana::make_pair(hana::type_c<HeartbeatFrag>, SubmessageKind::heartbeat_frag_id),
-    hana::make_pair(hana::type_c<Data>, SubmessageKind::data_id),
-    hana::make_pair(hana::type_c<DataFrag>, SubmessageKind::data_frag_id)
-  );
 }
 
 #endif  // CMBML__DATA__HPP_

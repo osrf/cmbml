@@ -37,7 +37,6 @@ namespace cmbml {
   }
 
   struct HistoryCache {
-
     // addChange should move the input cache change
     void add_change(CacheChange && change);
     CacheChange remove_change(const SequenceNumber_t & sequence_number);

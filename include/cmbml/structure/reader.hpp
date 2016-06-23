@@ -39,7 +39,6 @@ namespace cmbml {
     GUID_t remote_writer_guid;
     List<Locator_t> unicast_locator_list;
     List<Locator_t> multicast_locator_list;
-    // TODO relationship between CacheChange and this data structure could be clearer
     std::map<uint64_t, ChangeFromWriter> changes_from_writer;
     uint32_t acknack_count = 0;
   };

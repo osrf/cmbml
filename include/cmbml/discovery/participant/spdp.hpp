@@ -13,7 +13,7 @@ namespace cmbml {
     TopicKind_t::with_key>
   {
     // TODO Specific behavior here
-    // Otherwise this could just be a alias.
+    // Otherwise this could just be an alias.
   };
 
   template<typename ReaderParams>

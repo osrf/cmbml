@@ -68,7 +68,6 @@ namespace cmbml {
     List<Locator_t> unicast_locator_list;
     List<Locator_t> multicast_locator_list;
 
-    // TODO CacheChange or ChangeForReader?
     ChangeForReader pop_next_requested_change();
     ChangeForReader pop_next_unsent_change();
     void set_requested_changes(List<SequenceNumber_t> & request_seq_numbers);
@@ -182,6 +181,11 @@ namespace cmbml {
   private:
     List<ReaderProxy> matched_readers;
   };
+
+  // ACTUALLY we could template the Writer on the Reader Type
+  // Because the readers and writers have effectively the same interface
+  // Then these specializations could be selected based on the "QoS" parameters
+
 }
 
 #endif  // CMBML__WRITER__HPP_

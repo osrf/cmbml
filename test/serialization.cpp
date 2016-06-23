@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
 
   cmbml::Submessage submsg;
   submsg.element = std::make_unique<cmbml::AckNack>();
-  submsg.header.submessage_id = cmbml::submessage_kind_map[hana::type_c<cmbml::AckNack>];
+  submsg.header.submessage_id = cmbml::AckNack::id;
   cmbml::serialize(submsg, serialized_data);
 
   cmbml::deserialize(serialized_data, submsg);
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
     cmbml::Submessage s;
     using ElementT = typename std::decay<decltype(x)>::type;
     s.element = std::make_unique<ElementT>();
-    s.header.submessage_id = cmbml::submessage_kind_map[hana::type_c<ElementT>];
+    s.header.submessage_id = ElementT::id;
     message.messages.push_back(std::move(s));
   });
 
