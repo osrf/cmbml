@@ -93,28 +93,15 @@ namespace cmbml {
     (List<Octet>, value));
   };
 
-  struct SubmessageElement {
-    BOOST_HANA_DEFINE_STRUCT(SubmessageElement,
-      (Endianness, endianness_flag)
-    );
-
-    virtual ~SubmessageElement() {};
-  };
-
+  template<typename SubmessageElement>
   struct Submessage {
     BOOST_HANA_DEFINE_STRUCT(Submessage,
       (SubmessageHeader, header),
-      (std::unique_ptr<SubmessageElement>, element)
+      (SubmessageElement, element)
     );
 
     Submessage() {
-    }
-
-    explicit Submessage(SubmessageElement * element_ptr) {
-      element.reset(element_ptr);
-    }
-    explicit Submessage(std::unique_ptr<SubmessageElement> element_ptr) {
-      element.reset(element_ptr.get());
+      header.submessage_id = SubmessageElement::id;
     }
   };
 

@@ -11,7 +11,7 @@
 #include <boost/hana/type.hpp>
 
 #include <cmbml/cdr/serialize_anything.hpp>
-#include <cmbml/cdr/deserialize_anything.hpp>
+// #include <cmbml/cdr/deserialize_anything.hpp>
 
 #include <cmbml/message/data.hpp>
 #include <cmbml/message/submessage.hpp>
@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
   */
 
   std::array<uint8_t, 4> example_src;
-  std::array<uint32_t, 1> example_dst;
+  std::array<uint32_t, 2> example_dst;
   // incredibly, super basic test to see if it compiles
   cmbml::convert_representations(example_src, example_dst, example_dst.begin());
 
@@ -46,10 +46,13 @@ int main(int argc, char** argv) {
     size_t index = 0;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == 1);
+    index += 8;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == (1 << 8) + 1);
+    index += 8;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == (1 << 16) + (1 << 8) + 1);
+    index += 8;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == (1 << 24) + (1 << 16) + (1 << 8) + 1);
   }
@@ -61,10 +64,13 @@ int main(int argc, char** argv) {
     size_t index = 0;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == 1);
+    index += 8;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == 1);
+    index += 8;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == 1);
+    index += 8;
     cmbml::place_integral_type(src, dst, index);
     assert(dst == 1);
   }
@@ -76,23 +82,21 @@ int main(int argc, char** argv) {
   std::array<uint32_t, 1024> serialized_data;
 
   cmbml::serialize(3, serialized_data);
-  serialized_data.fill(0);
+  assert(serialized_data[0] == 3);
 
-  cmbml::serialize(example_src, serialized_data);
-  serialized_data.fill(0);
+  for (uint8_t i = 0; i < example_src.size(); ++i) {
+    example_src[i] = i;
+  }
+  cmbml::serialize(example_src, example_dst);
+  assert(example_dst[0] == example_src.size());
+  assert(example_dst[1] == 0x3020100);
 
+  // Validate serialize/deserialize via the callback passed the deserialize
   cmbml::SubmessageHeader sub_header;
   cmbml::serialize(sub_header, serialized_data);
   cmbml::SubmessageHeader sub_header_deserialized;
-  cmbml::deserialize(serialized_data, sub_header_deserialized);
-  serialized_data.fill(0);
-
-  /*
-  cmbml::Message<cmbml::AckNack, cmbml::Data, cmbml::DataFrag, cmbml::Gap,
-    cmbml::Heartbeat, cmbml::HeartbeatFrag, cmbml::InfoDestination,
-    cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> message;
-  */
-  cmbml::Message message;
+  // cmbml::deserialize(serialized_data, sub_header_deserialized);
+  // cmbml::Message message;
   hana::tuple<cmbml::AckNack, cmbml::Data, cmbml::Gap,
     cmbml::Heartbeat, cmbml::InfoDestination,
     cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> types;
@@ -100,30 +104,23 @@ int main(int argc, char** argv) {
   hana::for_each(types, [&serialized_data](const auto & x) {
     cmbml::serialize(x, serialized_data);
     typename std::decay<decltype(x)>::type result;
-    cmbml::deserialize(serialized_data, result);
-    serialized_data.fill(0);
+    // cmbml::deserialize(serialized_data, result);
   });
 
-  cmbml::Submessage submsg;
-  submsg.element = std::make_unique<cmbml::AckNack>();
-  submsg.header.submessage_id = cmbml::AckNack::id;
+  cmbml::Submessage<cmbml::AckNack> submsg;
   cmbml::serialize(submsg, serialized_data);
 
-  cmbml::deserialize(serialized_data, submsg);
-  serialized_data.fill(0);
+  // cmbml::deserialize(serialized_data, submsg);
 
-  hana::for_each(types, [&message](const auto & x) {
-    cmbml::Submessage s;
-    using ElementT = typename std::decay<decltype(x)>::type;
-    s.element = std::make_unique<ElementT>();
-    s.header.submessage_id = ElementT::id;
-    message.messages.push_back(std::move(s));
-  });
+  cmbml::Message<cmbml::AckNack, cmbml::Data, cmbml::DataFrag, cmbml::Gap,
+    cmbml::Heartbeat, cmbml::HeartbeatFrag, cmbml::InfoDestination,
+    cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> message;
 
   cmbml::serialize(message, serialized_data);
 
+  /*
   // Packet comes in: we can't deduce the return type from its value
   cmbml::Message deserialized_message;
   cmbml::deserialize(serialized_data, deserialized_message);
-  serialized_data.fill(0);
+  */
 }

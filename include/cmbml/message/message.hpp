@@ -19,20 +19,12 @@ struct Message {
   );
 };
 */
+template<typename ... Submessages>
 struct Message{
   BOOST_HANA_DEFINE_STRUCT(Message,
     (Header, header),
-    (List<Submessage>, messages)
+    (boost::hana::tuple<Submessages...>, submessages)
   );
-
-  Message () {
-  }
-
-  explicit Message(const Message & m) {
-    // Header is a POD, fine to copy
-    header = m.header;
-    // Don't copy the messages?
-  }
 };
 
 }

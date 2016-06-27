@@ -9,6 +9,8 @@
 #include <boost/hana/fwd/flatten.hpp>
 
 #include <algorithm>
+#include <cmath>
+#include <bitset>
 #include <cassert>
 #include <climits>
 #include <functional>
@@ -21,10 +23,17 @@
 #include <cmbml/message/submessage.hpp>
 #include <cmbml/message/message.hpp>
 
+// What if we used bitsets instead?
+// What is their performance like?
 
 namespace hana = boost::hana;
 
 namespace cmbml {
+// bitset is probably just not good for performance
+//using Bitset32 = std::bitset<32>;
+template<size_t DstSize>
+using Packet = std::array<uint32_t, DstSize>;
+
 
 // Must enforce alignment: we always align to a 32-bit boundary
 // never split a field across a 32-bit boundary
@@ -65,65 +74,59 @@ namespace cmbml {
 // 
 // IMPORTANT: We assume that dst is zero-initialized when receive it
 // maybe the initial serialize helper function should zero-initialize it.
+
+// For all functions,
+// index is the overall bitwise index into the packet.
+// it's going to be simpler this way
+// Access is: packet[floor(index, 32)] and 
+
 template<
   typename T,
-  typename DstT,
+  size_t DstSize,
   typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
-void serialize(const T element, DstT & dst,
-    size_t & index,
-    size_t & subindex)
+void serialize(const T element, Packet<DstSize> & dst, size_t & index)
 {
-  // Observe CDR alignment rule: primitives must be aligned on their length.
-  if (auto remainder = subindex % number_of_bits<T>() != 0) {
+  // Observe CDR alignment rule: a primitive must be aligned on an index which is
+  // a multiple of its length.
+  if (index % number_of_bits<T>() != 0) {
     // Pad subindex
-    subindex += remainder;
+    index += number_of_bits<T>() - (index % number_of_bits<T>());
   }
 
-  // This is subtly less general that it seems because it still assumes that Dst
-  // is an iterable of unsigned 32-bit integers
-  if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
-    ++index;
-    subindex = 0;
-  }
-  place_integral_type(element, dst[index], subindex);
-  if (subindex >= number_of_bits<uint32_t>()) {
-    // We went over a boundary
-    index++;
-    subindex = 0;
-  }
+  place_integral_type(element, dst[index / 32], index % 32);
+  index += number_of_bits<T>();
 }
 
 template<
   typename T,
-  typename DstT,
+  size_t DstSize,
   typename std::enable_if<std::is_enum<T>::value>::type * = nullptr>
-void serialize(const T element, DstT & dst,
-    size_t & index,
-    size_t & subindex)
+void serialize(const T element, Packet<DstSize> & dst, size_t & index)
 {
-  serialize(static_cast<typename std::underlying_type<T>::type>(element), dst, index, subindex);
+  serialize(static_cast<typename std::underlying_type<T>::type>(element), dst, index);
 }
 
-template<typename T, size_t ArraySize, typename DstT,
+template<typename T, size_t ArraySize, size_t DstSize,
   typename std::enable_if<std::is_integral<T>::value || std::is_enum<T>::value>::type * = nullptr>
 void serialize(
     const std::array<T, ArraySize> & element,
-    DstT & dst,
-    size_t & index,
-    size_t & subindex)
+    Packet<DstSize>  & dst,
+    size_t & index)
 {
-  if (auto remainder = subindex % number_of_bits<T>() != 0) {
-    subindex += remainder;
+  // Need to serialize length first?
+  uint32_t array_size = element.size();
+  serialize(array_size, dst, index);
+  // Postcondition: We are aligned to a multiple of 32
+
+  // Can we instead call place_integral_type iteratively?
+  // convert_representations(element, dst, dst.begin() + (index / 32));
+  // Postcondition: 
+  for (size_t i = 0; i < ArraySize; ++i) {
+    // place_integral_type(element[i], index);
+    serialize(element[i], dst, index);
   }
 
-  if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
-    ++index;
-    subindex = 0;
-  }
-  convert_representations(element, dst, dst.begin() + index);
-  index += sizeof(T)*ArraySize/sizeof(uint32_t);
-
-  subindex = number_of_bits<T>() % number_of_bits<uint32_t>();
+  // index = (number_of_bits<T>() % number_of_bits<uint32_t>())*ArraySize;
 }
 
 // TODO Specialization for ParameterList. Parameters currently do not conform to CDR spec
@@ -133,103 +136,47 @@ void serialize(
 // TODO sometimes we serialize the length of variable-length lists and sometimes we don't;
 // clarify when this happens.
 // this is for std::vector and std::array of non-primitive types
-template<typename ContainerT, typename DstT,
+template<typename ContainerT, size_t DstSize,
   class = typename ContainerT::iterator>  // Enable specialization if ContainerT is Iterable
 void serialize(
     const ContainerT & src,
-    DstT & dst,
-    size_t & index,
-    size_t & subindex)
+    Packet<DstSize> & dst,
+    size_t & index)
 {
-  serialize(src.size(), dst, index, subindex);
+  serialize(src.size(), dst, index);
   for (const auto & element : src) {
-    serialize(element, dst, index, subindex);
+    serialize(element, dst, index);
   }
 }
 
 template<
-  typename DstT,
+  size_t DstSize,
   typename ... TupleArgs>
 void serialize(
     const hana::tuple<TupleArgs...> & element,
-    DstT & dst,
-    size_t & index,
-    size_t & subindex)
+    Packet<DstSize> & dst,
+    size_t & index)
 {
-  hana::for_each(element, [&dst, &index, &subindex](const auto x){
-    serialize(x, dst, index, subindex);
+  hana::for_each(element, [&dst, &index](const auto x){
+    serialize(x, dst, index);
   });
 }
 
 template<
   typename T,
-  typename DstT,
+  size_t DstSize,
   typename std::enable_if<hana::Foldable<T>::value>::type * = nullptr>
 void serialize(
     const T & element,
-    DstT & dst,
-    size_t & index,
-    size_t & subindex)
+    Packet<DstSize> & dst,
+    size_t & index)
 {
-  hana::for_each(element, [&dst, &index, &subindex](const auto x){
-    serialize(hana::second(x), dst, index, subindex);
+  hana::for_each(element, [&dst, &index](const auto x){
+    serialize(hana::second(x), dst, index);
   });
 }
 
-#define CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Type) \
-  { \
-    auto * element = dynamic_cast<const Type *>(submessage.element.get()); \
-    assert(element); \
-    serialize(*element, dst, index, subindex); \
-  } \
-
-template<typename DstT>
-void serialize(const Submessage & submessage, DstT & dst, size_t & index, size_t & subindex) {
-  // Get a header out of there
-  serialize(submessage.header, dst, index, subindex);
-
-  switch (submessage.header.submessage_id) {
-    case SubmessageKind::acknack_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(AckNack);
-      break;
-    case SubmessageKind::heartbeat_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Heartbeat);
-      break;
-    case SubmessageKind::gap_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Gap);
-      break;
-    case SubmessageKind::info_ts_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoTimestamp);
-      break;
-    case SubmessageKind::info_src_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoSource);
-      break;
-    case SubmessageKind::info_reply_ip4_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
-      break;
-    case SubmessageKind::info_reply_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
-      break;
-    case SubmessageKind::info_dst_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(InfoDestination);
-      break;
-    case SubmessageKind::nack_frag_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(NackFrag);
-      break;
-    case SubmessageKind::heartbeat_frag_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(HeartbeatFrag);
-      break;
-    case SubmessageKind::data_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(Data);
-      break;
-    case SubmessageKind::data_frag_id:
-      CMBML__SERIALIZE_SUBMESSAGE_BY_TYPE(DataFrag);
-      break;
-    default:
-      assert(false);
-  }
-}
-
+/*
 template<size_t PayloadLength>
 void serialize(
     const Message & message,
@@ -243,15 +190,16 @@ void serialize(
     // TODO Make sure that the end of a submessage aligns on a 32-bit boundary?
   }
 }
+*/
 
 
 // Convenience function because we cannot assign a default value to an lvalue reference
-template<typename T, typename DstT>
-void serialize(const T & element, DstT & dst)
+template<typename T, size_t DstSize>
+void serialize(const T & element, Packet<DstSize> & dst)
 {
-  size_t index = 0;
-  size_t subindex = 0;
-  serialize(element, dst, index, subindex);
+  dst.fill(0);
+  size_t index = 0;  // represents the bitwise index
+  serialize(element, dst, index);
 }
 
 }

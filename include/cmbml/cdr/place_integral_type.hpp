@@ -49,6 +49,7 @@ constexpr size_t number_of_bits() {
 //
 // Preserve the value of dst: only overwrite the bits we need to replace
 // TODO Unit test me
+// TODO template specialization for "narrow", or make different f'ns for "widen" and "narrow"
 template<
   typename SrcT,
   typename DstT,
@@ -56,7 +57,7 @@ template<
       std::is_integral<DstT>::value &&
       !std::is_same<SrcT, bool>::value && !std::is_same<DstT, bool>::value
       >::type * = nullptr>
-void place_integral_type(const SrcT src, DstT & dst, size_t & i) {
+void place_integral_type(const SrcT src, DstT & dst, const size_t i) {
   if (sizeof(SrcT) <= sizeof(DstT)) {
     // We need to fit something of size src into the long at the specified index
     // We expect src to span from index i to index "i + sizeof(IntegralType)"
@@ -66,32 +67,31 @@ void place_integral_type(const SrcT src, DstT & dst, size_t & i) {
     // Bitshift src to the index which it will land at 
     widened_src = widened_src << i;
 
-    // zero the part of dst which we plan to replace
-    // Assume dst is already zerod
-    DstT mask = max_value_map[hana::type_c<DstT>];
-    // TODO this bitshifting seems wrong to me
-    mask = mask << i;  // produces zeros until the first index
-    mask &= max_value_map[hana::type_c<DstT>] >> (i + number_of_bits<SrcT>());
-    dst &= ~mask;
+    // zero the part of dst which we plan to replace: i to (i + bits(SrcT))
+    // dst may have critical 
 
-    // dst &= mask;
+    DstT mask = max_value_map[hana::type_c<DstT>] << (i + number_of_bits<SrcT>());
+    mask |= max_value_map[hana::type_c<DstT>] >> (number_of_bits<DstT>() - i);
+    dst &= mask;
+
     // OR dst with the widened src
     dst |= widened_src;
-    //i = (i + number_of_bits<SrcT>()) % number_of_bits<DstT>();
-    i += number_of_bits<SrcT>();
+    // i += number_of_bits<SrcT>();
   } else {  // Narrow
+    // TODO
     dst = 0;
     assert(i <= number_of_bits<SrcT>() - number_of_bits<DstT>());
     // i refers to the index of src from which we will extract the bits to place into dst
     // Make a copy of src, bitshift, then mask
     SrcT copy = src;
-    // 
     copy = copy >> i;
     SrcT mask = max_value_map[hana::type_c<SrcT>];
     mask = mask >> (number_of_bits<SrcT>() - number_of_bits<DstT>());
+
     copy &= mask;
     dst = copy;
-    i += number_of_bits<DstT>();
+    // index is incremented outside of this scope
+    // i += number_of_bits<DstT>();
   }
 }
 
@@ -100,10 +100,10 @@ void place_integral_type(const SrcT src, DstT & dst, size_t & i) {
 // first of all, partial specialization doesn't work :(
 // Need a separate specialization for metadata/flags vs data serialization for uint8 size
 template<typename DstT>
-void place_integral_type(const bool src, DstT & dst, size_t & i) {
+void place_integral_type(const bool src, DstT & dst, const size_t i) {
   assert(i < number_of_bits<DstT>());
   DstT mask = 1;
-  mask = mask << i++;
+  mask = mask << i;
 
   if (src) {
     // OR with mask
@@ -116,11 +116,11 @@ void place_integral_type(const bool src, DstT & dst, size_t & i) {
 }
 
 template<typename SrcT>
-void place_integral_type(const SrcT src, bool & dst, size_t & i) {
+void place_integral_type(const SrcT src, bool & dst, const size_t i) {
   assert(i < number_of_bits<SrcT>());
   // TODO Reverse
   SrcT copy = src;
-  copy = copy << i++;
+  copy = copy << i;
   copy = copy >> (number_of_bits<SrcT>() - 1);
   dst = copy;
 }
@@ -129,7 +129,7 @@ void place_integral_type(const SrcT src, bool & dst, size_t & i) {
 
 // Specialization for when SrcT == DstT
 template<typename T>
-void place_integral_type(const T src, T & dst, size_t & i) {
+void place_integral_type(const T src, T & dst, const size_t i) {
   assert(i == 0);
   dst = src;
 }

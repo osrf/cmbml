@@ -11,20 +11,22 @@
 
 namespace cmbml {
 
-  struct AckNack : SubmessageElement {
+  struct AckNack {
     BOOST_HANA_DEFINE_STRUCT(AckNack,
+      (Endianness, endianness),
       (FinalFlag, final_flag),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
       (SequenceNumberSet, reader_sn_state),
       (Count_t, count));
     static const SubmessageKind id = SubmessageKind::acknack_id;
-    virtual ~AckNack() {};
   };
 
+
   // TODO How to propagate Parameter type upwards
-  struct Data : SubmessageElement {
+  struct Data {
     BOOST_HANA_DEFINE_STRUCT(Data,
+      (Endianness, endianness),
       (InlineQosFlag, expects_inline_qos),
       (DataFlag, has_data),
       (KeyFlag, has_key),
@@ -37,7 +39,6 @@ namespace cmbml {
     static const SubmessageKind id = SubmessageKind::data_id;
 
     Data() {}
-    virtual ~Data() {};
 
     // Construct a serialized message from a cache change.
     // Wooo
@@ -55,8 +56,9 @@ namespace cmbml {
     }
   };
 
-  struct DataFrag : SubmessageElement {
+  struct DataFrag {
     BOOST_HANA_DEFINE_STRUCT(DataFrag,
+      (Endianness, endianness),
       (InlineQosFlag, expects_inline_qos),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
@@ -68,11 +70,11 @@ namespace cmbml {
       (List<Parameter>, inline_qos),
       (SerializedData, payload));
     static const SubmessageKind id = SubmessageKind::data_frag_id;
-    virtual ~DataFrag() {};
   };
 
-  struct Gap : SubmessageElement {
+  struct Gap {
     BOOST_HANA_DEFINE_STRUCT(Gap,
+      (Endianness, endianness),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
       (SequenceNumber_t, gap_start),
@@ -82,11 +84,11 @@ namespace cmbml {
     Gap(const EntityId_t & r_id, const EntityId_t w_id, const SequenceNumber_t & start)
       : reader_id(r_id), writer_id(w_id), gap_start(start)
     {}
-    virtual ~Gap() {};
   };
 
-  struct Heartbeat : SubmessageElement {
+  struct Heartbeat {
     BOOST_HANA_DEFINE_STRUCT(Heartbeat,
+      (Endianness, endianness),
       (FinalFlag, final_flag),
       (LivelinessFlag, liveliness_flag),
       (EntityId_t, reader_id),
@@ -104,62 +106,61 @@ namespace cmbml {
     {
       // TODO
     }
-    virtual ~Heartbeat() {};
   };
 
-  struct HeartbeatFrag : SubmessageElement {
+  struct HeartbeatFrag {
     BOOST_HANA_DEFINE_STRUCT(HeartbeatFrag,
+      (Endianness, endianness),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
       (SequenceNumber_t, writer_seq),
       (FragmentNumber_t, last_fragment_num),
       (Count_t, count));
     static const SubmessageKind id = SubmessageKind::heartbeat_frag_id;
-    virtual ~HeartbeatFrag() {};
   };
 
-  struct InfoDestination : SubmessageElement {
+  struct InfoDestination {
     BOOST_HANA_DEFINE_STRUCT(InfoDestination,
+      (Endianness, endianness),
       (GuidPrefix_t, guid_prefix));
     static const SubmessageKind id = SubmessageKind::info_dst_id;
-    virtual ~InfoDestination() {};
   };
 
-  struct InfoReply : SubmessageElement {
+  struct InfoReply {
     BOOST_HANA_DEFINE_STRUCT(InfoReply,
+      (Endianness, endianness),
       (MulticastFlag, multicast_flag),
       (List<Locator_t>, unicast_locator_list),
       (List<Locator_t>, multicast_locator_list));
     static const SubmessageKind id = SubmessageKind::info_reply_id;
-    virtual ~InfoReply() {};
   };
 
-  struct InfoSource : SubmessageElement {
+  struct InfoSource {
     BOOST_HANA_DEFINE_STRUCT(InfoSource,
+      (Endianness, endianness),
       (ProtocolVersion_t, protocol_version),
       (VendorId_t, vendor_id),
       (GuidPrefix_t, guid_prefix));
     static const SubmessageKind id = SubmessageKind::info_src_id;
-    virtual ~InfoSource() {};
   };
 
-  struct InfoTimestamp : SubmessageElement {
+  struct InfoTimestamp {
     BOOST_HANA_DEFINE_STRUCT(InfoTimestamp,
+      (Endianness, endianness),
       (InvalidateFlag, invalidate_flag),
       (Timestamp, timestamp));
     static const SubmessageKind id = SubmessageKind::info_ts_id;
-    virtual ~InfoTimestamp() {};
   };
 
-  struct NackFrag : SubmessageElement {
+  struct NackFrag {
     BOOST_HANA_DEFINE_STRUCT(NackFrag,
+      (Endianness, endianness),
       (EntityId_t, reader_id),
       (EntityId_t, writer_id),
       (SequenceNumber_t, writer_seq),
       (FragmentNumberSet, fragment_number_state),
       (Count_t, count));
     static const SubmessageKind id = SubmessageKind::nack_frag_id;
-    virtual ~NackFrag() {};
   };
 }
 
