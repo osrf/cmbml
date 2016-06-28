@@ -6,6 +6,8 @@
 #include <cmbml/cdr/deserialize_anything.hpp>
 #include <cmbml/structure/writer.hpp>
 
+#include <cmbml/psm/udp/context.hpp>
+
 namespace cmbml {
 namespace dds {
 
@@ -37,7 +39,7 @@ namespace dds {
             break;
           // TODO IpV6
           case SubmessageKind::info_reply_ip4_id:
-            deserialize<InfoReply>(src, index, &DataWriter::on_info_reply);
+            deserialize<cmbml::udp::InfoReplyIp4>(src, index, &DataWriter::on_info_reply_ip4);
             break;
           case SubmessageKind::info_reply_id:
             deserialize<InfoReply>(src, index, &DataWriter::on_info_reply);
@@ -82,6 +84,16 @@ namespace dds {
         receiver.multicast_reply_locator_list.clear();
       }
     }
+
+    void on_info_reply_ip4(cmbml::udp::InfoReplyIp4 && info_reply) {
+      receiver.unicast_reply_locator_list = {std::move(info_reply.unicast_locator)};
+      if (info_reply.multicast_flag) {
+        receiver.multicast_reply_locator_list = {std::move(info_reply.multicast_locator)};
+      } else {
+        receiver.multicast_reply_locator_list.clear();
+      }
+    }
+
 
     void on_info_timestamp(InfoTimestamp && info_ts) {
       if (!info_ts.invalidate_flag) {

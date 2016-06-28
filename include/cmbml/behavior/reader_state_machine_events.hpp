@@ -38,9 +38,11 @@ namespace reader_events {
     Heartbeat & heartbeat;
   };
 
+  template<typename TransportContext>
   struct heartbeat_response_delay {
     WriterProxy & writer;
     EntityId_t & reader_id;
+    TransportContext & transport_context;
   };
 
   struct missing_changes_empty {};

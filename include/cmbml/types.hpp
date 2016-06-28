@@ -216,6 +216,7 @@ namespace cmbml {
   };
 
   // TODO Template error checking
+  // On initialization, initialize Transport-specific data with this Endpoint.
   template<typename EndpointParams>
   struct Endpoint : Entity {
     List<Locator_t> unicast_locator_list;

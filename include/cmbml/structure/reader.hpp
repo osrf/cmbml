@@ -15,10 +15,8 @@ namespace cmbml {
   template<typename T>
   struct BestEffortStatelessReaderMsm;
   template<typename T>
-  struct ReliableStatelessReaderMsm;
-  template<typename T>
   struct BestEffortStatefulReaderMsm;
-  template<typename T>
+  template<typename T, typename Transport = cmbml::udp::Context>
   struct ReliableStatefulReaderMsm;
 
   struct WriterProxy {
@@ -39,8 +37,10 @@ namespace cmbml {
     const List<ChangeFromWriter> & missing_changes();
     const GUID_t & get_guid();
 
+    // who provides the Context?
     template<typename TransportContext = cmbml::udp::Context>
-    void send(AckNack && acknack) {
+    void send(AckNack && acknack, TransportContext & context) {
+      // TODO Need to wrap with a SubmessageHeader and Message...
       acknack.count = ++acknack_count;
       size_t packet_size = get_packet_size(acknack);
       Packet<> packet(packet_size);
@@ -48,7 +48,13 @@ namespace cmbml {
       // AckNack is variable length so we need to "dynamically" allocate the packet
       serialize(acknack, packet);
       // needs to know which destination to send to (pass a Locator?)
-      // TransportContext::send(packet, );
+      // XXX This is dubious.
+      for (const auto & locator : unicast_locator_list) {
+        context.unicast_send(locator, packet.data(), packet.size());
+      }
+      for (const auto & locator : multicast_locator_list) {
+        context.multicast_send(locator, packet.data(), packet.size());
+      }
     }
 
   private:

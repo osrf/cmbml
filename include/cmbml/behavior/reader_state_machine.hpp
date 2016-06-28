@@ -47,7 +47,7 @@ namespace cmbml {
     }
   };
 
-  template<typename ReaderT>
+  template<typename ReaderT, typename Transport>
   struct ReliableStatefulReaderMsm {
 
     auto configure() {
@@ -72,7 +72,7 @@ namespace cmbml {
         waiting_s   + event<heartbeat_received>                   = waiting_s,
         may_ack_s   + event<missing_changes_empty>                = waiting_s,
         may_ack_s   + event<missing_changes_not_empty>            = must_ack_s,
-        must_ack_s  + event<heartbeat_response_delay> / on_heartbeat_response_delay = waiting_s,
+        must_ack_s  + event<heartbeat_response_delay<Transport>> / on_heartbeat_response_delay = waiting_s,
 
         *initial2_s + event<reader_created<ReaderT>>                    = ready_s,
 
