@@ -17,7 +17,8 @@ namespace dds {
       // TODO: PSM stuff
     }
 
-    // TODO normal-looking/user-facing API
+
+    // TODO user-facing API
 
     template<typename SrcT, typename CallbackT>
     void deserialize_submessage(

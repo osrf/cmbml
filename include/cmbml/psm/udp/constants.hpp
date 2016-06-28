@@ -5,22 +5,22 @@
 
 namespace cmbml {
 namespace udp {
-  enum UserEntity : uint8_t {
+  enum struct UserEntity : uint8_t {
     unknown = 0x00,
-    writer_with_key = 0x02
-    writer_no_key = 0x03
-    reader_no_key = 0x04
+    writer_with_key = 0x02,
+    writer_no_key = 0x03,
+    reader_no_key = 0x04,
     reader_with_key = 0x07
-  }
+  };
 
-  enum BuiltinEntity : uint8_t {
+  enum struct BuiltinEntity : uint8_t {
     unknown = 0xc0,
     participant = 0xc1,
-    writer_with_key = 0xc2
-    writer_no_key = 0xc3
-    reader_no_key = 0xc4
+    writer_with_key = 0xc2,
+    writer_no_key = 0xc3,
+    reader_no_key = 0xc4,
     reader_with_key = 0xc7
-  }
+  };
 
   // This is truly amazing
   // Think about your life and your choiches

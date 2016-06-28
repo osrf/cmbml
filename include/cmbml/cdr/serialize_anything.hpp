@@ -4,6 +4,7 @@
 
 #include <boost/hana/pair.hpp>
 #include <boost/hana/eval_if.hpp>
+#include <boost/hana/for_each.hpp>
 #include <boost/hana/map.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/fwd/flatten.hpp>
@@ -74,11 +75,9 @@ namespace cmbml {
 // it's going to be simpler this way
 // Access is: packet[floor(index, 32)] and 
 
-template<
-  typename T,
-  size_t DstSize,
+template<typename T, typename CallbackT,
   typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
-void serialize(const T element, Packet<DstSize> & dst, size_t & index)
+void traverse(const T element, CallbackT && callback, size_t & index)
 {
   // Observe CDR alignment rule: a primitive must be aligned on an index which is
   // a multiple of its length.
@@ -87,40 +86,16 @@ void serialize(const T element, Packet<DstSize> & dst, size_t & index)
     index += number_of_bits<T>() - (index % number_of_bits<T>());
   }
 
-  place_integral_type(element, dst[index / 32], index % 32);
+  callback(element);
+  // place_integral_type(element, dst[index / 32], index % 32);
   index += number_of_bits<T>();
 }
 
-template<
-  typename T,
-  size_t DstSize,
+template<typename T, typename CallbackT,
   typename std::enable_if<std::is_enum<T>::value>::type * = nullptr>
-void serialize(const T element, Packet<DstSize> & dst, size_t & index)
+void traverse(const T element, CallbackT && callback, size_t & index)
 {
-  serialize(static_cast<typename std::underlying_type<T>::type>(element), dst, index);
-}
-
-template<typename T, size_t ArraySize, size_t DstSize,
-  typename std::enable_if<std::is_integral<T>::value || std::is_enum<T>::value>::type * = nullptr>
-void serialize(
-    const std::array<T, ArraySize> & element,
-    Packet<DstSize>  & dst,
-    size_t & index)
-{
-  // Need to serialize length first?
-  uint32_t array_size = element.size();
-  serialize(array_size, dst, index);
-  // Postcondition: We are aligned to a multiple of 32
-
-  // Can we instead call place_integral_type iteratively?
-  // convert_representations(element, dst, dst.begin() + (index / 32));
-  // Postcondition: 
-  for (size_t i = 0; i < ArraySize; ++i) {
-    // place_integral_type(element[i], index);
-    serialize(element[i], dst, index);
-  }
-
-  // index = (number_of_bits<T>() % number_of_bits<uint32_t>())*ArraySize;
+  traverse(static_cast<typename std::underlying_type<T>::type>(element), callback, index);
 }
 
 // TODO Specialization for ParameterList. Parameters currently do not conform to CDR spec
@@ -130,68 +105,69 @@ void serialize(
 // TODO sometimes we serialize the length of variable-length lists and sometimes we don't;
 // clarify when this happens.
 // this is for std::vector and std::array of non-primitive types
-template<typename ContainerT, size_t DstSize,
+template<typename ContainerT, typename CallbackT,
   class = typename ContainerT::iterator>  // Enable specialization if ContainerT is Iterable
-void serialize(
+void traverse(
     const ContainerT & src,
-    Packet<DstSize> & dst,
+    CallbackT & callback,
     size_t & index)
 {
-  serialize(src.size(), dst, index);
+  traverse(static_cast<uint32_t>(src.size()), callback, index);
   for (const auto & element : src) {
-    serialize(element, dst, index);
+    traverse(element, callback, index);
   }
 }
 
-template<
-  size_t DstSize,
-  typename ... TupleArgs>
-void serialize(
+template<typename ... TupleArgs, typename CallbackT>
+void traverse(
     const hana::tuple<TupleArgs...> & element,
-    Packet<DstSize> & dst,
+    CallbackT && callback,
     size_t & index)
 {
-  hana::for_each(element, [&dst, &index](const auto x){
-    serialize(x, dst, index);
+  hana::for_each(element, [&callback, &index](const auto x){
+    traverse(x, callback, index);
   });
 }
 
 template<
-  typename T,
-  size_t DstSize,
+  typename T, typename CallbackT,
   typename std::enable_if<hana::Foldable<T>::value>::type * = nullptr>
-void serialize(
+void traverse(
     const T & element,
-    Packet<DstSize> & dst,
+    CallbackT && callback,
     size_t & index)
 {
-  hana::for_each(element, [&dst, &index](const auto x){
-    serialize(hana::second(x), dst, index);
+  hana::for_each(element, [&callback, &index](const auto x){
+    traverse(hana::second(x), callback, index);
   });
 }
 
-/*
-template<size_t PayloadLength>
-void serialize(
-    const Message & message,
-    const std::array<uint32_t, PayloadLength> & dst,
-    size_t & index,
-    size_t & subindex)
-{
-  serialize(message.header, dst, index, subindex);
-  for (const auto & submessage : message.messages) {
-    serialize(submessage, dst, index, subindex);
-    // TODO Make sure that the end of a submessage aligns on a 32-bit boundary?
-  }
+template<typename T>
+size_t get_packet_size(const T & element) {
+  size_t index = 0;
+  auto count_packet_size = [&index](auto element) {
+    (void) element;
+  };
+  traverse(element, count_packet_size, index);
+  return index + 1;
 }
-*/
+
+template<typename T, typename DstT>
+void serialize(const T & element, DstT & dst, size_t & index) {
+  auto serialize_base_case = [&dst, &index](auto element) {
+    place_integral_type(element, dst[index / 32], index % 32);
+  };
+  traverse(element, serialize_base_case, index);
+}
 
 
 // Convenience function because we cannot assign a default value to an lvalue reference
-template<typename T, size_t DstSize>
-void serialize(const T & element, Packet<DstSize> & dst)
+template<typename T, typename DstT = Packet<>>
+void serialize(const T & element, DstT & dst)
 {
-  dst.fill(0);
+  /* how can we be smartest about preallocating?
+   * We can't predict the size of the packet until serialize is called.
+   * We require dst to be zeroed and preallocated before this function is called*/
   size_t index = 0;  // represents the bitwise index
   serialize(element, dst, index);
 }

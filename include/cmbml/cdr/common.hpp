@@ -3,8 +3,9 @@
 
 #include <cmbml/cdr/place_integral_type.hpp>
 
-template<size_t DstSize>
-using Packet = std::array<uint32_t, DstSize>;
+// TODO Allocator
+template<typename Allocator = std::allocator<uint32_t>>
+using Packet = std::vector<uint32_t, Allocator>;
 
 
 

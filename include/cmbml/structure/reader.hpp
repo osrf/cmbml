@@ -3,13 +3,15 @@
 
 #include <cmbml/structure/history.hpp>
 #include <cmbml/message/data.hpp>
+#include <cmbml/psm/udp/context.hpp>  // specifically, POSIX sockets
+#include <cmbml/cdr/serialize_anything.hpp>
 
 #include <cassert>
 #include <map>
 
 namespace cmbml {
-  // Forward declarations of state machine types.
-
+  // Forward declarations of state machine types
+  // TODO organize headers
   template<typename T>
   struct BestEffortStatelessReaderMsm;
   template<typename T>
@@ -37,8 +39,17 @@ namespace cmbml {
     const List<ChangeFromWriter> & missing_changes();
     const GUID_t & get_guid();
 
-    // TODO Must increment acknack_count and set acknack.count
-    void send(AckNack && acknack);
+    template<typename TransportContext = cmbml::udp::Context>
+    void send(AckNack && acknack) {
+      acknack.count = ++acknack_count;
+      size_t packet_size = get_packet_size(acknack);
+      Packet<> packet(packet_size);
+
+      // AckNack is variable length so we need to "dynamically" allocate the packet
+      serialize(acknack, packet);
+      // needs to know which destination to send to (pass a Locator?)
+      // TransportContext::send(packet, );
+    }
 
   private:
     GUID_t remote_writer_guid;
