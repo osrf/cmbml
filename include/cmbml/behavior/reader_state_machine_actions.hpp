@@ -25,24 +25,31 @@ namespace cmbml {
   };
 
   auto on_heartbeat = [](auto e) {
-    e.writer.update_missing_changes(e.heartbeat.last_sn);
-    e.writer.update_lost_changes(e.heartbeat.first_sn);
+    assert(e.writer);
+    e.writer->update_missing_changes(e.heartbeat.last_sn);
+    e.writer->update_lost_changes(e.heartbeat.first_sn);
   };
 
   auto on_data = [](auto e) {
     CacheChange change(e.data);
     e.reader.reader_cache.add_change(std::move(change));
-    e.proxy.set_received_change(change.sequence_number);
+    // TODO Check that this lookup is correct.
+    GUID_t writer_guid = {e.receiver.source_guid_prefix, e.data.writer_id};
+    WriterProxy * proxy = e.reader.matched_writer_lookup(writer_guid);
+    // TODO: This could be a warning in production.
+    assert(proxy);
+    proxy->set_received_change(change.sequence_number);
   };
 
   auto on_gap = [](auto e) {
+    assert(e.writer);
     // Does the spec describe a range or a pair? Look at other impls
     // I think it's safe to say it's a pair
     for (const auto & seq_num : {e.gap.gap_start.value(), e.gap.gap_list.base.value() - 1}) {
-      e.writer.set_irrelevant_change(seq_num);
+      e.writer->set_irrelevant_change(seq_num);
     }
     for (const auto & seq_num : e.gap.gap_list.set) {
-      e.writer.set_irrelevant_change(seq_num.value());
+      e.writer->set_irrelevant_change(seq_num.value());
     }
   };
 
@@ -63,13 +70,13 @@ namespace cmbml {
     e.writer.send(std::move(acknack));
   };
 
-  // TODO! Receiver source???
   auto on_data_received_stateful = [](auto e) {
     CacheChange change(e.data);
     GUID_t writer_guid = {e.receiver.source_guid_prefix, e.data.writer_id};
     WriterProxy * writer_proxy = e.reader.matched_writer_lookup(writer_guid);
     assert(writer_proxy);
-    const SequenceNumber_t & seq = change.sequence_number;  // XXX: This is only needed for the assert at the end
+    // XXX: This is only needed for the assert at the end
+    const SequenceNumber_t & seq = change.sequence_number;
     SequenceNumber_t expected_seq_num = writer_proxy->max_available_changes() + 1;
     if (change.sequence_number >= expected_seq_num) {
       writer_proxy->set_received_change(change.sequence_number);
@@ -79,6 +86,17 @@ namespace cmbml {
       e.reader.reader_cache.add_change(std::move(change));
     }
     assert(writer_proxy->max_available_changes() >= seq);
+  };
+
+
+  // Guards
+  auto not_final_guard = [](auto e) {
+    return !e.heartbeat.final_flag;
+  };
+
+  // Small subtlety based on literal interpretation of precedence in spec
+  auto not_live_guard = [](auto e) {
+    return e.heartbeat.final_flag && !e.heartbeat.liveliness_flag;
   };
 }
 #endif  // CMBML__READER_STATE_MACHINE_ACTIONS__HPP_

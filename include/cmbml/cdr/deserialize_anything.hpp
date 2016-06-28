@@ -4,7 +4,7 @@
 
 #include <boost/hana/for_each.hpp>
 
-#include <cmbml/cdr/place_integral_type.hpp>
+#include <cmbml/cdr/common.hpp>
 
 #include <cmbml/message/message.hpp>
 
@@ -13,72 +13,61 @@ namespace hana = boost::hana;
 namespace cmbml {
 
 // Data types register callbacks for themselves!
-// 
 
-template<typename SrcT, typename DstT, typename CallbackT
+// I guess we need a bool specialization that doesn't pad and one that does for custom types
+template<typename DstT, typename SrcT, typename CallbackT, typename ...CallbackArgs,
   typename std::enable_if<std::is_integral<DstT>::value>::type * = nullptr>
-void deserialize(const SrcT & src, size_t & index, CallbackT && callback)
+void deserialize(const SrcT & src, size_t & index, CallbackT && callback, CallbackArgs &&...args)
 {
   // "De-alignment" checks
   // We know that the value of dst will be aligned to a boundary which is a multiple of
   // its size. Predict the padding to skip based on that.
-  if (auto remainder = index % number_of_bits<DstT>() != 0) {
-    subindex += remainder;
+  DstT dst;
+  if (index % number_of_bits<DstT>() != 0) {
+    index += number_of_bits<DstT>() - (index % number_of_bits<DstT>());
   }
 
-    // TODO: still assumes DstT is 32 bits
-  if (subindex + number_of_bits<DstT>() >= number_of_bits<uint32_t>()) {
-    ++index;
-    subindex = 0;
-  }
+  assert(src.begin() + (index / 32) < src.end());
 
-  assert(src.begin() + index < src.end());
-
-  place_integral_type(src[index], dst, subindex);
-  if (subindex >= number_of_bits<uint32_t>()) {
-    // We went over a boundary
-    index++;
-    subindex = 0;
-  }
+  place_integral_type(src[index / 32], dst, index % 32);
+  index += number_of_bits<DstT>();
+  callback(dst, std::forward<CallbackArgs>(args)...);
 }
 
-template<typename SrcT, typename DstT, typename CallbackT
+template<typename DstT, typename SrcT, typename CallbackT,
   typename std::enable_if<std::is_enum<DstT>::value>::type * = nullptr>
-void deserialize(const SrcT & src, size_t & index, size_t & subindex, CalbackT && callback)
+void deserialize(const SrcT & src, size_t & index, CallbackT && callback)
 {
-  using IntType = typename std::underlying_type<DstT>::type;
-  IntType dstint = 0;
-  deserialize(src, index, subindex);
-  dst = static_cast<DstT>(dstint);
+  deserialize<typename std::underlying_type<DstT>::type>(src, index, callback);
 }
 
-template<typename SrcT, typename T, size_t ArraySize, typename CallbackT,
-  typename std::enable_if<std::is_integral<T>::value || std::is_enum<T>::value>::type * = nullptr>
+// TODO This ain't gonna work for vec
+// We always expect callback to take a single argument of the type 
+template<typename T, typename SrcT, typename CallbackT,
+  typename T::iterator * = nullptr>
 void deserialize(
-  const SrcT & src, size_t & index, size_t & subindex, CallbackT && callback)
+  const SrcT & src, size_t & index, CallbackT && callback)
 {
-  if (auto remainder = subindex % number_of_bits<T>() != 0) {
-    subindex += remainder;
+  uint32_t array_length;
+  auto array_length_callback = [&array_length](uint32_t deserialized_length) {
+    // We may need to assert that the deserialized length is ArraySize
+    // Due to the type specification we actually don't need to know this?
+    array_length = deserialized_length;
+  };
+  // Chain callback: we expect this to deserialize out the length of the array
+  deserialize<uint32_t>(src, index, array_length_callback);
+  T deserialized_array;
+  auto array_entry_callback = [&deserialized_array](typename T::value_type entry, const uint32_t i) {
+    deserialized_array[i] = entry;
+  };
+  for (uint32_t i = 0; i < deserialized_array.size(); ++i) {
+    deserialize<typename T::value_type>(src, index, array_entry_callback, i);
   }
-
-  if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
-    ++index;
-    subindex = 0;
-  }
-
-  // We think this works ok...
-  for (auto & entry : dst) {
-    place_integral_type(src[index], entry, subindex);
-
-    if (subindex + number_of_bits<T>() >= number_of_bits<uint32_t>()) {
-      // We went over a boundary
-      index++;
-      subindex = 0;
-    }
-  }
+  callback(deserialized_array);
 }
 
 // Precondition: dst is empty
+/*
 template<
   typename SrcT,
   typename T,
@@ -87,7 +76,6 @@ void deserialize(
     const SrcT & src,
     List<T> & dst,
     size_t & index,
-    size_t & subindex,
     CallbackT callback)
 {
    uint32_t size = 0;
@@ -98,6 +86,7 @@ void deserialize(
      dst.push_back(element);
    }
 }
+*/
 
 //  TODO: Add a specialization for ParameterList, which terminates with a sentinel
 
@@ -119,83 +108,18 @@ void deserialize(
 */
 
 template<typename DstT, typename SrcT, typename CallbackT,
-  typename std::enable_if<std::is_integral<DstT>::value>::type * = nullptr >
-void deserialize(const SrcT & src, size_t & index, size_t & subindex, CallbackT && callback) {
-  // Deserialize an integer out of src
-  // but put it where?
-}
-
-
-template<typename DstT, typename SrcT, typename CallbackT
-  typename std::enable_if<hana::Foldable<T>::value>::type * = nullptr>
+  typename std::enable_if<hana::Foldable<DstT>::value>::type * = nullptr>
 void deserialize(const SrcT & src, size_t & index, CallbackT && callback) {
-   // Dst gives us the structure of the fields
-   // Once the data is deserialized, call the registered callback for Dst
-   // can I unfold a type_c?
-  hana::for_each(hana::type_c<DstT>, [](auto & x) {
-      deserialize<std::decay_t<decltype(x)>>(src, index, callback);
+  DstT dst;
+  hana::for_each(dst, [&src, &index, &callback](auto dst_field) {
+    auto dst_value = hana::second(dst_field);
+    using DstValueT = std::decay_t<decltype(dst_value)>;
+    auto transfer = [&dst_value](auto & serialized_value) {
+      dst_value = static_cast<DstValueT>(serialized_value);
+    };
+    deserialize<DstValueT>(src, index, transfer);
   });
-}
-
-#define CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(Type) \
-  { \
-    auto chaining_callback = [callback](auto & x) { \
-      registered_callbacks[hana::type_c<Type>](x); \
-      /*TODO args*/ \
-      callback(); \
-    } \
-    deserialize<Type>(src, index, chaining_callback); \
-  } \
-
-
-template<typename SrcT, typename CallbackT>
-void deserialize<SubmessageHeader>(
-  const SrcT & src, size_t & index, CallbackT && callback)
-{
-  // Could be phrased more functionally if, once I figure out how callbacks chain via lambdas,
-  // if this were done by traversing the Submessage type?
-  deserialize<SubmessageHeader>(src, index);
-
-  switch (dst.header.submessage_id) {
-    case SubmessageKind::acknack_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(AckNack);
-      break;
-    case SubmessageKind::heartbeat_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(Heartbeat);
-      break;
-    case SubmessageKind::gap_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(Gap);
-      break;
-    case SubmessageKind::info_ts_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(InfoTimestamp);
-      break;
-    case SubmessageKind::info_src_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(InfoSource);
-      break;
-    case SubmessageKind::info_reply_ip4_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
-      break;
-    case SubmessageKind::info_reply_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(InfoReply);
-      break;
-    case SubmessageKind::info_dst_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(InfoDestination);
-      break;
-    case SubmessageKind::nack_frag_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(NackFrag);
-      break;
-    case SubmessageKind::heartbeat_frag_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(HeartbeatFrag);
-      break;
-    case SubmessageKind::data_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(Data);
-      break;
-    case SubmessageKind::data_frag_id:
-      CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(DataFrag);
-      break;
-    default:
-      assert(false);
-  }
+  callback(dst);
 }
 
 // In all deserialize methods, the packet provides its own length.
@@ -204,27 +128,34 @@ void deserialize<SubmessageHeader>(
 // Can we preallocate by looking at the raw payload before allocating
 // its representation?
 // Precondition: assumes Message.messages is empty
+/*
 template<typename SrcT, typename CallbackT>
 void deserialize_message(const SrcT & src,
     size_t & index, CallbackT && callback)
 {
   // Header deserialization
   // We know there's a header at the start of the message.
-  // TODO How do we chain callbacks so that the state of Header remains?
-  // TODO How do we copy data out of deserialize?
+  // TODO consider taking an "end predicate"
   deserialize<Header>(src, index, callback);
-  // TODO Need to know the end condition from src
-  // (need to take "end predicate")?
-  deserialize<SubmessageHeader>(src, index, callback);
+  while (index < src.size()) {
+    // There is a possible error condition here where the remaining space of the packet
+    // does not the size of the submessage
+    deserialize_submessage(src, index, callback);
+  }
 }
+*/
 
 // So I guess it would be really cool if the callbacks incremented the state of the state machine.
+/*
 template<typename SrcT, typename CallbackT>
 void deserialize_message(const SrcT & src, CallbackT && callback)
 {
   size_t index = 0;
+  // OK here's what's up
+  // We deserialize the callback and 
   deserialize_message(src, index, callback);
 }
+*/
 
 }
 

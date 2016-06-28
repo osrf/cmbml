@@ -15,8 +15,7 @@
 #include <climits>
 #include <functional>
 
-#include <cmbml/cdr/convert_representations.hpp>
-#include <cmbml/cdr/place_integral_type.hpp>
+#include <cmbml/cdr/common.hpp>
 #include <cmbml/types.hpp>  // Provides "List" type
 
 #include <cmbml/message/data.hpp>
@@ -29,11 +28,6 @@
 namespace hana = boost::hana;
 
 namespace cmbml {
-// bitset is probably just not good for performance
-//using Bitset32 = std::bitset<32>;
-template<size_t DstSize>
-using Packet = std::array<uint32_t, DstSize>;
-
 
 // Must enforce alignment: we always align to a 32-bit boundary
 // never split a field across a 32-bit boundary

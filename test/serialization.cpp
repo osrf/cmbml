@@ -11,7 +11,7 @@
 #include <boost/hana/type.hpp>
 
 #include <cmbml/cdr/serialize_anything.hpp>
-// #include <cmbml/cdr/deserialize_anything.hpp>
+#include <cmbml/cdr/deserialize_anything.hpp>
 
 #include <cmbml/message/data.hpp>
 #include <cmbml/message/submessage.hpp>
@@ -20,24 +20,7 @@
 namespace hana = boost::hana;
 
 int main(int argc, char** argv) {
-  // I want to construct a tuple of arrays
-  //
-  // hana::tuple<uint8_t, uint16_t, uint32_t> numeric_types;
-  // make a bunch of arrays; is there a nicer way? probably, using hana::types
-  /*
-  hana::tuple<std::array<uint8_t, 4>, std::array<uint16_t, 2>, std::array<uint8_t, 8>> input_arrays;
 
-  // Having comparison operators between different array representations might be nice too!
-  hana::for_each(input_arrays, [](auto & member){
-        // TODO Fill some values too
-        auto converted_array = convert_representation(member);
-      });
-  */
-
-  std::array<uint8_t, 4> example_src;
-  std::array<uint32_t, 2> example_dst;
-  // incredibly, super basic test to see if it compiles
-  cmbml::convert_representations(example_src, example_dst, example_dst.begin());
 
   // Nominal place_integral_type test (widening destination)
   {
@@ -80,22 +63,52 @@ int main(int argc, char** argv) {
   // TODO compile-time inference of the serialized array for fixed sizes
   //
   std::array<uint32_t, 1024> serialized_data;
+  {
 
-  cmbml::serialize(3, serialized_data);
-  assert(serialized_data[0] == 3);
+    uint16_t test_int = 3;
+    cmbml::serialize(test_int, serialized_data);
+    assert(serialized_data[0] == 3);
 
-  for (uint8_t i = 0; i < example_src.size(); ++i) {
-    example_src[i] = i;
+
+    // How to know when to call this callback?
+    auto confirm_int_callback = [test_int](auto deserialized_value) {
+      assert(deserialized_value == test_int);
+    };
+    size_t index = 0;
+    cmbml::deserialize<uint32_t>(serialized_data, index, confirm_int_callback);
   }
-  cmbml::serialize(example_src, example_dst);
-  assert(example_dst[0] == example_src.size());
-  assert(example_dst[1] == 0x3020100);
 
-  // Validate serialize/deserialize via the callback passed the deserialize
-  cmbml::SubmessageHeader sub_header;
-  cmbml::serialize(sub_header, serialized_data);
-  cmbml::SubmessageHeader sub_header_deserialized;
-  // cmbml::deserialize(serialized_data, sub_header_deserialized);
+  {
+    std::array<uint8_t, 4> example_src;
+    std::array<uint32_t, 2> example_dst;
+
+    for (uint8_t i = 0; i < example_src.size(); ++i) {
+      example_src[i] = i;
+    }
+    auto confirm_array_callback = [example_src](auto deserialized_array) {
+      for (size_t i = 0; i < example_src.size(); ++i) {
+        assert(example_src[i] == deserialized_array[i]);
+      }
+    };
+    cmbml::serialize(example_src, example_dst);
+    assert(example_dst[0] == example_src.size());
+    assert(example_dst[1] == 0x3020100);
+    size_t index = 0;
+    cmbml::deserialize<decltype(example_src)>(example_dst, index, confirm_array_callback);
+  }
+
+  {
+    // Validate serialize/deserialize via the callback passed the deserialize
+    cmbml::SubmessageHeader sub_header;
+    cmbml::serialize(sub_header, serialized_data);
+    auto callback = [&sub_header](auto & x) {
+
+    };
+
+    size_t index = 0;
+    cmbml::deserialize<cmbml::SubmessageHeader>(serialized_data, index, callback);
+  }
+
   // cmbml::Message message;
   hana::tuple<cmbml::AckNack, cmbml::Data, cmbml::Gap,
     cmbml::Heartbeat, cmbml::InfoDestination,
@@ -123,4 +136,6 @@ int main(int argc, char** argv) {
   cmbml::Message deserialized_message;
   cmbml::deserialize(serialized_data, deserialized_message);
   */
+  printf("All tests passed.\n");
+  return 0;
 }

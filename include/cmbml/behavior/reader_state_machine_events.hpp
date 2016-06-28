@@ -28,23 +28,13 @@ namespace reader_events {
   };
 
   template<typename ReaderT>
-  struct data_received_reliable {
-    ReaderT & reader;
-    Data & data;
-    WriterProxy & proxy;
-  };
-
-  template<typename ReaderT>
   struct reader_deleted {
     ReaderT & reader;
     WriterProxy * writer;
   };
 
-  // Need to make sure this transition is encoded with the right precedence
-  struct heartbeat_not_final_flag {};
-  struct heartbeat_not_liveliness_flag {};
   struct heartbeat_received {
-    WriterProxy & writer;
+    WriterProxy * writer;
     Heartbeat & heartbeat;
   };
 
@@ -57,7 +47,7 @@ namespace reader_events {
   struct missing_changes_not_empty {};
 
   struct gap_received {
-    WriterProxy & writer;
+    WriterProxy * writer;
     Gap & gap;
   };
 }

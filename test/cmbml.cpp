@@ -43,39 +43,31 @@ int main(int argc, char ** argv) {
       reliable_stateful_reader;
 
   {
-    StatelessWriterMsm<decltype(best_effort_stateless_writer)> state_machine;
-    state_machine.configure<decltype(best_effort_stateless_writer)::reliability_level>();
+    dds::DataReader<decltype(best_effort_stateless_reader)> reader;
   }
 
   {
-    StatelessWriterMsm<decltype(reliable_stateless_writer)> state_machine;
-    state_machine.configure<decltype(reliable_stateless_writer)::reliability_level>();
+    dds::DataReader<decltype(best_effort_stateful_reader)> reader;
   }
 
   {
-    StatefulWriterMsm<decltype(best_effort_stateful_writer)> state_machine;
-    state_machine.configure<decltype(best_effort_stateful_writer)::reliability_level>();
+    dds::DataReader<decltype(reliable_stateful_reader)> reader;
   }
 
   {
-    StatefulWriterMsm<decltype(reliable_stateful_writer)> state_machine;
-    state_machine.configure<decltype(reliable_stateful_writer)::reliability_level>();
-  }
-
-  // Reader MSMs
-  {
-    ReaderMsm<decltype(best_effort_stateless_reader)> state_machine;
-    state_machine.configure<false, decltype(best_effort_stateless_reader)::reliability_level>();
+    dds::DataWriter<decltype(best_effort_stateless_writer)> writer;
   }
 
   {
-    ReaderMsm<decltype(best_effort_stateful_reader)> state_machine;
-    state_machine.configure<true, decltype(best_effort_stateful_reader)::reliability_level>();
+    dds::DataWriter<decltype(reliable_stateless_writer)> writer;
   }
 
   {
-    ReaderMsm<decltype(reliable_stateful_reader)> state_machine;
-    state_machine.configure<true, decltype(reliable_stateful_reader)::reliability_level>();
+    dds::DataWriter<decltype(best_effort_stateful_writer)> writer;
+  }
+
+  {
+    dds::DataWriter<decltype(reliable_stateful_writer)> writer;
   }
 
   return 0;

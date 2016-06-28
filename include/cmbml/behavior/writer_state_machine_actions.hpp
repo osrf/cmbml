@@ -50,12 +50,12 @@ namespace stateless_writer {
     Heartbeat heartbeat(e.writer.guid, seq_min, seq_max);
     heartbeat.final_flag = 1;
     heartbeat.reader_id = entity_id_unknown;
-    e.locator.send(std::move(heartbeat));
+    e.reader.send(std::move(heartbeat));
   };
 
 
   auto on_acknack = [](auto e) {
-    auto locator_lambda = [e](Locator_t & locator) {
+    auto locator_lambda = [&e](Locator_t & locator) {
       ReaderLocator & reader_locator = e.writer.lookup_reader_locator(locator);
       reader_locator.set_requested_changes(e.acknack.reader_sn_state.set);
     };
@@ -120,12 +120,12 @@ namespace stateful_writer {
     heartbeat.final_flag = 0;
     heartbeat.reader_id = entity_id_unknown;
     // Unclear which object "sends" the message or if it's just a global utility
-    e.reader_proxy.send(std::move(heartbeat));
+    e.reader.send(std::move(heartbeat));
   };
 
   auto on_acknack = [](auto e) {
     e.writer.set_acked_changes(e.acknack.reader_sn_state.base - 1);
-    e.reader_proxy.set_requested_changes(e.acknack.reader_sn_state.set);
+    e.receiver.set_requested_changes(e.acknack.reader_sn_state.set);
     // TODO assert postconditions
     // Postconditions:
     //   MIN { change.sequenceNumber IN the_reader_proxy.unacked_changes() } >=

@@ -10,6 +10,17 @@
 #include <cmbml/message/data.hpp>
 
 namespace cmbml {
+  // Forward declarations of state machine types.
+
+  template<typename T>
+  struct BestEffortStatelessWriterMsm;
+  template<typename T>
+  struct ReliableStatelessWriterMsm;
+  template<typename T>
+  struct BestEffortStatefulWriterMsm;
+  template<typename T>
+  struct ReliableStatefulWriterMsm;
+
   struct ReaderCacheAccessor {
     ReaderCacheAccessor(HistoryCache * cache) : writer_cache(cache) {
     }
@@ -157,6 +168,10 @@ namespace cmbml {
     }
 
     static constexpr Duration_t resend_data_period = DurationFactory<resendDataPeriod>();
+    static const bool stateful = false;
+    using StateMachineT = typename std::conditional<
+      StatelessWriter::reliability_level == ReliabilityKind_t::best_effort,
+      BestEffortStatelessWriterMsm<StatelessWriter>, ReliableStatelessWriterMsm<StatelessWriter>>::type;
   private:
     List<ReaderLocator> reader_locators;
   };
@@ -191,6 +206,10 @@ namespace cmbml {
     // TODO
     void set_acked_changes(const SequenceNumber_t & seq_num);
 
+    static const bool stateful = true;
+    using StateMachineT = typename std::conditional<
+      StatefulWriter::reliability_level == ReliabilityKind_t::best_effort,
+      BestEffortStatefulWriterMsm<StatefulWriter>, ReliableStatefulWriterMsm<StatefulWriter>>::type;
   private:
     List<ReaderProxy> matched_readers;
   };

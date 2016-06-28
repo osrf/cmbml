@@ -8,7 +8,6 @@
 
 namespace cmbml {
 
-namespace stateless_writer {
   template<typename StatelessWriterT>
   struct configured_locator {
     StatelessWriterT & writer;
@@ -17,9 +16,9 @@ namespace stateless_writer {
   struct unsent_changes {};
   struct unsent_changes_empty {};
 
-  template<typename StatelessWriterT>
+  template<typename WriterT>
   struct can_send {
-    StatelessWriterT & writer;
+    WriterT & writer;
     ReaderLocator & locator;
     bool writer_has_key;
   };
@@ -30,24 +29,25 @@ namespace stateless_writer {
     ReaderLocator * locator;
   };
 
-  template<typename StatelessWriterT>
+  template<typename WriterT,
+    typename ReaderT = typename std::conditional<WriterT::stateful, ReaderProxy, ReaderLocator>::type>
   struct after_heartbeat {
-    StatelessWriterT & writer;
-    ReaderLocator & locator;
+    WriterT & writer;
+    ReaderT & reader;
   };
 
-  template<typename StatelessWriterT>
+  template<typename WriterT,
+    typename ReceiverT = typename std::conditional<WriterT::stateful, ReaderProxy, MessageReceiver>::type>
   struct acknack_received {
-    StatelessWriterT & writer;
-    MessageReceiver & receiver;
-    AckNack & acknack;
+    WriterT & writer;
+    ReceiverT & receiver;
+    AckNack && acknack;
   };
+
   struct requested_changes {};
   struct requested_changes_empty {};
   struct after_nack_delay {};
-}  // namespace stateless_writer
 
-namespace stateful_writer {
   template<typename StatefulWriterT>
   struct configured_reader {
     StatefulWriterT & writer;
@@ -63,7 +63,7 @@ namespace stateful_writer {
     ReaderProxy * reader;
   };
 
-  struct can_send {
+  struct can_send_stateful {
     ReaderProxy & reader_proxy;
     bool writer_has_key;  // TODO writer_has_key everywhere can be compile-time
   };
@@ -75,9 +75,6 @@ namespace stateful_writer {
     ChangeForReader change;
   };
 
-  struct unsent_changes {};
-  struct unsent_changes_empty {};
-
   struct removed_change {
     ChangeForReader & change;
   };
@@ -85,25 +82,6 @@ namespace stateful_writer {
   struct unacked_changes_empty {};
   struct unacked_changes {};
 
-  template<typename StatefulWriterT>
-  struct after_heartbeat {
-    StatefulWriterT & writer;
-    // XXX Not sure if ReaderProxy is needed here
-    ReaderProxy & reader_proxy;
-  };
-
-  template<typename StatefulWriterT>
-  struct acknack_received {
-    StatefulWriterT & writer;
-    ReaderProxy & reader_proxy;
-    AckNack & acknack;
-  };
-
-  struct requested_changes_empty {};
-  struct requested_changes {};
-  struct after_nack_delay {};
-
-}  // namespace stateful_writer
 
 }
 

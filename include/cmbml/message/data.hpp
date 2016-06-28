@@ -162,6 +162,7 @@ namespace cmbml {
       (Count_t, count));
     static const SubmessageKind id = SubmessageKind::nack_frag_id;
   };
+
 }
 
 #endif  // CMBML__DATA__HPP_

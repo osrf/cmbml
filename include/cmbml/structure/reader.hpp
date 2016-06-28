@@ -1,19 +1,24 @@
 #ifndef CMBML__READER__HPP_
 #define CMBML__READER__HPP_
 
-// #include <cmbml/behavior/reader_state_machine.hpp>
 #include <cmbml/structure/history.hpp>
 #include <cmbml/message/data.hpp>
 
 #include <cassert>
 #include <map>
 
-// #include <cmbml/reader_state_machine.hpp>
-
-// #include <boost/hana/tuple.hpp>
-
-
 namespace cmbml {
+  // Forward declarations of state machine types.
+
+  template<typename T>
+  struct BestEffortStatelessReaderMsm;
+  template<typename T>
+  struct ReliableStatelessReaderMsm;
+  template<typename T>
+  struct BestEffortStatefulReaderMsm;
+  template<typename T>
+  struct ReliableStatefulReaderMsm;
+
   struct WriterProxy {
     WriterProxy(
         GUID_t guid,
@@ -63,11 +68,13 @@ namespace cmbml {
   template<bool Stateful, typename ReaderParams, typename EndpointParams>
   struct Reader : Endpoint<EndpointParams>, ReaderParams {
     Reader() {
-      // state_machine.configure<Stateful, EndpointParams::reliability_level>();
     }
 
     HistoryCache reader_cache;
     static const bool stateful = Stateful;
+
+    // gets overridden by Stateful impl
+    using StateMachineT = BestEffortStatelessReaderMsm<Reader>;
   };
 
   template<typename ...Params>
@@ -97,6 +104,10 @@ namespace cmbml {
     }
 
     HistoryCache reader_cache;
+
+    using StateMachineT = typename std::conditional<
+      Reader::reliability_level == ReliabilityKind_t::best_effort,
+      BestEffortStatefulReaderMsm<Reader>, ReliableStatefulReaderMsm<Reader>>::type;
   private:
     std::map<GUID_t, WriterProxy, GUIDCompare> matched_writers;
   };
