@@ -22,7 +22,7 @@ namespace stateless_writer {
     }
     */
     data.reader_id = entity_id_unknown;
-    e.locator.send(std::move(data));
+    e.locator.send(std::move(data), e.context);
   };
 
   auto on_can_send_reliable = [](auto e) {
@@ -31,10 +31,10 @@ namespace stateless_writer {
       Data data(std::move(change), e.locator.expects_inline_qos, e.writer_has_key);
       // TODO: inline_qos; need to copy from related DDS writer
       data.reader_id = entity_id_unknown;
-      e.locator.send(std::move(data));
+      e.locator.send(std::move(data), e.context);
     } else {
       Gap gap(entity_id_unknown, e.writer.guid.entity_id, change.sequence_number);
-      e.locator.send(std::move(gap));
+      e.locator.send(std::move(gap), e.context);
     }
   };
 
@@ -50,7 +50,7 @@ namespace stateless_writer {
     Heartbeat heartbeat(e.writer.guid, seq_min, seq_max);
     heartbeat.final_flag = 1;
     heartbeat.reader_id = entity_id_unknown;
-    e.reader.send(std::move(heartbeat));
+    e.reader.send(std::move(heartbeat), e.context);
   };
 
 
@@ -90,7 +90,7 @@ namespace stateful_writer {
       Data data(std::move(change), e.reader_proxy.expects_inline_qos, e.writer_has_key);
       // TODO inline QoS
       data.reader_id = entity_id_unknown;
-      e.reader_proxy.send(std::move(data));
+      e.reader_proxy.send(std::move(data), e.context);
     }
   };
 
@@ -120,7 +120,7 @@ namespace stateful_writer {
     heartbeat.final_flag = 0;
     heartbeat.reader_id = entity_id_unknown;
     // Unclear which object "sends" the message or if it's just a global utility
-    e.reader.send(std::move(heartbeat));
+    e.reader.send(std::move(heartbeat), e.context);
   };
 
   auto on_acknack = [](auto e) {
@@ -139,11 +139,11 @@ namespace stateful_writer {
       Data data(std::move(change), e.reader_proxy.expects_inline_qos, e.writer_has_key);
       data.reader_id = e.reader_proxy.remote_reader_guid.entity_id;  // ??? Is this implied by the spec?
       // TODO inline QoS
-      e.reader_proxy.send(std::move(data));
+      e.reader_proxy.send(std::move(data), e.context);
     } else {
       Gap gap(e.reader_proxy.remote_reader_guid.entity_id, change.writer_guid.entity_id,
           change.sequence_number);
-      e.reader_proxy.send(std::move(gap));
+      e.reader_proxy.send(std::move(gap), e.context);
     }
   };
 

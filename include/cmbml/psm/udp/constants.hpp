@@ -25,6 +25,7 @@ namespace udp {
   // This is truly amazing
   // Think about your life and your choiches
   // May need to make this mapping available in udp/Context
+  // Consider also define bitwise operators on the enum
   #define DISC_BUILTIN_ENDPOINT_PARTICIPANT_ANNOUNCER 0x00000001 << 0;
   #define DISC_BUILTIN_ENDPOINT_PARTICIPANT_DETECTOR 0x00000001 << 1;
   #define DISC_BUILTIN_ENDPOINT_PUBLICATION_ANNOUNCER 0x00000001 << 2;

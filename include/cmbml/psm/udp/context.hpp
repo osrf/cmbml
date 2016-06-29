@@ -3,9 +3,9 @@
 
 #include <cmbml/psm/udp/constants.hpp>
 #include <cmbml/psm/udp/ports.hpp>
+#include <cmbml/message/submessage.hpp>
 
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <map>
 
 namespace cmbml {
 namespace udp {
@@ -43,8 +43,10 @@ struct LocatorUDPv4_t {
   }
 };
 
-// Networking context. Any state should be per-thread
+// Networking context.
+// TODO formalize traits of "NetworkContext"
 class Context {
+public:
   static constexpr LocatorUDPv4_t default_multicast_locator = {
     default_spdp_multicast_port(cmbml_test_domain_id),
     LocatorUDPv4_t::address_from_dot_notation({239, 255, 0, 1})
@@ -74,61 +76,32 @@ class Context {
   static constexpr EntityId_t participant_reader_id =
     {0x0, 0x2, 0x0, static_cast<uint8_t>(BuiltinEntity::reader_with_key)};
 
-  Context() {
-    // alternatively we could do delayed initialization
-    // Unicast socket
-    unicast_send_socket = socket(AF_INET, SOCK_DGRAM, 0);
-
-    // Set options
-    // Multicast socket
-    multicast_send_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    // Set socket option to multicast
-    // need to get our address
-
-    /*
-    int result = setsockopt(
-      multicast_send_socket, IPPROTO_IP, IP_MULTICAST_IF, ip_address, );
-    */
-  }
-
+  Context();
 
   // Settings
   // This is pretty big...
   // using default_resend_data_period = Duration_t<30, 0>;
 
-  void unicast_send(const Locator_t & locator, const uint32_t * packet, size_t size) {
-    socket_send(unicast_send_socket);
-  }
+  void unicast_send(const Locator_t & locator, const uint32_t * packet, size_t size);
 
-  void multicast_send(const Locator_t & locator, const uint32_t * packet, size_t size) {
-    socket_send(multicast_send_socket);
-  }
+  void multicast_send(const Locator_t & locator, const uint32_t * packet, size_t size);
 
+  void add_unicast_receiver(const Locator_t & locator);
+  void add_multicast_receiver(const Locator_t & locator);
 
 private:
 
   static void socket_send(
-    int socket, const Locator_t & locator, const uint32_t * packet, size_t size)
-  {
-    if (socket == -1) {
-      // Socket isn't open yet, so we can't send.
-      return;
-    }
-    LocatorUDPv4_t locator_v4(locator);
+    int socket, const Locator_t & locator, const uint32_t * packet, size_t size);
 
-    struct sockaddr_in dest_address;
-    dest_address.sin_port = htons(static_cast<uint32_t>(locator_v4.port));
-    dest_address.sin_addr.s_addr = static_cast<uint32_t>(locator_v4.address);
-
-    sendto(unicast_send_socket, packet, size, 0,
-        reinterpret_cast<struct sockaddr *>(&dest_address), sizeof(dest_address));
-  }
+  uint32_t local_address;  // what's the best type?
 
   int unicast_send_socket = -1;
   int multicast_send_socket = -1;
 
-  int unicast_recv_socket = -1;
-  int multicast_recv_socket = -1;
+  std::map<uint16_t, int> port_socket_map;
+  // int unicast_recv_socket = -1;
+  // int multicast_recv_socket = -1;
 };
 
 }

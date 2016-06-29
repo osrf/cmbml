@@ -16,10 +16,11 @@ namespace cmbml {
   struct unsent_changes {};
   struct unsent_changes_empty {};
 
-  template<typename WriterT>
+  template<typename WriterT, typename Transport = udp::Context>
   struct can_send {
     WriterT & writer;
     ReaderLocator & locator;
+    Transport & context;
     bool writer_has_key;
   };
 
@@ -30,10 +31,12 @@ namespace cmbml {
   };
 
   template<typename WriterT,
+    typename Transport = udp::Context,
     typename ReaderT = typename std::conditional<WriterT::stateful, ReaderProxy, ReaderLocator>::type>
   struct after_heartbeat {
     WriterT & writer;
     ReaderT & reader;
+    Transport & context;
   };
 
   template<typename WriterT,
@@ -63,8 +66,10 @@ namespace cmbml {
     ReaderProxy * reader;
   };
 
+  template<typename Transport = udp::Context>
   struct can_send_stateful {
     ReaderProxy & reader_proxy;
+    Transport & context;
     bool writer_has_key;  // TODO writer_has_key everywhere can be compile-time
   };
 

@@ -3,7 +3,7 @@
 
 #include <cmbml/structure/history.hpp>
 #include <cmbml/message/data.hpp>
-#include <cmbml/psm/udp/context.hpp>  // specifically, POSIX sockets
+#include <cmbml/psm/udp/context.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
 
 #include <cassert>

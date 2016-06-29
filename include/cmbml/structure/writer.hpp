@@ -5,9 +5,10 @@
 #include <algorithm>
 #include <deque>
 
-#include <cmbml/structure/history.hpp>
-// #include <cmbml/writer_state_machine.hpp>
+#include <cmbml/cdr/serialize_anything.hpp>
 #include <cmbml/message/data.hpp>
+#include <cmbml/psm/udp/context.hpp>
+#include <cmbml/structure/history.hpp>
 
 namespace cmbml {
   // Forward declarations of state machine types.
@@ -54,11 +55,15 @@ namespace cmbml {
       ReaderCacheAccessor(cache),
       expects_inline_qos(inline_qos) {}
 
-    // I suspect this could just be a template
-    // TODO
-    void send(const Data && data);
-    void send(const Heartbeat && heartbeat);
-    void send(const Gap && gap);
+    template<typename T, typename TransportContext = udp::Context>
+    void send(const T && msg, TransportContext & context) {
+      size_t packet_size = get_packet_size(msg);
+      Packet<> packet(packet_size);
+      serialize(msg, packet);
+      // TODO Implement glomming-on of packets during send and wrapping in Message.
+      context.unicast_send(locator, packet.data(), packet.size());
+    }
+
     bool locator_compare(const Locator_t & loc);
     void reset_unsent_changes();
 
@@ -91,10 +96,21 @@ namespace cmbml {
     void set_requested_changes(List<SequenceNumber_t> & request_seq_numbers);
     void add_change_for_reader(ChangeForReader && change);
 
-    // TODO
-    void send(const Data && data);
-    void send(const Heartbeat && heartbeat);
-    void send(const Gap && gap);
+    template<typename T, typename TransportContext = udp::Context>
+    void send(const T && msg, TransportContext & context) {
+      size_t packet_size = get_packet_size(msg);
+      Packet<> packet(packet_size);
+      serialize(msg, packet);
+
+      for (const auto & locator : unicast_locator_list) {
+        context.unicast_send(locator, packet.data(), packet.size());
+      }
+      for (const auto & locator : multicast_locator_list) {
+        context.multicast_send(locator, packet.data(), packet.size());
+      }
+    }
+
+
     bool expects_inline_qos;
   private:
     ReaderCacheAccessor cache_accessor;
