@@ -17,13 +17,15 @@ namespace cmbml {
     explicit CacheChange(const Data & data);
     CacheChange(const CacheChange &) = default;
     CacheChange(CacheChange &&) = default;
+    CacheChange(ChangeKind_t k, Data && data, InstanceHandle_t && handle, const GUID_t & writer_guid);
+    CacheChange(ChangeKind_t k, InstanceHandle_t && handle, const GUID_t & writer_guid);
     ChangeKind_t kind;
     GUID_t writer_guid;
     InstanceHandle_t instance_handle;
-    SequenceNumber_t sequence_number;
+    SequenceNumber_t sequence_number = {0, 0};
 
     // How to represent the type of this data in a generic way?
-    // optional
+    // optional/could be empty
     // if present, represents the serialized data stored in history
     // Data data_value;
     SerializedData data;

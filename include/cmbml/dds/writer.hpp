@@ -16,11 +16,29 @@ namespace dds {
   class DataWriter {
   public:
     DataWriter() {
-      // TODO: PSM stuff
+      // TODO: Dependency-inject PSM
     }
 
+    // TODO Data type?
+    void on_write(Data && data) {
+      // TODO state machine events?
+      rtps_writer.add_change(ChangeKind_t::alive, data, instance_handle);
+    }
 
-    // TODO user-facing API
+    void on_dispose() {
+      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
+        return;
+      }
+      rtps_writer.add_change(ChangeKind_t::not_alive_disposed, instance_handle);
+    }
+
+    void on_unregister() {
+      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
+        return;
+      }
+      rtps_writer.add_change(ChangeKind_t::not_alive_unregistered, instance_handle);
+    }
+
 
     template<typename SrcT, typename CallbackT>
     void deserialize_submessage(
@@ -104,6 +122,7 @@ namespace dds {
       }
     }
 
+    InstanceHandle_t instance_handle;
     RTPSWriter rtps_writer;
     MessageReceiver receiver;
     boost::msm::lite::sm<typename RTPSWriter::StateMachineT> state_machine;

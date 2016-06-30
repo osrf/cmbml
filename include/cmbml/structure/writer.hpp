@@ -142,10 +142,29 @@ namespace cmbml {
 
   template<typename WriterParams, typename EndpointParams>
   struct Writer : Endpoint<EndpointParams>, WriterParams {
+    CacheChange new_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
+      auto ret = CacheChange(k, data, handle, this->guid);
+      ret.sequence_number = writer_cache.get_max_sequence_number() + 1;
+      return ret;
+    }
+
+    CacheChange new_change(ChangeKind_t k, InstanceHandle_t && handle) {
+      auto ret = CacheChange(k, handle, this->guid);
+      ret.sequence_number = writer_cache.get_max_sequence_number() + 1;
+      return ret;
+    }
+
+    void add_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
+      writer_cache.add_change(std::move(new_change(k, data, handle)));
+    }
+
+    void add_change(ChangeKind_t k, InstanceHandle_t && handle) {
+      writer_cache.add_change(std::move(new_change(k, handle)));
+    }
 
     HistoryCache writer_cache;
   protected:
-    SequenceNumber_t lastChangeSequenceNumber;
+    SequenceNumber_t last_change_seq_num;
   };
 
   // Forward declare state machine struct

@@ -11,14 +11,16 @@ namespace dds {
   class DataReader {
   public:
 
-    template<typename SrcT, typename CallbackT>
+    // TODO filtering though
+    List<CacheChange> on_read() {
+      return rtps_reader.
+    }
+
+    template<typename SrcT>
     void deserialize_submessage(
-      const SrcT & src, size_t & index, CallbackT && callback)
+      const SrcT & src, size_t & index)
     {
-      // Could be phrased more functionally if, once I figure out how callbacks chain via lambdas,
-      // if this were done by traversing the Submessage type?
-      auto header_callback = [&src, &index](SubmessageHeader header) {
-        // TODO 
+      auto header_callback = [&src, &index](SubmessageHeader & header) {
         switch (header.submessage_id) {
           case SubmessageKind::heartbeat_id:
             deserialize<Heartbeat>(src, index, &DataReader::on_heartbeat);
@@ -35,7 +37,6 @@ namespace dds {
             break;
           case SubmessageKind::data_id:
             deserialize<Data>(src, index, &DataReader::on_data);
-            // CMBML__DESERIALIZE_SUBMESSAGE_BY_TYPE(Data);
             break;
           case SubmessageKind::data_frag_id:
             // Fragmentation isn't implemented yet
@@ -47,6 +48,7 @@ namespace dds {
       };
       deserialize<SubmessageHeader>(src, index, header_callback);
     }
+
   private:
 
     void on_heartbeat(Heartbeat && heartbeat) {
@@ -55,7 +57,7 @@ namespace dds {
       // In the implementation we should just emit a warning, e.g. in case someone is 
       // sending bogus packets
       GUID_t writer_guid = {receiver.dest_guid_prefix, heartbeat.writer_id};
-      WriterProxy * proxy = reader.matched_writer_lookup(writer_guid);
+      WriterProxy * proxy = rtps_reader.matched_writer_lookup(writer_guid);
       assert(proxy);
       cmbml::reader_events::heartbeat_received e{proxy, heartbeat};
       state_machine.process_event(e);
@@ -63,7 +65,7 @@ namespace dds {
 
     void on_gap(Gap && gap) {
       GUID_t writer_guid = {receiver.dest_guid_prefix, gap.writer_id};
-      WriterProxy * proxy = reader.matched_writer_lookup(writer_guid);
+      WriterProxy * proxy = rtps_reader.matched_writer_lookup(writer_guid);
       assert(proxy);
       cmbml::reader_events::gap_received e{proxy, gap};
       state_machine.process_event(e);
@@ -75,17 +77,24 @@ namespace dds {
         receiver.dest_guid_prefix = info_dst.guid_prefix;
       } else {
         // Set to participant's guid_prefix, which should be the same as our guid_prefix
-        receiver.dest_guid_prefix = reader.guid.prefix;
+        receiver.dest_guid_prefix = rtps_reader.guid.prefix;
       }
     }
 
     void on_data(Data && data) {
-      cmbml::reader_events::data_received<RTPSReader> e{reader, data, receiver};
+      // user_data_callback(data);
+      cmbml::reader_events::data_received<RTPSReader> e{rtps_reader, data, receiver};
       state_machine.process_event(e);
     }
 
+
+    // TODO should be a lambda that the user passes in. Does it act directly on CacheChange?
+    bool dds_filter(const CacheChange & change) {
+      return true;
+    }
+
     MessageReceiver receiver;
-    RTPSReader reader;
+    RTPSReader rtps_reader;
     boost::msm::lite::sm<typename RTPSReader::StateMachineT> state_machine;
   };
 }

@@ -20,8 +20,10 @@
   - [ ] Decide on which dynamically sized data structures or pattern for compile-time selection of data structures and their allocators
   - [ ] Decide on patterns for an executor model
   - [ ] Put constants in one header (?) and use std::integer_sequence for compile-time integer seqs
-  - [ ] general header reorg
+  - [ ] header reorg
+  - [ ] Error handling and console output mechanisms
 
+- Unit test sockets module
 
 Optional behaviors
   - [ ] Fragmentation
