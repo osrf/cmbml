@@ -46,6 +46,21 @@ namespace cmbml {
 
     CacheChange copy_change(const SequenceNumber_t & sequence_number) const;
     CacheChange copy_change(const uint64_t sequence_number) const;
+    void clear();
+
+    template<typename CallbackT,
+      typename std::enable_if<
+        std::is_same<typename std::result_of<CallbackT>::type, bool>::value>::type * = nullptr>
+    List<CacheChange> get_filtered_cache_changes(CallbackT & callback) const {
+      List<CacheChange> ret;
+      for (const auto & pair : changes) {
+        auto change = pair.second;
+        if (callback(change)) {
+          ret.push_back(change);
+        }
+      }
+      return ret;
+    }
 
     bool contains_change(const SequenceNumber_t & seq_num) const;
     bool contains_change(uint64_t seq_num) const;

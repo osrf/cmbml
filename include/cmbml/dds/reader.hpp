@@ -11,9 +11,13 @@ namespace dds {
   class DataReader {
   public:
 
-    // TODO filtering though
     List<CacheChange> on_read() {
-      return rtps_reader.
+      return rtps_reader.reader_cache.get_filtered_cache_changes(&DataReader::dds_filter);
+    }
+    List<CacheChange> on_take() {
+      List<CacheChange> ret = rtps_reader.reader_cache.get_filtered_cache_changes(&DataReader::dds_filter);
+      rtps_reader.reader_cache.clear();
+      return ret;
     }
 
     template<typename SrcT>
@@ -53,7 +57,6 @@ namespace dds {
 
     void on_heartbeat(Heartbeat && heartbeat) {
       // TODO double-check that heartbeat comes from the matched destination...
-      // Maybe we actually need to craft the 
       // In the implementation we should just emit a warning, e.g. in case someone is 
       // sending bogus packets
       GUID_t writer_guid = {receiver.dest_guid_prefix, heartbeat.writer_id};

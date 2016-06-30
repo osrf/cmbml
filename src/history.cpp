@@ -26,6 +26,10 @@ CacheChange HistoryCache::remove_change(const uint64_t seq) {
   return ret;
 }
 
+void HistoryCache::clear() {
+  changes.clear();
+}
+
 CacheChange::CacheChange(ChangeKind_t k, InstanceHandle_t && h, const GUID_t & g) :
   kind(k), instance_handle(h), writer_guid(g)
 {
