@@ -1,6 +1,7 @@
 #ifndef CMBML__PSM__UDP__CONTEXT_HPP_
 #define CMBML__PSM__UDP__CONTEXT_HPP_
 
+#include <cmbml/cdr/common.hpp>
 #include <cmbml/psm/udp/constants.hpp>
 #include <cmbml/psm/udp/ports.hpp>
 #include <cmbml/message/submessage.hpp>
@@ -10,6 +11,8 @@
 namespace cmbml {
 namespace udp {
 
+// UDP Max fragment size
+#define CMBML__MAX_FRAGMENT_SIZE 65507
 
 struct InfoReplyIp4 {
   BOOST_HANA_DEFINE_STRUCT(InfoReplyIp4,
@@ -82,17 +85,23 @@ public:
   // This is pretty big...
   // using default_resend_data_period = Duration_t<30, 0>;
 
+  void add_unicast_receiver(const Locator_t & locator);
+  void add_multicast_receiver(const Locator_t & locator);
+
   void unicast_send(const Locator_t & locator, const uint32_t * packet, size_t size);
 
   void multicast_send(const Locator_t & locator, const uint32_t * packet, size_t size);
 
-  void add_unicast_receiver(const Locator_t & locator);
-  void add_multicast_receiver(const Locator_t & locator);
+  template<typename CallbackT>
+  void receive_packet(CallbackT & callback, size_t packet_size = CMBML__MAX_FRAGMENT_SIZE);
 
 private:
 
   static void socket_send(
     int socket, const Locator_t & locator, const uint32_t * packet, size_t size);
+
+  // Blocks until a packet is received.
+  // Intention is to wrap this in a future or async task in the executor.
 
   uint32_t local_address;  // what's the best type?
 
@@ -102,6 +111,8 @@ private:
   std::map<uint16_t, int> port_socket_map;
   // int unicast_recv_socket = -1;
   // int multicast_recv_socket = -1;
+
+  // TODO: store and use allocator for Packets
 };
 
 }

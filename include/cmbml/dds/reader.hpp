@@ -7,6 +7,7 @@ namespace cmbml {
 namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
+  // DataReader and DataWriter take an Executor, which abstracts the threading model.
   template<typename RTPSReader>
   class DataReader {
   public:

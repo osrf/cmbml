@@ -10,15 +10,6 @@
 
 namespace cmbml {
 
-/*
-template<typename ... Submessages>
-struct Message {
-  BOOST_HANA_DEFINE_STRUCT(Message,
-    (Header, header),
-    (boost::hana::tuple<Submessages...>, submessages)
-  );
-};
-*/
 template<typename ... Submessages>
 struct Message{
   BOOST_HANA_DEFINE_STRUCT(Message,

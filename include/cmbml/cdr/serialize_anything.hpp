@@ -17,6 +17,7 @@
 #include <functional>
 
 #include <cmbml/cdr/common.hpp>
+#include <cmbml/cdr/place_integral_type.hpp>
 #include <cmbml/types.hpp>  // Provides "List" type
 
 #include <cmbml/message/data.hpp>

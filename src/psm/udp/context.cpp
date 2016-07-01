@@ -4,6 +4,8 @@
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <string.h>
+
+#include <sys/select.h>
 #include <sys/socket.h>
 
 using namespace cmbml;
@@ -108,7 +110,7 @@ void udp::Context::add_unicast_receiver(const Locator_t & locator) {
 // Expect locator to contain the port to listen on and the address representing the 
 // multicast group
 void udp::Context::add_multicast_receiver(const Locator_t & locator) {
-  udp::LocatorUDPv4_t locator_v4(locator);
+  const udp::LocatorUDPv4_t locator_v4(locator);
   // Create and bind the receive sockets
   int recv_socket = socket(AF_INET, SOCK_DGRAM, 0);
   if (recv_socket < 0) {
@@ -153,7 +155,7 @@ void udp::Context::socket_send(
     // Socket isn't open yet, so we can't send.
     return;
   }
-  udp::LocatorUDPv4_t locator_v4(locator);
+  const udp::LocatorUDPv4_t locator_v4(locator);
 
   struct sockaddr_in dest_address;
   dest_address.sin_port = htons(static_cast<uint32_t>(locator_v4.port));
@@ -164,3 +166,34 @@ void udp::Context::socket_send(
 }
 
 
+// Maybe have a timeout option for select?
+// packet size has to be smaller for e.g. STM32F0
+// so maybe for that Context we will need to make max packet size a type trait
+template<typename CallbackT>
+void udp::Context::receive_packet(CallbackT & callback, size_t packet_size) {
+  fd_set socket_set;
+  FD_ZERO(&socket_set);
+  int max_socket = 0;
+  for (const auto & port_socket_pair : port_socket_map) {
+    FD_SET(port_socket_pair.second, &socket_set);
+    if (port_socket_pair.second > max_socket) {
+      max_socket = port_socket_pair.second;
+    }
+  }
+
+  int num_fds = select(max_socket + 1, &socket_set, NULL, NULL, NULL);
+  for (const auto & port_socket_pair : port_socket_map) {
+    Packet<> packet(packet_size);
+    int recv_socket = port_socket_pair.second;
+    if (!FD_ISSET(recv_socket, &socket_set)) {
+      continue;
+    }
+
+    // TODO checking src is important error checking/security
+    // struct sockaddr_in src_address;
+    // 
+    ssize_t bytes_received = recvfrom(
+      recv_socket, packet.data(), packet.size() * sizeof(Packet<>::value_type), 0, NULL, NULL);
+    callback(packet);
+  }
+}

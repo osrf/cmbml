@@ -8,11 +8,13 @@
 
 #include <cmbml/psm/udp/context.hpp>
 
+#include <cmbml/utility/executor.hpp>
+
 namespace cmbml {
 namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
-  template<typename RTPSWriter>
+  template<typename RTPSWriter, typename Executor = SyncExecutor>
   class DataWriter {
   public:
     DataWriter() {
@@ -39,12 +41,25 @@ namespace dds {
       rtps_writer.add_change(ChangeKind_t::not_alive_unregistered, instance_handle);
     }
 
+    template<typename SrcT>
+    void deserialize_message(const SrcT & src) {
+      size_t index = 0;
+      auto header_callback = [](Header & header) {
+        // TODO Validate header struct fields
+      };
+      deserialize<Header>(src, index, header_callback);
+      // TODO This is why we need to propagate an error code from deserialize!
+      bool end_condition = true;
+      while (index <= src.size() && end_condition) {
+        deserialize_submessage(src, index);
+      }
+    }
 
     template<typename SrcT, typename CallbackT>
     void deserialize_submessage(
-      const SrcT & src, size_t & index, CallbackT && callback)
+      const SrcT & src, size_t & index)
     {
-      auto header_callback = [&src, &index](SubmessageHeader header) {
+      auto header_callback = [&src, &index](SubmessageHeader & header) {
         switch (header.submessage_id) {
           case SubmessageKind::acknack_id:
             deserialize<AckNack>(src, index, &DataWriter::on_acknack);
@@ -67,6 +82,8 @@ namespace dds {
             assert(false);
             break;
           default:
+            // In the real implementation an unknown SubmessageId is ignored
+            // Should scan until next submessage found
             assert(false);
         }
 
