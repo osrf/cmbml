@@ -66,42 +66,33 @@ namespace cmbml {
   };
 
 
-  // TODO How to reproduce the pattern of passing a non-type template parameter as a
-  // static const member?
-  template<
-    bool expectsInlineQos,
-    typename heartbeatResponseDelay = DurationT<0, 500*1000*1000>,
-    typename heartbeatSuppressionDuration = DurationT<0, 0>>
+  // TODO cleanup 
+  template<bool expectsInlineQos>
   struct ReaderParams {
-    static const bool expects_inline_qos = expectsInlineQos;
-    static constexpr Duration_t heartbeat_response_delay = DurationFactory<heartbeatResponseDelay>();
-    static constexpr Duration_t heartbeat_suppression_duration = DurationFactory<heartbeatSuppressionDuration>();
   };
 
 
   //TODO decide if inheritance or template-bool for Stateful/Stateless is better...
 
   // TODO Methods yo
-  template<bool Stateful, typename ReaderParams, typename EndpointParams>
-  struct Reader : Endpoint<EndpointParams>, ReaderParams {
+  template<bool Stateful, bool expectsInlineQos, typename EndpointParams>
+  struct Reader : Endpoint<EndpointParams> {
     Reader() {
     }
 
     HistoryCache reader_cache;
     static const bool stateful = Stateful;
+    static const bool expects_inline_qos = expectsInlineQos;
 
     // gets overridden by Stateful impl
     using StateMachineT = BestEffortStatelessReaderMsm<Reader>;
+    Duration_t heartbeat_response_delay = {0, 500*1000*1000};
+    Duration_t heartbeat_suppression_duration = {0, 0};
   };
 
-  template<typename ...Params>
-  using StatelessReader = Reader<false, Params...>;
-
-  // Stateful specialization
-  template<typename ReaderParams, typename EndpointParams>
-  struct Reader<true, ReaderParams, EndpointParams> : Endpoint<EndpointParams>, ReaderParams {
-    static const bool stateful = true;
-    Reader() {
+  template<bool expectsInlineQos, typename EndpointParams>
+  struct StatelessReader : Reader<true, expectsInlineQos, EndpointParams> {
+    StatelessReader() {
     }
 
     void add_matched_writer(WriterProxy && writer_proxy) {
@@ -123,14 +114,14 @@ namespace cmbml {
     HistoryCache reader_cache;
 
     using StateMachineT = typename std::conditional<
-      Reader::reliability_level == ReliabilityKind_t::best_effort,
-      BestEffortStatefulReaderMsm<Reader>, ReliableStatefulReaderMsm<Reader>>::type;
+      StatelessReader::reliability_level == ReliabilityKind_t::best_effort,
+      BestEffortStatefulReaderMsm<StatelessReader>, ReliableStatefulReaderMsm<StatelessReader>>::type;
   private:
     std::map<GUID_t, WriterProxy, GUIDCompare> matched_writers;
   };
 
-  template<typename... Params>
-  using StatefulReader = Reader<true, Params...>;
+  template<bool expectsInlineQos, typename... Params>
+  using StatefulReader = Reader<true, expectsInlineQos, Params...>;
 
 }
 

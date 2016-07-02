@@ -26,6 +26,15 @@ CacheChange HistoryCache::remove_change(const uint64_t seq) {
   return ret;
 }
 
+CacheChange HistoryCache::copy_change(const SequenceNumber_t & sequence_number) const {
+  return copy_change(sequence_number.value());
+}
+
+CacheChange HistoryCache::copy_change(const uint64_t sequence_number) const {
+  assert(changes.count(sequence_number) != 0);
+  return changes.at(sequence_number);
+}
+
 void HistoryCache::clear() {
   changes.clear();
 }

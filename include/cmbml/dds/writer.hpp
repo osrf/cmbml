@@ -14,11 +14,36 @@ namespace cmbml {
 namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
-  template<typename RTPSWriter, typename Executor = SyncExecutor>
+  template<typename RTPSWriter, typename Context = udp::Context, typename Executor = SyncExecutor>
   class DataWriter {
   public:
+    // Consider taking a Context for this thread in the constructor.
     DataWriter() {
       // TODO: Dependency-inject PSM
+    }
+
+    void add_tasks(Executor & executor) {
+      // This is amazingly racy
+      // We really only want to have one context per thread. Currently this is an overestimation.
+      Context thread_context;
+      // TODO Initialize receiver locators and stuff!!
+      auto receiver_thread = [this, &thread_context]() {
+        // This is a blocking call
+        thread_context.receive_packet(
+            [this](const auto & packet) { deserialize_message(packet); }
+        );
+      };
+      executor.add_task(receiver_thread);
+
+      hana::eval_if(RTPSWriter::reliability_level == ReliabilityKind_t::reliable,
+        [this, &executor, &thread_context]() {
+          executor.add_timed_task(
+            rtps_writer.heartbeat_period.to_ns(), false,
+            [this, &thread_context]() { this->heartbeat_event(thread_context); }
+          );
+        },
+        [](){}
+      );
     }
 
     // TODO Data type?
@@ -139,9 +164,17 @@ namespace dds {
       }
     }
 
-    InstanceHandle_t instance_handle;
+
+    // Stateful specialization
+    void heartbeat_event(Context & context) {
+      // Where to get the receiver type?
+      cmbml::after_heartbeat<RTPSWriter, Context> e{rtps_writer, context};
+      state_machine.process_event(e);
+    }
+
     RTPSWriter rtps_writer;
     MessageReceiver receiver;
+    InstanceHandle_t instance_handle;
     boost::msm::lite::sm<typename RTPSWriter::StateMachineT> state_machine;
   };
 

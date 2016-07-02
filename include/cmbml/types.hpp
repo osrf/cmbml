@@ -6,16 +6,14 @@
 #define CMBML__TYPES__HPP_
 
 #include <boost/hana/define_struct.hpp>
+#include <chrono>
 
 #include <array>
 #include <cstdint>
 #include <vector>
 
 namespace cmbml {
-  // long is always 32 bits. there are no 64-bit int types except maybe to avoid overflow.
-
-  // TODO Domain ID ruins a lot of our constexpr niceness
-  // may have an addon for 
+  // TODO this should be selectable at compile time
   static const uint32_t cmbml_test_domain_id = 1337;
 
   enum class ReliabilityKind_t {
@@ -52,19 +50,11 @@ namespace cmbml {
 
     uint32_t sec;
     uint32_t nsec;
+    std::chrono::nanoseconds to_ns() const {
+      return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(sec)) +
+        std::chrono::nanoseconds(nsec);
+    };
   };
-
-  template<typename DurationT>
-  constexpr static Duration_t DurationFactory(){
-    return Duration_t(DurationT::sec, DurationT::nsec);
-  }
-
-  template<uint32_t Sec, uint32_t Nsec>
-  struct DurationT {
-    static const uint32_t sec = Sec;
-    static const uint32_t nsec = nsec;
-  };
-
 
   // Interesting, a fixed-point time representation (IETF RFC 1305)
   struct Time_t {

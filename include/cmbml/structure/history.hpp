@@ -31,7 +31,7 @@ namespace cmbml {
     SerializedData data;
   };
 
-  bool compare_cache_change_seq(
+  static bool compare_cache_change_seq(
       const std::pair<uint64_t, CacheChange> & a,
       const std::pair<uint64_t, CacheChange> & b)
   {

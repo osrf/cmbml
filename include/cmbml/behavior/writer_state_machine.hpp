@@ -131,19 +131,18 @@ namespace cmbml {
         *initial_s    + event<configured_reader<WriterT>> / on_configured_reader  = announcing_s,
         announcing_s  + event<unsent_changes>                                     = pushing_s,
         pushing_s     + event<unsent_changes_empty>                               = announcing_s,
-        pushing_s     + event<can_send_stateful<>>          / on_can_send           = pushing_s,
+        pushing_s     + event<can_send_stateful<>>        / on_can_send           = pushing_s,
         announcing_s  + event<unacked_changes_empty>                              = idle_s,
         idle_s        + event<unacked_changes>                                    = announcing_s,
-        announcing_s  + event<after_heartbeat<WriterT>>   / on_heartbeat          = announcing_s,
+        announcing_s  + event<after_heartbeat<WriterT>>   / on_heartbeat = announcing_s,
         waiting_s     + event<acknack_received<WriterT>>  / on_acknack            = waiting_s,
         waiting_s     + event<requested_changes>                                  = must_repair_s,
         must_repair_s + event<acknack_received<WriterT>>  / on_acknack            = must_repair_s,
         must_repair_s + event<after_nack_delay>                                   = repairing_s,
-        // TODO on_send is SLIGHTLY different here! don't send an unknown ReaderID
-        repairing_s   + event<can_send_stateful<>>          / on_can_send_repairing = repairing_s,
+        repairing_s   + event<can_send_stateful<>>        / on_can_send_repairing = repairing_s,
         repairing_s   + event<requested_changes_empty>                            = waiting_s,
 
-        *ready_s      + event<new_change<WriterT>>     / on_new_change     = ready_s,
+        *ready_s      + event<new_change<WriterT>>        / on_new_change     = ready_s,
         *ready_s      + event<removed_change> / on_removed_change = ready_s,
 
         *initial_s    + event<released_reader<WriterT>> / on_released_reader = final_s,

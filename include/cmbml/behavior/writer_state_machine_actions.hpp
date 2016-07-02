@@ -13,7 +13,7 @@ namespace stateless_writer {
   };
 
   // Small optimzation could be made: the best effort can_send state does not need a ref. to the Writer
-  auto on_can_send = [](auto e) {
+  auto on_can_send = [](auto & e) {
     CacheChange next_change = e.locator.pop_next_unsent_change();
     Data data(std::move(next_change), e.locator.expects_inline_qos, e.writer_has_key);
     // TODO: inline_qos; need to copy from related DDS writer
@@ -25,7 +25,7 @@ namespace stateless_writer {
     e.locator.send(std::move(data), e.context);
   };
 
-  auto on_can_send_reliable = [](auto e) {
+  auto on_can_send_reliable = [](auto & e) {
     CacheChange change = e.locator.pop_next_unsent_change();
     if (e.writer.writer_cache.contains_change(change.sequence_number)) {
       Data data(std::move(change), e.locator.expects_inline_qos, e.writer_has_key);
@@ -38,23 +38,23 @@ namespace stateless_writer {
     }
   };
 
-  auto on_released_locator = [](auto e) {
+  auto on_released_locator = [](auto & e) {
     // we are moving the ReaderLocator out of the writer.
     // will we need a better way to refer to it? an iterator perhaps?
     e.writer.remove_reader_locator(e.locator);
   };
 
-  auto on_heartbeat = [](auto e) {
+  auto on_heartbeat = [](auto & e) {
     const SequenceNumber_t & seq_min = e.writer.writer_cache.get_min_sequence_number();
     const SequenceNumber_t & seq_max = e.writer.writer_cache.get_max_sequence_number();
     Heartbeat heartbeat(e.writer.guid, seq_min, seq_max);
     heartbeat.final_flag = 1;
     heartbeat.reader_id = entity_id_unknown;
-    e.reader.send(std::move(heartbeat), e.context);
+    e.writer.send_heartbeat(std::move(heartbeat), e.context);
   };
 
 
-  auto on_acknack = [](auto e) {
+  auto on_acknack = [](auto & e) {
     auto locator_lambda = [&e](Locator_t & locator) {
       ReaderLocator & reader_locator = e.writer.lookup_reader_locator(locator);
       reader_locator.set_requested_changes(e.acknack.reader_sn_state.set);
@@ -71,7 +71,7 @@ namespace stateless_writer {
 
 namespace stateful_writer {
 
-  auto on_configured_reader = [](auto e) {
+  auto on_configured_reader = [](auto & e) {
     ReaderProxy reader(
         e.reader_guid, e.expects_inline_qos, std::move(e.unicast_locator_list),
         std::move(e.multicast_locator_list),
@@ -79,11 +79,11 @@ namespace stateful_writer {
     e.writer.add_matched_reader(std::move(reader));
   };
 
-  auto on_released_reader = [](auto e) {
+  auto on_released_reader = [](auto & e) {
     e.writer.remove_matched_reader(e.reader);
   };
 
-  auto on_can_send = [](auto e) {
+  auto on_can_send = [](auto & e) {
     ChangeForReader change = e.reader_proxy.pop_next_unsent_change();
     change.status = ChangeForReaderStatus::underway;
     if (change.is_relevant) {
@@ -94,7 +94,7 @@ namespace stateful_writer {
     }
   };
 
-  auto on_new_change = [](auto e) {
+  auto on_new_change = [](auto & e) {
     // TODO: interface for DDS filtering
     // IF (DDS_FILTER(the_reader_proxy, change)) THEN change.is_relevant := FALSE;
     // ELSE change.is_relevant := TRUE;
@@ -109,21 +109,21 @@ namespace stateful_writer {
   };
 
   // TODO Surely more side effects than this are needed? e.g. remove from ReaderProxy
-  auto on_removed_change = [](auto e) {
+  auto on_removed_change = [](auto & e) {
     e.change.is_relevant = false;
   };
 
-  auto on_heartbeat = [](auto e) {
+  auto on_heartbeat = [](auto & e) {
     const SequenceNumber_t & seq_min = e.writer.writer_cache.get_min_sequence_number();
     const SequenceNumber_t & seq_max = e.writer.writer_cache.get_max_sequence_number();
     Heartbeat heartbeat(e.writer.guid, seq_min, seq_max);
     heartbeat.final_flag = 0;
     heartbeat.reader_id = entity_id_unknown;
-    // Unclear which object "sends" the message or if it's just a global utility
-    e.reader.send(std::move(heartbeat), e.context);
+    // Send the packet using a multicast socket
+    e.writer.send_heartbeat(std::move(heartbeat), e.context);
   };
 
-  auto on_acknack = [](auto e) {
+  auto on_acknack = [](auto & e) {
     e.writer.set_acked_changes(e.acknack.reader_sn_state.base - 1);
     e.receiver.set_requested_changes(e.acknack.reader_sn_state.set);
     // TODO assert postconditions
@@ -132,7 +132,7 @@ namespace stateful_writer {
     //   ACKNACK.readerSNState.base - 1
   };
 
-  auto on_can_send_repairing = [](auto e) {
+  auto on_can_send_repairing = [](auto & e) {
     ChangeForReader change = e.reader_proxy.pop_next_requested_change();
     change.status = ChangeForReaderStatus::underway;
     if (change.is_relevant) {

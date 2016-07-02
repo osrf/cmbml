@@ -11,6 +11,7 @@ include_directories(external/msm-lite/include/)
 include_directories(external/hana/include/)
 
 add_library(cmbml
+  STATIC
   src/reader.cpp
   src/writer.cpp
   src/history.cpp
@@ -24,7 +25,7 @@ target_include_directories(cmbml
 
 function(basic_cmbml_test test_name src)
   add_executable(${test_name} ${src})
-  target_link_libraries(${test_name} ${cmbml})
+  target_link_libraries(${test_name} cmbml)
   target_include_directories(${test_name} PUBLIC include)
 endfunction()
 
@@ -32,5 +33,4 @@ if(ENABLE_TESTING)
   basic_cmbml_test(cmbml_test test/cmbml.cpp)
 
   basic_cmbml_test(serialization_test test/serialization.cpp)
-
 endif()

@@ -93,7 +93,7 @@ public:
   void multicast_send(const Locator_t & locator, const uint32_t * packet, size_t size);
 
   template<typename CallbackT>
-  void receive_packet(CallbackT & callback, size_t packet_size = CMBML__MAX_FRAGMENT_SIZE);
+  void receive_packet(CallbackT && callback, size_t packet_size = CMBML__MAX_FRAGMENT_SIZE);
 
 private:
 
@@ -109,8 +109,6 @@ private:
   int multicast_send_socket = -1;
 
   std::map<uint16_t, int> port_socket_map;
-  // int unicast_recv_socket = -1;
-  // int multicast_recv_socket = -1;
 
   // TODO: store and use allocator for Packets
 };

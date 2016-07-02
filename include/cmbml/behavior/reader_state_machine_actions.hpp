@@ -8,29 +8,29 @@
 
 namespace cmbml {
 
-  auto on_reader_created = [](auto e) {
+  auto on_reader_created = [](auto & e) {
     WriterProxy writer_proxy(e.remote_writer_guid, e.unicast_locators, e.multicast_locators);
     e.reader.add_matched_writer(std::move(writer_proxy));
     // TODO WriterProxy is initialized with all past and future samples from the Writer
     // as discussed in 8.4.10.4.
   };
 
-  auto on_reader_deleted = [](auto e) {
+  auto on_reader_deleted = [](auto & e) {
     e.reader.remove_matched_writer(e.writer);
   };
 
-  auto on_data_received_stateless = [](auto e) {
+  auto on_data_received_stateless = [](auto & e) {
     CacheChange change(e.data);
     e.reader.reader_cache.add_change(std::move(change));
   };
 
-  auto on_heartbeat = [](auto e) {
+  auto on_heartbeat = [](auto & e) {
     assert(e.writer);
     e.writer->update_missing_changes(e.heartbeat.last_sn);
     e.writer->update_lost_changes(e.heartbeat.first_sn);
   };
 
-  auto on_data = [](auto e) {
+  auto on_data = [](auto & e) {
     CacheChange change(e.data);
     e.reader.reader_cache.add_change(std::move(change));
     // TODO Check that this lookup is correct.
@@ -41,7 +41,7 @@ namespace cmbml {
     proxy->set_received_change(change.sequence_number);
   };
 
-  auto on_gap = [](auto e) {
+  auto on_gap = [](auto & e) {
     assert(e.writer);
     // Does the spec describe a range or a pair? Look at other impls
     // I think it's safe to say it's a pair
@@ -53,7 +53,7 @@ namespace cmbml {
     }
   };
 
-  auto on_heartbeat_response_delay = [](auto e) {
+  auto on_heartbeat_response_delay = [](auto & e) {
     SequenceNumberSet missing_seq_num_set({e.writer.max_available_changes() + 1});
     assert(missing_seq_num_set.set.empty());
     for (const auto & change : e.writer.missing_changes()) {
@@ -70,7 +70,7 @@ namespace cmbml {
     e.writer.send(std::move(acknack), e.transport_context);
   };
 
-  auto on_data_received_stateful = [](auto e) {
+  auto on_data_received_stateful = [](auto & e) {
     CacheChange change(e.data);
     GUID_t writer_guid = {e.receiver.source_guid_prefix, e.data.writer_id};
     WriterProxy * writer_proxy = e.reader.matched_writer_lookup(writer_guid);
@@ -90,12 +90,12 @@ namespace cmbml {
 
 
   // Guards
-  auto not_final_guard = [](auto e) {
+  auto not_final_guard = [](auto & e) {
     return !e.heartbeat.final_flag;
   };
 
   // Small subtlety based on literal interpretation of precedence in spec
-  auto not_live_guard = [](auto e) {
+  auto not_live_guard = [](auto & e) {
     return e.heartbeat.final_flag && !e.heartbeat.liveliness_flag;
   };
 }

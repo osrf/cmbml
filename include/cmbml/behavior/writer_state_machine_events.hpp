@@ -31,11 +31,9 @@ namespace cmbml {
   };
 
   template<typename WriterT,
-    typename Transport = udp::Context,
-    typename ReaderT = typename std::conditional<WriterT::stateful, ReaderProxy, ReaderLocator>::type>
+    typename Transport = udp::Context>
   struct after_heartbeat {
     WriterT & writer;
-    ReaderT & reader;
     Transport & context;
   };
 

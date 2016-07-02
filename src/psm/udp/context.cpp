@@ -170,7 +170,7 @@ void udp::Context::socket_send(
 // packet size has to be smaller for e.g. STM32F0
 // so maybe for that Context we will need to make max packet size a type trait
 template<typename CallbackT>
-void udp::Context::receive_packet(CallbackT & callback, size_t packet_size) {
+void udp::Context::receive_packet(CallbackT && callback, size_t packet_size) {
   fd_set socket_set;
   FD_ZERO(&socket_set);
   int max_socket = 0;

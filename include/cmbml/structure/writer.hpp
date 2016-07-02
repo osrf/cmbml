@@ -96,6 +96,7 @@ namespace cmbml {
     void set_requested_changes(List<SequenceNumber_t> & request_seq_numbers);
     void add_change_for_reader(ChangeForReader && change);
 
+    // TODO This should wrap a submessage in a Message packet
     template<typename T, typename TransportContext = udp::Context>
     void send(const T && msg, TransportContext & context) {
       size_t packet_size = get_packet_size(msg);
@@ -127,21 +128,8 @@ namespace cmbml {
     bool is_active;
   };
 
-  template<
-    bool pushMode,
-    typename heartbeatPeriod,
-    typename nackResponseDelay = DurationT<0, 500*1000*1000>,
-    typename nackSuppressionDuration = DurationT<0, 0>
-    >
-  struct WriterParams {
-    static const bool push_mode = pushMode;
-    static constexpr Duration_t heartbeat_period = DurationFactory<heartbeatPeriod>();
-    static constexpr Duration_t nack_response_delay = DurationFactory<nackResponseDelay>();
-    static constexpr Duration_t nack_suppression_duration = DurationFactory<nackSuppressionDuration>();
-  };
-
-  template<typename WriterParams, typename EndpointParams>
-  struct Writer : Endpoint<EndpointParams>, WriterParams {
+  template<bool pushMode, typename EndpointParams>
+  struct Writer : Endpoint<EndpointParams>{
     CacheChange new_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
       auto ret = CacheChange(k, data, handle, this->guid);
       ret.sequence_number = writer_cache.get_max_sequence_number() + 1;
@@ -161,16 +149,30 @@ namespace cmbml {
     void add_change(ChangeKind_t k, InstanceHandle_t && handle) {
       writer_cache.add_change(std::move(new_change(k, handle)));
     }
+    template<typename T, typename TransportContext = udp::Context>
+    void send(T && msg, TransportContext & context);
+
+    template<typename TransportContext = udp::Context>
+    void send_heartbeat(Heartbeat && msg, TransportContext & context) {
+      msg.count = heartbeat_count++;
+      send(msg, context);
+    }
 
     HistoryCache writer_cache;
+    Duration_t heartbeat_period = {3, 0};
+    Duration_t nack_response_delay = {0, 500*1000*1000};
+    Duration_t nack_suppression_duration = {0, 0};
+    static const bool push_mode = pushMode;
   protected:
     SequenceNumber_t last_change_seq_num;
+    Count_t heartbeat_count = 0;
   };
 
   // Forward declare state machine struct
-  template<typename resendDataPeriod, typename ...Params>
-  struct StatelessWriter : Writer<Params...> {
+  template<bool pushMode, typename EndpointParams>
+  struct StatelessWriter : Writer<pushMode, EndpointParams> {
 
+    // TODO
     StatelessWriter() {
     }
 
@@ -202,7 +204,17 @@ namespace cmbml {
       }
     }
 
-    static constexpr Duration_t resend_data_period = DurationFactory<resendDataPeriod>();
+    template<typename T, typename TransportContext = udp::Context>
+    void send(const T && msg, TransportContext & context) {
+      size_t packet_size = get_packet_size(msg);
+      Packet<> packet(packet_size);
+      serialize(msg, packet);
+      // TODO Implement glomming-on of packets during send and wrapping in Message.
+      for (const auto & locator : reader_locators) {
+        context.unicast_send(locator, packet.data(), packet.size());
+      }
+    }
+
     static const bool stateful = false;
     using StateMachineT = typename std::conditional<
       StatelessWriter::reliability_level == ReliabilityKind_t::best_effort,
@@ -211,8 +223,8 @@ namespace cmbml {
     List<ReaderLocator> reader_locators;
   };
 
-  template<typename ...Params>
-  struct StatefulWriter : Writer<Params...> {
+  template<bool pushMode, typename EndpointParams>
+  struct StatefulWriter : Writer<pushMode, EndpointParams> {
     void add_matched_reader(ReaderProxy && reader_proxy) {
       matched_readers.push_back(reader_proxy);
     }
@@ -241,6 +253,26 @@ namespace cmbml {
     // TODO
     void set_acked_changes(const SequenceNumber_t & seq_num);
 
+    // TODO This should wrap a submessage in a Message packet
+    template<typename T, typename TransportContext = udp::Context>
+    void send(const T && msg, TransportContext & context) {
+      size_t packet_size = get_packet_size(msg);
+      Packet<> packet(packet_size);
+      serialize(msg, packet);
+
+      for (auto reader : matched_readers) {
+        for (const auto & locator : reader.unicast_locator_list) {
+          context.unicast_send(locator, packet.data(), packet.size());
+        }
+        for (const auto & locator : reader.multicast_locator_list) {
+          context.multicast_send(locator, packet.data(), packet.size());
+        }
+      }
+    }
+
+
+    // TODO is this default reasonable? (not in the spec)
+    Duration_t resend_data_period = {3, 0};
     static const bool stateful = true;
     using StateMachineT = typename std::conditional<
       StatefulWriter::reliability_level == ReliabilityKind_t::best_effort,
