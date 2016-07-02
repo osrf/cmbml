@@ -56,10 +56,16 @@ namespace cmbml {
       expects_inline_qos(inline_qos) {}
 
     template<typename T, typename TransportContext = udp::Context>
-    void send(const T && msg, TransportContext & context) {
+    void send(T && msg, TransportContext & context) {
       size_t packet_size = get_packet_size(msg);
       Packet<> packet(packet_size);
       serialize(msg, packet);
+      // TODO Implement glomming-on of packets during send and wrapping in Message.
+      // context.unicast_send(locator, packet.data(), packet.size());
+      send(packet, context);
+    }
+    template<typename TransportContext = udp::Context>
+    void send(Packet<> & packet, TransportContext & context) {
       // TODO Implement glomming-on of packets during send and wrapping in Message.
       context.unicast_send(locator, packet.data(), packet.size());
     }
@@ -98,7 +104,7 @@ namespace cmbml {
 
     // TODO This should wrap a submessage in a Message packet
     template<typename T, typename TransportContext = udp::Context>
-    void send(const T && msg, TransportContext & context) {
+    void send(T && msg, TransportContext & context) {
       size_t packet_size = get_packet_size(msg);
       Packet<> packet(packet_size);
       serialize(msg, packet);
@@ -149,23 +155,15 @@ namespace cmbml {
     void add_change(ChangeKind_t k, InstanceHandle_t && handle) {
       writer_cache.add_change(std::move(new_change(k, handle)));
     }
-    template<typename T, typename TransportContext = udp::Context>
-    void send(T && msg, TransportContext & context);
-
-    template<typename TransportContext = udp::Context>
-    void send_heartbeat(Heartbeat && msg, TransportContext & context) {
-      msg.count = heartbeat_count++;
-      send(msg, context);
-    }
 
     HistoryCache writer_cache;
     Duration_t heartbeat_period = {3, 0};
     Duration_t nack_response_delay = {0, 500*1000*1000};
     Duration_t nack_suppression_duration = {0, 0};
     static const bool push_mode = pushMode;
+    Count_t heartbeat_count = 0;
   protected:
     SequenceNumber_t last_change_seq_num;
-    Count_t heartbeat_count = 0;
   };
 
   // Forward declare state machine struct
@@ -205,13 +203,14 @@ namespace cmbml {
     }
 
     template<typename T, typename TransportContext = udp::Context>
-    void send(const T && msg, TransportContext & context) {
+    void send(T && msg, TransportContext & context) {
       size_t packet_size = get_packet_size(msg);
       Packet<> packet(packet_size);
       serialize(msg, packet);
       // TODO Implement glomming-on of packets during send and wrapping in Message.
-      for (const auto & locator : reader_locators) {
-        context.unicast_send(locator, packet.data(), packet.size());
+      for (auto & reader_locator : reader_locators) {
+        //context.unicast_send(reader_locator.locator, packet.data(), packet.size());
+        reader_locator.send(packet, context);
       }
     }
 
@@ -255,7 +254,7 @@ namespace cmbml {
 
     // TODO This should wrap a submessage in a Message packet
     template<typename T, typename TransportContext = udp::Context>
-    void send(const T && msg, TransportContext & context) {
+    void send(T && msg, TransportContext & context) {
       size_t packet_size = get_packet_size(msg);
       Packet<> packet(packet_size);
       serialize(msg, packet);

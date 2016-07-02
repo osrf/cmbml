@@ -6,6 +6,8 @@
 #include <cmbml/psm/udp/ports.hpp>
 #include <cmbml/message/submessage.hpp>
 
+#include <sys/socket.h>
+
 #include <map>
 
 namespace cmbml {
@@ -93,7 +95,34 @@ public:
   void multicast_send(const Locator_t & locator, const uint32_t * packet, size_t size);
 
   template<typename CallbackT>
-  void receive_packet(CallbackT && callback, size_t packet_size = CMBML__MAX_FRAGMENT_SIZE);
+  void receive_packet(CallbackT && callback, size_t packet_size = CMBML__MAX_FRAGMENT_SIZE)
+  {
+    fd_set socket_set;
+    FD_ZERO(&socket_set);
+    int max_socket = 0;
+    for (const auto & port_socket_pair : port_socket_map) {
+      FD_SET(port_socket_pair.second, &socket_set);
+      if (port_socket_pair.second > max_socket) {
+        max_socket = port_socket_pair.second;
+      }
+    }
+
+    int num_fds = select(max_socket + 1, &socket_set, NULL, NULL, NULL);
+    for (const auto & port_socket_pair : port_socket_map) {
+      Packet<> packet(packet_size);
+      int recv_socket = port_socket_pair.second;
+      if (!FD_ISSET(recv_socket, &socket_set)) {
+        continue;
+      }
+
+      // TODO checking src is important error checking/security
+      // struct sockaddr_in src_address;
+      // 
+      ssize_t bytes_received = recvfrom(
+        recv_socket, packet.data(), packet.size() * sizeof(Packet<>::value_type), 0, NULL, NULL);
+      callback(packet);
+    }
+  }
 
 private:
 

@@ -30,7 +30,7 @@ namespace dds {
       auto receiver_thread = [this, &thread_context]() {
         // This is a blocking call
         thread_context.receive_packet(
-            [this](const auto & packet) { deserialize_message(packet); }
+            [&](const auto & packet) { deserialize_message(packet); }
         );
       };
       executor.add_task(receiver_thread);
@@ -39,7 +39,10 @@ namespace dds {
         [this, &executor, &thread_context]() {
           executor.add_timed_task(
             rtps_writer.heartbeat_period.to_ns(), false,
-            [this, &thread_context]() { this->heartbeat_event(thread_context); }
+            [this, &thread_context]() {
+              cmbml::after_heartbeat<RTPSWriter, Context> e{rtps_writer, thread_context};
+              state_machine.process_event(e);
+            }
           );
         },
         [](){}
@@ -80,28 +83,42 @@ namespace dds {
       }
     }
 
-    template<typename SrcT, typename CallbackT>
+    template<typename SrcT>
     void deserialize_submessage(
       const SrcT & src, size_t & index)
     {
-      auto header_callback = [&src, &index](SubmessageHeader & header) {
+      auto header_callback = [this, &src, &index](SubmessageHeader & header) {
         switch (header.submessage_id) {
           case SubmessageKind::acknack_id:
-            deserialize<AckNack>(src, index, &DataWriter::on_acknack);
+            deserialize<AckNack>(src, index,
+              [this](auto && acknack){
+                on_acknack(std::move(acknack));
+              }
+            );
             break;
           case SubmessageKind::info_ts_id:
-            deserialize<InfoTimestamp>(src, index, &DataWriter::on_info_timestamp);
+            deserialize<InfoTimestamp>(src, index,
+              [this](auto && timestamp) {
+                on_info_timestamp(std::move(timestamp));
+              }
+            );
             break;
           case SubmessageKind::info_src_id:
-            deserialize<InfoSource>(src, index, &DataWriter::on_info_source);
+            deserialize<InfoSource>(src, index,
+              [this](auto && info_src) {
+                on_info_source(std::move(info_src));
+              }
+            );
             break;
           // TODO IpV6
+          /*
           case SubmessageKind::info_reply_ip4_id:
             deserialize<cmbml::udp::InfoReplyIp4>(src, index, &DataWriter::on_info_reply_ip4);
             break;
           case SubmessageKind::info_reply_id:
             deserialize<InfoReply>(src, index, &DataWriter::on_info_reply);
             break;
+          */
           case SubmessageKind::nack_frag_id:
             // Not implemented: needed for fragmentation
             assert(false);
@@ -119,11 +136,8 @@ namespace dds {
   private:
 
     void on_acknack(AckNack && acknack) {
-      cmbml::acknack_received<RTPSWriter> e;
-      e.writer = rtps_writer;
-      // TODO Where does receiver come from?
-      e.receiver = receiver;
-      e.acknack = std::move(acknack);
+      // HMmmmmm
+      cmbml::acknack_received<RTPSWriter> e{rtps_writer, receiver, std::move(acknack)};
       state_machine.process_event(std::move(e));
     }
 
@@ -131,8 +145,8 @@ namespace dds {
       receiver.source_guid_prefix = info_src.guid_prefix;
       receiver.source_version = info_src.protocol_version;
       receiver.source_vendor_id = info_src.vendor_id;
-      receiver.unicast_reply_locator_list = {0};
-      receiver.multicast_reply_locator_list = {0};
+      receiver.unicast_reply_locator_list = {{0}};
+      receiver.multicast_reply_locator_list = {{0}};
       receiver.have_timestamp = false;
     }
 
@@ -162,14 +176,6 @@ namespace dds {
       } else {
         receiver.have_timestamp = false;
       }
-    }
-
-
-    // Stateful specialization
-    void heartbeat_event(Context & context) {
-      // Where to get the receiver type?
-      cmbml::after_heartbeat<RTPSWriter, Context> e{rtps_writer, context};
-      state_machine.process_event(e);
     }
 
     RTPSWriter rtps_writer;

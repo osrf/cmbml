@@ -50,7 +50,8 @@ namespace stateless_writer {
     Heartbeat heartbeat(e.writer.guid, seq_min, seq_max);
     heartbeat.final_flag = 1;
     heartbeat.reader_id = entity_id_unknown;
-    e.writer.send_heartbeat(std::move(heartbeat), e.context);
+    heartbeat.count = e.writer.heartbeat_count++;
+    e.writer.send(heartbeat, e.context);
   };
 
 
@@ -120,7 +121,8 @@ namespace stateful_writer {
     heartbeat.final_flag = 0;
     heartbeat.reader_id = entity_id_unknown;
     // Send the packet using a multicast socket
-    e.writer.send_heartbeat(std::move(heartbeat), e.context);
+    heartbeat.count = e.writer.heartbeat_count++;
+    e.writer.send(heartbeat, e.context);
   };
 
   auto on_acknack = [](auto & e) {

@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
     for (uint8_t i = 0; i < example_src.size(); ++i) {
       example_src[i] = i;
     }
-    auto confirm_array_callback = [example_src](auto deserialized_array) {
+    auto confirm_array_callback = [example_src](auto && deserialized_array) {
       for (size_t i = 0; i < example_src.size(); ++i) {
         assert(example_src[i] == deserialized_array[i]);
       }
@@ -101,41 +101,34 @@ int main(int argc, char** argv) {
     // Validate serialize/deserialize via the callback passed the deserialize
     cmbml::SubmessageHeader sub_header;
     cmbml::serialize(sub_header, serialized_data);
-    auto callback = [&sub_header](auto & x) {
-
-    };
+    // TODO validate values
+    auto callback = [&sub_header](auto && x) { };
 
     size_t index = 0;
     cmbml::deserialize<cmbml::SubmessageHeader>(serialized_data, index, callback);
   }
 
-  // cmbml::Message message;
+
+  {
+    size_t index = 0;
+    cmbml::Submessage<cmbml::AckNack> submsg;
+    cmbml::serialize(submsg, serialized_data);
+    auto callback = [](auto && msg) { };
+    cmbml::deserialize<cmbml::AckNack>(serialized_data, index, callback);
+  }
+
   hana::tuple<cmbml::AckNack, cmbml::Data, cmbml::Gap,
     cmbml::Heartbeat, cmbml::InfoDestination,
     cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> types;
 
   hana::for_each(types, [&serialized_data](const auto & x) {
     cmbml::serialize(x, serialized_data);
-    typename std::decay<decltype(x)>::type result;
-    // cmbml::deserialize(serialized_data, result);
+    using MsgT = std::decay<decltype(x)>;
+    size_t index = 0;
+    cmbml::deserialize(x, serialized_data, index);
   });
 
-  cmbml::Submessage<cmbml::AckNack> submsg;
-  cmbml::serialize(submsg, serialized_data);
 
-  // cmbml::deserialize(serialized_data, submsg);
-
-  cmbml::Message<cmbml::AckNack, cmbml::Data, cmbml::DataFrag, cmbml::Gap,
-    cmbml::Heartbeat, cmbml::HeartbeatFrag, cmbml::InfoDestination,
-    cmbml::InfoReply, cmbml::InfoSource, cmbml::InfoTimestamp, cmbml::NackFrag> message;
-
-  cmbml::serialize(message, serialized_data);
-
-  /*
-  // Packet comes in: we can't deduce the return type from its value
-  cmbml::Message deserialized_message;
-  cmbml::deserialize(serialized_data, deserialized_message);
-  */
   printf("All tests passed.\n");
   return 0;
 }
