@@ -84,9 +84,7 @@ namespace dds {
     }
 
     template<typename SrcT>
-    void deserialize_submessage(
-      const SrcT & src, size_t & index)
-    {
+    void deserialize_submessage(const SrcT & src, size_t & index) {
       auto header_callback = [this, &src, &index](SubmessageHeader & header) {
         switch (header.submessage_id) {
           case SubmessageKind::acknack_id:
@@ -128,7 +126,6 @@ namespace dds {
             // Should scan until next submessage found
             assert(false);
         }
-
       };
       deserialize<SubmessageHeader>(src, index, header_callback);
     }
@@ -136,8 +133,7 @@ namespace dds {
   private:
 
     void on_acknack(AckNack && acknack) {
-      // HMmmmmm
-      cmbml::acknack_received<RTPSWriter> e{rtps_writer, receiver, std::move(acknack)};
+      cmbml::acknack_received<RTPSWriter> e{rtps_writer, std::move(acknack), receiver};
       state_machine.process_event(std::move(e));
     }
 

@@ -126,8 +126,12 @@ namespace stateful_writer {
   };
 
   auto on_acknack = [](auto & e) {
-    e.writer.set_acked_changes(e.acknack.reader_sn_state.base - 1);
-    e.receiver.set_requested_changes(e.acknack.reader_sn_state.set);
+    // Look up which ReaderProxy to set changes in
+    // TODO: The GUID prefix should be provided from message deserialization
+    GUID_t reader_guid = {e.receiver.source_guid_prefix, e.acknack.reader_id};
+    ReaderProxy & proxy = e.writer.lookup_matched_reader(reader_guid);
+    proxy.set_acked_changes(e.acknack.reader_sn_state.base - 1);
+    proxy.set_requested_changes(e.acknack.reader_sn_state.set);
     // TODO assert postconditions
     // Postconditions:
     //   MIN { change.sequenceNumber IN the_reader_proxy.unacked_changes() } >=

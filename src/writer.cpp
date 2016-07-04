@@ -57,6 +57,10 @@ void ReaderProxy::set_requested_changes(List<SequenceNumber_t> & request_seq_num
   cache_accessor.set_requested_changes(request_seq_numbers);
 }
 
+void ReaderProxy::set_acked_changes(const SequenceNumber_t & seq_num) {
+  highest_acked_seq_num = seq_num;
+}
+
 void ReaderProxy::add_change_for_reader(ChangeForReader && change) {
   // Naive?
 

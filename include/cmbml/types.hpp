@@ -133,7 +133,7 @@ namespace cmbml {
       (EntityId_t, entity_id)
     );
 
-    bool operator==(const GUID_t & b) {
+    bool operator==(const GUID_t & b) const {
       for (size_t i = 0; i < entity_id.size(); ++i) {
         if (entity_id[i] != b.entity_id[i]) {
           return false;

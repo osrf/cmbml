@@ -37,12 +37,11 @@ namespace cmbml {
     Transport & context;
   };
 
-  template<typename WriterT,
-    typename ReceiverT = typename std::conditional<WriterT::stateful, ReaderProxy, MessageReceiver>::type>
+  template<typename WriterT>
   struct acknack_received {
     WriterT & writer;
-    ReceiverT & receiver;
     AckNack && acknack;
+    MessageReceiver & receiver;
   };
 
   struct requested_changes {};

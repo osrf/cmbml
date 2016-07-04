@@ -118,14 +118,17 @@ namespace cmbml {
     }
 
 
+    void set_acked_changes(const SequenceNumber_t & seq_num);
+
     bool expects_inline_qos;
   private:
+    SequenceNumber_t highest_acked_seq_num;
     ReaderCacheAccessor cache_accessor;
     HistoryCache * writer_cache;
-    List<ChangeForReader> changes_for_reader;
+    // List<ChangeForReader> changes_for_reader;
 
-    List<ChangeForReader> unsent_changes_list;
-    List<ChangeForReader> requested_changes_list;
+    // List<ChangeForReader> unsent_changes_list;
+    // List<ChangeForReader> requested_changes_list;
 
     // TODO can we template these booleans? Would need to template the class
     // and StatefulWriter needs to be able to hold a heterogenous container
@@ -238,7 +241,7 @@ namespace cmbml {
     }
 
     ReaderProxy & lookup_matched_reader(const GUID_t & reader_guid) {
-      for (const auto & reader : matched_readers) {
+      for (auto & reader : matched_readers) {
         if (reader.remote_reader_guid == reader_guid) {
           return reader;
         }
@@ -248,9 +251,6 @@ namespace cmbml {
 
     // TODO
     bool is_acked_by_all(CacheChange & change);
-
-    // TODO
-    void set_acked_changes(const SequenceNumber_t & seq_num);
 
     // TODO This should wrap a submessage in a Message packet
     template<typename T, typename TransportContext = udp::Context>
