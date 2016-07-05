@@ -46,6 +46,14 @@ struct LocatorUDPv4_t {
   void set_address_dot_notation(const std::array<Octet, 4> & adr) {
     address = address_from_dot_notation(adr);
   }
+
+  static IPAddress get_array_from_address(uint32_t address) {
+    IPAddress array_address;
+    array_address.fill(0);
+    // TODO!!!
+    // address[0] = local_address ;
+    return array_address;
+  }
 };
 
 // Networking context.
@@ -57,6 +65,7 @@ public:
     LocatorUDPv4_t::address_from_dot_notation({239, 255, 0, 1})
   };
   static constexpr LocatorUDPv4_t invalid_locator = {0, 0};
+  static const int32_t kind = LOCATOR_KIND_UDPv4;
 
   static constexpr EntityId_t participant_id =
     {0x0, 0x0, 0x1, static_cast<uint8_t>(BuiltinEntity::participant)};
@@ -123,6 +132,8 @@ public:
       callback(packet);
     }
   }
+
+  IPAddress address_as_array() const;
 
 private:
 

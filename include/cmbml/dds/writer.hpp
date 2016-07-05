@@ -23,14 +23,15 @@ namespace dds {
     }
 
     void add_tasks(Executor & executor) {
-      // This is amazingly racy
-      // We really only want to have one context per thread. Currently this is an overestimation.
+      // TODO We really only want to have one context per thread.
+      // Currently this is an overestimation.
+      // TODO thread safety!
       Context thread_context;
-      // TODO Initialize receiver locators and stuff!!
+      // TODO Initialize receiver locators
       auto receiver_thread = [this, &thread_context]() {
         // This is a blocking call
         thread_context.receive_packet(
-            [&](const auto & packet) { deserialize_message(packet); }
+            [&](const auto & packet) { deserialize_message(packet, thread_context); }
         );
       };
       executor.add_task(receiver_thread);
@@ -49,7 +50,7 @@ namespace dds {
       );
     }
 
-    // TODO Data type?
+    // TODO hooks for user callback, etc.
     void on_write(Data && data) {
       // TODO state machine events?
       rtps_writer.add_change(ChangeKind_t::alive, data, instance_handle);
@@ -69,113 +70,130 @@ namespace dds {
       rtps_writer.add_change(ChangeKind_t::not_alive_unregistered, instance_handle);
     }
 
-    template<typename SrcT>
-    void deserialize_message(const SrcT & src) {
+    // TODO Refine MessageReceiver logic
+    template<typename SrcT, typename NetworkContext = udp::Context>
+    void deserialize_message(const SrcT & src, NetworkContext & context) {
       size_t index = 0;
-      auto header_callback = [](Header & header) {
-        // TODO Validate header struct fields
-      };
-      deserialize<Header>(src, index, header_callback);
+      Header header;
+      StatusCode deserialize_status = deserialize(header, src, index);
+      if (header.protocol != rtps_protocol_id) {
+        // return StatusCode::packet_invalid;
+        return;
+      }
+      MessageReceiver receiver(header.guid_prefix, Context::kind, context.address_as_array());
       // TODO This is why we need to propagate an error code from deserialize!
-      bool end_condition = true;
-      while (index <= src.size() && end_condition) {
-        deserialize_submessage(src, index);
+      while (index <= src.size() && deserialize_status == StatusCode::ok) {
+        deserialize_status = deserialize_submessage(src, index, receiver);
       }
     }
 
     template<typename SrcT>
-    void deserialize_submessage(const SrcT & src, size_t & index) {
-      auto header_callback = [this, &src, &index](SubmessageHeader & header) {
+    StatusCode deserialize_submessage(
+        const SrcT & src, size_t & index, MessageReceiver & receiver)
+    {
+      StatusCode ret = StatusCode::ok;
+      auto header_callback = [this, &src, &index, &ret, &receiver](SubmessageHeader & header) {
         switch (header.submessage_id) {
           case SubmessageKind::acknack_id:
-            deserialize<AckNack>(src, index,
-              [this](auto && acknack){
-                on_acknack(std::move(acknack));
+            return deserialize<AckNack>(src, index,
+              [this, &receiver](auto && acknack){
+                return on_acknack(std::move(acknack), receiver);
               }
             );
-            break;
           case SubmessageKind::info_ts_id:
-            deserialize<InfoTimestamp>(src, index,
-              [this](auto && timestamp) {
-                on_info_timestamp(std::move(timestamp));
+            return deserialize<InfoTimestamp>(src, index,
+              [this, &receiver](auto && timestamp) {
+                return on_info_timestamp(std::move(timestamp), receiver);
               }
             );
-            break;
           case SubmessageKind::info_src_id:
-            deserialize<InfoSource>(src, index,
-              [this](auto && info_src) {
-                on_info_source(std::move(info_src));
+            return deserialize<InfoSource>(src, index,
+              [this, &receiver](auto && info_src) {
+                return on_info_source(std::move(info_src), receiver);
               }
             );
-            break;
-          // TODO IpV6
-          /*
           case SubmessageKind::info_reply_ip4_id:
-            deserialize<cmbml::udp::InfoReplyIp4>(src, index, &DataWriter::on_info_reply_ip4);
-            break;
+            return deserialize<cmbml::udp::InfoReplyIp4>(src, index,
+              [this, &receiver](auto && info_reply) {
+                return on_info_reply_ip4(std::move(info_reply), receiver);
+              }
+            );
           case SubmessageKind::info_reply_id:
-            deserialize<InfoReply>(src, index, &DataWriter::on_info_reply);
-            break;
-          */
+            return deserialize<InfoReply>(src, index,
+              [this, &receiver](auto && info_reply) {
+                return on_info_reply(std::move(info_reply), receiver);
+              }
+            );
           case SubmessageKind::nack_frag_id:
             // Not implemented: needed for fragmentation
-            assert(false);
-            break;
+            // assert(false);
+            return StatusCode::not_yet_implemented;
           default:
             // In the real implementation an unknown SubmessageId is ignored
             // Should scan until next submessage found
-            assert(false);
+            // assert(false);
+            return StatusCode::not_yet_implemented;
         }
       };
-      deserialize<SubmessageHeader>(src, index, header_callback);
+      StatusCode header_ret = deserialize<SubmessageHeader>(src, index, header_callback);
+      if (header_ret != StatusCode::ok) {
+        return header_ret;
+      }
+      return ret;
     }
 
   private:
 
-    void on_acknack(AckNack && acknack) {
+    StatusCode on_acknack(AckNack && acknack, MessageReceiver & receiver) {
       cmbml::acknack_received<RTPSWriter> e{rtps_writer, std::move(acknack), receiver};
       state_machine.process_event(std::move(e));
+      return StatusCode::ok;
     }
 
-    void on_info_source(InfoSource && info_src) {
+    StatusCode on_info_source(InfoSource && info_src, MessageReceiver & receiver) {
       receiver.source_guid_prefix = info_src.guid_prefix;
       receiver.source_version = info_src.protocol_version;
       receiver.source_vendor_id = info_src.vendor_id;
       receiver.unicast_reply_locator_list = {{0}};
       receiver.multicast_reply_locator_list = {{0}};
       receiver.have_timestamp = false;
+      return StatusCode::ok;
     }
 
-    void on_info_reply(InfoReply && info_reply) {
+    StatusCode on_info_reply(InfoReply && info_reply, MessageReceiver & receiver) {
       receiver.unicast_reply_locator_list = std::move(info_reply.unicast_locator_list);
       if (info_reply.multicast_flag) {
         receiver.multicast_reply_locator_list = std::move(info_reply.multicast_locator_list);
       } else {
         receiver.multicast_reply_locator_list.clear();
       }
+      return StatusCode::ok;
     }
 
-    void on_info_reply_ip4(cmbml::udp::InfoReplyIp4 && info_reply) {
+    StatusCode on_info_reply_ip4(
+        cmbml::udp::InfoReplyIp4 && info_reply, MessageReceiver & receiver)
+    {
       receiver.unicast_reply_locator_list = {std::move(info_reply.unicast_locator)};
       if (info_reply.multicast_flag) {
         receiver.multicast_reply_locator_list = {std::move(info_reply.multicast_locator)};
       } else {
         receiver.multicast_reply_locator_list.clear();
       }
+      return StatusCode::ok;
     }
 
 
-    void on_info_timestamp(InfoTimestamp && info_ts) {
+    StatusCode on_info_timestamp(InfoTimestamp && info_ts, MessageReceiver & receiver) {
       if (!info_ts.invalidate_flag) {
         receiver.have_timestamp = true;
         receiver.timestamp = info_ts.timestamp;
       } else {
         receiver.have_timestamp = false;
       }
+      return StatusCode::ok;
     }
 
     RTPSWriter rtps_writer;
-    MessageReceiver receiver;
     InstanceHandle_t instance_handle;
     boost::msm::lite::sm<typename RTPSWriter::StateMachineT> state_machine;
   };

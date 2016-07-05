@@ -73,6 +73,7 @@ int main(int argc, char** argv) {
     // How to know when to call this callback?
     auto confirm_int_callback = [test_int](auto deserialized_value) {
       assert(deserialized_value == test_int);
+      return cmbml::StatusCode::ok;
     };
     size_t index = 0;
     cmbml::deserialize<uint32_t>(serialized_data, index, confirm_int_callback);
@@ -89,6 +90,7 @@ int main(int argc, char** argv) {
       for (size_t i = 0; i < example_src.size(); ++i) {
         assert(example_src[i] == deserialized_array[i]);
       }
+      return cmbml::StatusCode::ok;
     };
     cmbml::serialize(example_src, example_dst);
     assert(example_dst[0] == example_src.size());
@@ -102,7 +104,9 @@ int main(int argc, char** argv) {
     cmbml::SubmessageHeader sub_header;
     cmbml::serialize(sub_header, serialized_data);
     // TODO validate values
-    auto callback = [&sub_header](auto && x) { };
+    auto callback = [&sub_header](auto && x) {
+      return cmbml::StatusCode::ok;
+     };
 
     size_t index = 0;
     cmbml::deserialize<cmbml::SubmessageHeader>(serialized_data, index, callback);
@@ -113,7 +117,9 @@ int main(int argc, char** argv) {
     size_t index = 0;
     cmbml::Submessage<cmbml::AckNack> submsg;
     cmbml::serialize(submsg, serialized_data);
-    auto callback = [](auto && msg) { };
+    auto callback = [](auto && msg) {
+      return cmbml::StatusCode::ok;
+    };
     cmbml::deserialize<cmbml::AckNack>(serialized_data, index, callback);
   }
 

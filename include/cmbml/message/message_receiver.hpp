@@ -16,7 +16,14 @@ struct MessageReceiver {
   Time_t timestamp = time_invalid;
 
   // TODO Functions based on the receipt of new messages
-
+  MessageReceiver(GuidPrefix_t & dest_prefix, int transport_kind, IPAddress && address) :
+    dest_guid_prefix(dest_prefix)
+  {
+    Locator_t loc{transport_kind, 0, address};
+    unicast_reply_locator_list.push_back(std::move(loc));
+    Locator_t multicast_loc{transport_kind, 0, 0};
+    multicast_reply_locator_list.push_back(std::move(multicast_loc));
+  }
 };
 
 }  // namespace cmbml

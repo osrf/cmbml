@@ -81,7 +81,6 @@ udp::Context::Context() {
     // fatal error
     return;
   }
-
 }
 
 
@@ -164,6 +163,10 @@ void udp::Context::socket_send(
       reinterpret_cast<struct sockaddr *>(&dest_address), sizeof(dest_address));
 }
 
+IPAddress udp::Context::address_as_array() const {
+  // Bit twiddling
+  return udp::LocatorUDPv4_t::get_array_from_address(local_address);
+}
 
 // Maybe have a timeout option for select?
 // packet size has to be smaller for e.g. STM32F0

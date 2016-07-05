@@ -37,12 +37,14 @@ namespace cmbml {
   static const VendorId_t vendor_id_unknown = {0x0, 0x0};
 
   using ProtocolId_t = std::array<char, 4>;
-  static const ProtocolId_t protocol_id = {'R', 'T', 'P', 'S'};
+  static const ProtocolId_t rtps_protocol_id = {'R', 'T', 'P', 'S'};
 
   // TODO: Figure out a better embedded-friendly sequence implementation.
   // are we going to pass around an allocator std vector?
   template<typename T, typename Allocator = std::allocator<T>>
   using List = std::vector<T, Allocator>;
+
+  using IPAddress = std::array<Octet, 16>;
 
   //using Duration_t = std::chrono::nanoseconds;
   struct Duration_t {
@@ -177,7 +179,7 @@ namespace cmbml {
     BOOST_HANA_DEFINE_STRUCT(Locator_t,
     (int32_t, kind),
     (uint32_t, port),
-    (std::array<Octet, 16>, address));
+    (IPAddress, address));
   };
 
   struct ProtocolVersion_t {
