@@ -88,6 +88,15 @@ namespace cmbml {
     assert(writer_proxy->max_available_changes() >= seq);
   };
 
+  // Entry functions
+  // TODO: bind executor: pass to the state machine, pass timer values...
+  auto on_must_ack_entry = [](auto & e) {
+    auto on_timer = []() {
+      // event<heartbeat_response_delay> h;
+      // state_machine.process_event(h);
+    };
+    // executor.add_timed_task(heartbeat_response_delay, on_timer);
+  };
 
   // Guards
   auto not_final_guard = [](auto & e) {

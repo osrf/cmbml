@@ -13,6 +13,16 @@ namespace dds {
   public:
 
     void add_tasks(Executor & executor) {
+      Context thread_context;
+      // TODO Initialize receiver locators
+      auto receiver_thread = [this, &thread_context]() {
+        // This is a blocking call
+        thread_context.receive_packet(
+            [&](const auto & packet) { deserialize_message(packet, thread_context); }
+        );
+      };
+      executor.add_task(receiver_thread);
+
     }
 
     List<CacheChange> on_read() {
