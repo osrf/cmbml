@@ -4,6 +4,7 @@
 #include <cmbml/structure/history.hpp>
 #include <cmbml/message/data.hpp>
 #include <cmbml/psm/udp/context.hpp>
+#include <cmbml/utility/executor.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
 
 #include <cassert>
@@ -65,13 +66,6 @@ namespace cmbml {
     uint32_t acknack_count = 0;
   };
 
-
-  // TODO cleanup 
-  template<bool expectsInlineQos>
-  struct ReaderParams {
-  };
-
-
   //TODO decide if inheritance or template-bool for Stateful/Stateless is better...
 
   // TODO Methods yo
@@ -102,6 +96,11 @@ namespace cmbml {
     void remove_matched_writer(WriterProxy * writer_proxy) {
       assert(writer_proxy);
       matched_writers.erase(writer_proxy->get_guid());
+    }
+
+    template<typename FunctionT>
+    void for_each_matched_writer(FunctionT && function) const {
+      
     }
 
     WriterProxy * matched_writer_lookup(const GUID_t & writer_guid) {

@@ -14,11 +14,11 @@ namespace cmbml {
 
   struct Data;
   struct CacheChange {
-    explicit CacheChange(const Data & data);
     CacheChange(const CacheChange &) = default;
     CacheChange(CacheChange &&) = default;
     CacheChange(ChangeKind_t k, Data && data, InstanceHandle_t && handle, const GUID_t & writer_guid);
     CacheChange(ChangeKind_t k, InstanceHandle_t && handle, const GUID_t & writer_guid);
+    CacheChange(Data && data);
     ChangeKind_t kind;
     GUID_t writer_guid;
     InstanceHandle_t instance_handle;

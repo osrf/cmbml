@@ -40,15 +40,17 @@ namespace cmbml {
       state<class final_> final_s;
 
       return boost::msm::lite::make_transition_table(
-        *initial_s + event<reader_created<ReaderT>> / on_reader_created         = waiting_s,
-        waiting_s  + event<data_received<ReaderT>>  / on_data_received_stateful = waiting_s,
+        *initial_s + event<reader_created<ReaderT>>  / on_reader_created         = waiting_s,
+        waiting_s  + event<data_received<ReaderT>>   / on_data_received_stateful = waiting_s,
         *waiting_s  + event<reader_deleted<ReaderT>> / on_reader_deleted         = final_s
       );
     }
   };
 
-  template<typename ReaderT, typename Transport>
+  template<typename Reader, typename Transport>
   struct ReliableStatefulReaderMsm {
+    using ReaderT = Reader;
+    using TransportT = Transport;
 
     auto configure() {
       using boost::msm::lite::event;
@@ -66,26 +68,24 @@ namespace cmbml {
       state<class final_> final_s;
 
       return boost::msm::lite::make_transition_table(
-        *initial_s  + event<reader_created<ReaderT>> / on_reader_created = waiting_s,
+        *initial_s  + event<reader_created<Reader>> / on_reader_created = waiting_s,
 
         waiting_s   + event<heartbeat_received> [not_final_guard] = must_ack_s,
         waiting_s   + event<heartbeat_received> [not_live_guard]  = may_ack_s,
         waiting_s   + event<heartbeat_received>                   = waiting_s,
         may_ack_s   + event<missing_changes_empty>                = waiting_s,
         may_ack_s   + event<missing_changes_not_empty>            = must_ack_s,
-        must_ack_s  + on_entry / on_must_ack_entry,  // TODO
-        must_ack_s  + event<heartbeat_response_delay<Transport>> / on_heartbeat_response_delay = waiting_s,
+        must_ack_s + event<heartbeat_response_delay<Reader, Transport>>
+          / on_heartbeat_response_delay = waiting_s,
 
-        *initial2_s + event<reader_created<ReaderT>>               = ready_s,
-
+        *initial2_s + event<reader_created<Reader>>               = ready_s,
         ready_s     + event<heartbeat_received>     / on_heartbeat = ready_s,
-        ready_s     + event<data_received<ReaderT>> / on_data      = ready_s,
+        ready_s     + event<data_received<Reader>> / on_data      = ready_s,
         ready_s     + event<gap_received>           / on_gap       = ready_s,
 
-        *any_s  + event<reader_deleted<ReaderT>> / on_reader_deleted = final_s
+        *any_s  + event<reader_deleted<Reader>> / on_reader_deleted = final_s
       );
     }
-
   };
 
 }

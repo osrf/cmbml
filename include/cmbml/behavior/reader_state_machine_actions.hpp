@@ -20,7 +20,7 @@ namespace cmbml {
   };
 
   auto on_data_received_stateless = [](auto & e) {
-    CacheChange change(e.data);
+    CacheChange change(std::move(e.data));
     e.reader.reader_cache.add_change(std::move(change));
   };
 
@@ -54,24 +54,29 @@ namespace cmbml {
   };
 
   auto on_heartbeat_response_delay = [](auto & e) {
-    SequenceNumberSet missing_seq_num_set({e.writer.max_available_changes() + 1});
-    assert(missing_seq_num_set.set.empty());
-    for (const auto & change : e.writer.missing_changes()) {
-      missing_seq_num_set.set.push_back(change.sequence_number);
-    }
-    // TODO Implement send and maybe a constructor for acknack
-    // TODO see spec page  127 for capacity handling behavior in sequence set
-    AckNack acknack;
-    acknack.reader_id = e.reader_id;
-    acknack.writer_id = e.writer.get_guid().entity_id;
-    acknack.reader_sn_state = std::move(missing_seq_num_set);
-    // Current setting final=1, which means we do not expect a response from the writer
-    acknack.final_flag = 1;
-    e.writer.send(std::move(acknack), e.transport_context);
+    // for (const auto & writer : reader.get_matched_writers()) {
+    e.reader.for_each_matched_writer(
+      [&e](auto & writer) {
+        SequenceNumberSet missing_seq_num_set({writer.max_available_changes() + 1});
+        assert(missing_seq_num_set.set.empty());
+        for (const auto & change : writer.missing_changes()) {
+          missing_seq_num_set.set.push_back(change.sequence_number);
+        }
+        // TODO Implement send and maybe a constructor for acknack
+        // TODO see spec page  127 for capacity handling behavior in sequence set
+        AckNack acknack;
+        acknack.reader_id = e.reader.entity_id;
+        acknack.writer_id = writer.get_guid().entity_id;
+        acknack.reader_sn_state = std::move(missing_seq_num_set);
+        // Current setting final=1, which means we do not expect a response from the writer
+        acknack.final_flag = 1;
+        e.writer.send(std::move(acknack), e.transport_context);
+      }
+    );
   };
 
   auto on_data_received_stateful = [](auto & e) {
-    CacheChange change(e.data);
+    CacheChange change(std::move(e.data));
     GUID_t writer_guid = {e.receiver.source_guid_prefix, e.data.writer_id};
     WriterProxy * writer_proxy = e.reader.matched_writer_lookup(writer_guid);
     assert(writer_proxy);
@@ -86,16 +91,6 @@ namespace cmbml {
       e.reader.reader_cache.add_change(std::move(change));
     }
     assert(writer_proxy->max_available_changes() >= seq);
-  };
-
-  // Entry functions
-  // TODO: bind executor: pass to the state machine, pass timer values...
-  auto on_must_ack_entry = [](auto & e) {
-    auto on_timer = []() {
-      // event<heartbeat_response_delay> h;
-      // state_machine.process_event(h);
-    };
-    // executor.add_timed_task(heartbeat_response_delay, on_timer);
   };
 
   // Guards

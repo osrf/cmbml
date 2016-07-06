@@ -13,6 +13,7 @@ namespace dds {
   public:
 
     void add_tasks(Executor & executor) {
+      // TODO Executor should dispense the contexts? Hmm
       Context thread_context;
       // TODO Initialize receiver locators
       auto receiver_thread = [this, &thread_context]() {
@@ -23,6 +24,17 @@ namespace dds {
       };
       executor.add_task(receiver_thread);
 
+      auto heartbeat_response_delay_event = [this, &thread_context]() {
+        // TODO need to reference declaration in state machine?
+        boost::msm::lite::state<class must_ack> must_ack_s;
+        if (state_machine.is(must_ack_s)) {
+          reader_events::heartbeat_response_delay<RTPSReader, Context>
+            e{rtps_reader, thread_context};
+          state_machine.process_event(e);
+        }
+      };
+      executor.add_timed_task(
+        rtps_reader.heartbeat_response_delay.to_ns(), false, heartbeat_response_delay_event);
     }
 
     List<CacheChange> on_read() {
@@ -34,61 +46,104 @@ namespace dds {
       return ret;
     }
 
+    // TODO duplicated in writer
+    template<typename SrcT, typename NetworkContext = udp::Context>
+    void deserialize_message(const SrcT & src, NetworkContext & context) {
+      size_t index = 0;
+      Header header;
+      StatusCode deserialize_status = deserialize(header, src, index);
+      if (header.protocol != rtps_protocol_id) {
+        // return StatusCode::packet_invalid;
+        return;
+      }
+      MessageReceiver receiver(header.guid_prefix, Context::kind, context.address_as_array());
+      while (index <= src.size() && deserialize_status == StatusCode::ok) {
+        deserialize_status = deserialize_submessage(src, index, receiver);
+      }
+    }
+
+
+
     template<typename SrcT>
-    void deserialize_submessage(
+    StatusCode deserialize_submessage(
       const SrcT & src, size_t & index, MessageReceiver & receiver)
     {
-      auto header_callback = [&src, &index, &receiver](SubmessageHeader & header) {
+      auto header_callback = [this, &src, &index, &receiver](SubmessageHeader & header) {
         switch (header.submessage_id) {
           case SubmessageKind::heartbeat_id:
-            deserialize<Heartbeat>(src, index, &DataReader::on_heartbeat, receiver);
-            break;
+            return deserialize<Heartbeat>(src, index,
+              [this, &receiver](auto && heartbeat) {
+                return on_heartbeat(std::move(heartbeat), receiver);
+              }
+            );
           case SubmessageKind::gap_id:
-            deserialize<Gap>(src, index, &DataReader::on_gap, receiver);
-            break;
+            return deserialize<Gap>(src, index,
+              [this, &receiver](auto && gap) {
+                return on_gap(std::move(gap), receiver);
+              });
           case SubmessageKind::info_dst_id:
-            deserialize<InfoDestination>(src, index, &DataReader::on_info_destination, receiver);
-            break;
+            return deserialize<InfoDestination>(src, index,
+              [this, &receiver](auto && info_destination) {
+                return on_info_destination(std::move(info_destination), receiver);
+              }
+            );
           case SubmessageKind::heartbeat_frag_id:
             // Fragmentation isn't implemented yet
-            assert(false);
-            break;
+            return StatusCode::not_yet_implemented;
           case SubmessageKind::data_id:
-            deserialize<Data>(src, index, &DataReader::on_data, receiver);
-            break;
+            return deserialize<Data>(src, index,
+              [this, &receiver](auto && data) {
+                return on_data(std::move(data), receiver);
+              }
+            );
           case SubmessageKind::data_frag_id:
             // Fragmentation isn't implemented yet
-            assert(false);
+            return StatusCode::not_yet_implemented;
             break;
           default:
-            assert(false);
+            // assert(false);
+            return StatusCode::not_yet_implemented;
         }
       };
-      deserialize<SubmessageHeader>(src, index, header_callback);
+      return deserialize<SubmessageHeader>(src, index, header_callback);
     }
 
   private:
 
-    void on_heartbeat(Heartbeat && heartbeat, MessageReceiver & receiver) {
+    // This seems wrong
+    StatusCode on_heartbeat(Heartbeat && heartbeat, MessageReceiver & receiver) {
       // TODO double-check that heartbeat comes from the matched destination...
       // In the implementation we should just emit a warning, e.g. in case someone is 
       // sending bogus packets
-      GUID_t writer_guid = {receiver.dest_guid_prefix, heartbeat.writer_id};
-      WriterProxy * proxy = rtps_reader.matched_writer_lookup(writer_guid);
-      assert(proxy);
-      cmbml::reader_events::heartbeat_received e{proxy, heartbeat};
-      state_machine.process_event(e);
+      return hana::eval_if(!RTPSReader::stateful,
+        [this, &heartbeat, &receiver]() {
+          GUID_t writer_guid = {receiver.dest_guid_prefix, heartbeat.writer_id};
+          WriterProxy * proxy = rtps_reader.matched_writer_lookup(writer_guid);
+          if (!proxy) {
+            return StatusCode::precondition_violated;
+          }
+          cmbml::reader_events::heartbeat_received e{proxy, heartbeat};
+          state_machine.process_event(e);
+          return StatusCode::ok;
+        },
+        []() {
+          return StatusCode::ok;
+        }
+      );
     }
 
-    void on_gap(Gap && gap, MessageReceiver & receiver) {
+    StatusCode on_gap(Gap && gap, MessageReceiver & receiver) {
       GUID_t writer_guid = {receiver.dest_guid_prefix, gap.writer_id};
       WriterProxy * proxy = rtps_reader.matched_writer_lookup(writer_guid);
-      assert(proxy);
+      if (!proxy) {
+        return StatusCode::precondition_violated;
+      }
       cmbml::reader_events::gap_received e{proxy, gap};
       state_machine.process_event(e);
+      return StatusCode::ok;
     }
 
-    void on_info_destination(InfoDestination && info_dst, MessageReceiver & receiver) {
+    StatusCode on_info_destination(InfoDestination && info_dst, MessageReceiver & receiver) {
       if (info_dst.guid_prefix != guid_prefix_unknown) {
         // guid_prefix is pretty big (12 bytes)
         receiver.dest_guid_prefix = info_dst.guid_prefix;
@@ -96,12 +151,14 @@ namespace dds {
         // Set to participant's guid_prefix, which should be the same as our guid_prefix
         receiver.dest_guid_prefix = rtps_reader.guid.prefix;
       }
+      return StatusCode::ok;
     }
 
-    void on_data(Data && data, MessageReceiver & receiver) {
+    StatusCode on_data(Data && data, MessageReceiver & receiver) {
       // user_data_callback(data);
-      cmbml::reader_events::data_received<RTPSReader> e{rtps_reader, data, receiver};
+      cmbml::reader_events::data_received<RTPSReader> e{rtps_reader, std::move(data), receiver};
       state_machine.process_event(e);
+      return StatusCode::ok;
     }
 
 

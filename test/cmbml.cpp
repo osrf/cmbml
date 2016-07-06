@@ -37,17 +37,20 @@ int main(int argc, char ** argv) {
     EndpointParams<ReliabilityKind_t::reliable, TopicKind_t::with_key>>
       reliable_stateful_reader;
 
-  SyncExecutor exec;
+  SyncExecutor & exec = SyncExecutor::get_instance();
   {
     dds::DataReader<decltype(best_effort_stateless_reader)> reader;
+    reader.add_tasks(exec);
   }
 
   {
     dds::DataReader<decltype(best_effort_stateful_reader)> reader;
+    reader.add_tasks(exec);
   }
 
   {
     dds::DataReader<decltype(reliable_stateful_reader)> reader;
+    reader.add_tasks(exec);
   }
 
   {

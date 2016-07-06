@@ -44,8 +44,14 @@ CacheChange::CacheChange(ChangeKind_t k, InstanceHandle_t && h, const GUID_t & g
 {
 }
 
+// TODO Store data and data info
 CacheChange::CacheChange(ChangeKind_t k, Data && data, InstanceHandle_t && h, const GUID_t & g) :
   kind(k), instance_handle(h), writer_guid(g)
+{
+}
+
+// TODO Store data and data info
+CacheChange::CacheChange(Data && data)
 {
 }
 

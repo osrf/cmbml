@@ -36,6 +36,16 @@ namespace dds {
       };
       executor.add_task(receiver_thread);
 
+      auto nack_response_delay_event = [this]() {
+        boost::msm::lite::state<class must_repair> must_repair_s;
+        if (state_machine.is(must_repair_s)) {
+          after_nack_delay e;
+          state_machine.process_event(e);
+        }
+      };
+      executor.add_timed_task(
+        rtps_writer.nack_response_delay.to_ns(), false, nack_response_delay_event);
+
       hana::eval_if(RTPSWriter::reliability_level == ReliabilityKind_t::reliable,
         [this, &executor, &thread_context]() {
           executor.add_timed_task(
@@ -81,7 +91,6 @@ namespace dds {
         return;
       }
       MessageReceiver receiver(header.guid_prefix, Context::kind, context.address_as_array());
-      // TODO This is why we need to propagate an error code from deserialize!
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
       }
@@ -91,8 +100,7 @@ namespace dds {
     StatusCode deserialize_submessage(
         const SrcT & src, size_t & index, MessageReceiver & receiver)
     {
-      StatusCode ret = StatusCode::ok;
-      auto header_callback = [this, &src, &index, &ret, &receiver](SubmessageHeader & header) {
+      auto header_callback = [this, &src, &index, &receiver](SubmessageHeader & header) {
         switch (header.submessage_id) {
           case SubmessageKind::acknack_id:
             return deserialize<AckNack>(src, index,
@@ -135,11 +143,7 @@ namespace dds {
             return StatusCode::not_yet_implemented;
         }
       };
-      StatusCode header_ret = deserialize<SubmessageHeader>(src, index, header_callback);
-      if (header_ret != StatusCode::ok) {
-        return header_ret;
-      }
-      return ret;
+      return deserialize<SubmessageHeader>(src, index, header_callback);
     }
 
   private:

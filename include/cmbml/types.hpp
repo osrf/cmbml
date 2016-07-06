@@ -58,6 +58,18 @@ namespace cmbml {
     };
   };
 
+  template<uint32_t Sec, uint32_t Nsec>
+  struct DurationT {
+    static const uint32_t sec = Sec;
+    static const uint32_t nsec = Nsec;
+
+    static constexpr std::chrono::nanoseconds to_ns()
+    {
+      return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(sec)) +
+        std::chrono::nanoseconds(nsec);
+    };
+  };
+
   // Interesting, a fixed-point time representation (IETF RFC 1305)
   struct Time_t {
     BOOST_HANA_DEFINE_STRUCT(Time_t,

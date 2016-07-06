@@ -23,7 +23,7 @@ namespace reader_events {
   template<typename ReaderT>
   struct data_received {
     ReaderT & reader;
-    Data & data;
+    Data && data;
     MessageReceiver & receiver;
   };
 
@@ -38,10 +38,9 @@ namespace reader_events {
     Heartbeat & heartbeat;
   };
 
-  template<typename TransportContext>
+  template<typename ReaderT, typename TransportContext>
   struct heartbeat_response_delay {
-    WriterProxy & writer;
-    EntityId_t & reader_id;
+    ReaderT & reader;
     TransportContext & transport_context;
   };
 

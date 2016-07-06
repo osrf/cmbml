@@ -5,6 +5,8 @@
 #include <cmbml/structure/history.hpp>
 #include <cmbml/structure/writer.hpp>
 
+#include <cmbml/behavior/writer_state_machine_events.hpp>
+
 namespace cmbml {
 
 namespace stateless_writer {
@@ -143,7 +145,8 @@ namespace stateful_writer {
     change.status = ChangeForReaderStatus::underway;
     if (change.is_relevant) {
       Data data(std::move(change), e.reader_proxy.expects_inline_qos, e.writer_has_key);
-      data.reader_id = e.reader_proxy.remote_reader_guid.entity_id;  // ??? Is this implied by the spec?
+      // ??? Is this implied by the spec?
+      data.reader_id = e.reader_proxy.remote_reader_guid.entity_id;
       // TODO inline QoS
       e.reader_proxy.send(std::move(data), e.context);
     } else {

@@ -2,6 +2,7 @@
 #define CMBML__WRITER__HPP_
 
 #include <cassert>
+#include <chrono>
 #include <algorithm>
 #include <deque>
 
@@ -9,6 +10,7 @@
 #include <cmbml/message/data.hpp>
 #include <cmbml/psm/udp/context.hpp>
 #include <cmbml/structure/history.hpp>
+#include <cmbml/utility/executor.hpp>
 
 namespace cmbml {
   // Forward declarations of state machine types.
@@ -138,7 +140,7 @@ namespace cmbml {
   };
 
   template<bool pushMode, typename EndpointParams>
-  struct Writer : Endpoint<EndpointParams>{
+  struct Writer : Endpoint<EndpointParams> {
     CacheChange new_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
       auto ret = CacheChange(k, data, handle, this->guid);
       ret.sequence_number = writer_cache.get_max_sequence_number() + 1;
@@ -160,8 +162,8 @@ namespace cmbml {
     }
 
     HistoryCache writer_cache;
-    Duration_t heartbeat_period = {3, 0};
     Duration_t nack_response_delay = {0, 500*1000*1000};
+    Duration_t heartbeat_period = {3, 0};
     Duration_t nack_suppression_duration = {0, 0};
     static const bool push_mode = pushMode;
     Count_t heartbeat_count = 0;

@@ -16,10 +16,26 @@ struct TimedTask {
   bool oneshot = false;
 };
 
+// Executor concept:
+// Singleton
+// Has functions: add_task, add_timed_task, spin, remove_task (?)
+
 // Single-threaded synchronous round-robin executor using std::thread library (POSIX)
 class SyncExecutor {
 
 public:
+  static SyncExecutor & get_instance() {
+    static SyncExecutor instance;
+    return instance;
+  }
+
+  static std::mutex & get_instance_mutex() {
+    // A multi-threaded Executor should use this in add_task, add_timed_task, and spin to ensure
+    // that the Executor's state is thread-safe
+    static std::mutex instance_mutex;
+    return instance_mutex;
+  }
+
   // Maybe propagate return codes out of here
   template<typename CallbackT, typename ...Args>
   void add_task(CallbackT && callback, Args &&... args) {
@@ -75,6 +91,11 @@ public:
   }
 
 private:
+  SyncExecutor() : min_timeout() {
+  }
+  SyncExecutor(const SyncExecutor &) = delete;
+  SyncExecutor(SyncExecutor &&) = delete;
+
   List<TimedTask> timed_tasks;
   List<std::function<void()>> task_list;
   // TODO Infer a good timeout value from the minimum wakeup period of tasks
