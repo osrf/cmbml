@@ -70,18 +70,18 @@ namespace cmbml {
       return boost::msm::lite::make_transition_table(
         *initial_s  + event<reader_created<Reader>> / on_reader_created = waiting_s,
 
-        waiting_s   + event<heartbeat_received> [not_final_guard] = must_ack_s,
-        waiting_s   + event<heartbeat_received> [not_live_guard]  = may_ack_s,
-        waiting_s   + event<heartbeat_received>                   = waiting_s,
+        waiting_s   + event<heartbeat_received<Reader>> [not_final_guard] = must_ack_s,
+        waiting_s   + event<heartbeat_received<Reader>> [not_live_guard]  = may_ack_s,
+        waiting_s   + event<heartbeat_received<Reader>>                   = waiting_s,
         may_ack_s   + event<missing_changes_empty>                = waiting_s,
         may_ack_s   + event<missing_changes_not_empty>            = must_ack_s,
         must_ack_s + event<heartbeat_response_delay<Reader, Transport>>
           / on_heartbeat_response_delay = waiting_s,
 
         *initial2_s + event<reader_created<Reader>>               = ready_s,
-        ready_s     + event<heartbeat_received>     / on_heartbeat = ready_s,
+        ready_s     + event<heartbeat_received<Reader>>     / on_heartbeat = ready_s,
         ready_s     + event<data_received<Reader>> / on_data      = ready_s,
-        ready_s     + event<gap_received>           / on_gap       = ready_s,
+        ready_s     + event<gap_received<Reader>>           / on_gap       = ready_s,
 
         *any_s  + event<reader_deleted<Reader>> / on_reader_deleted = final_s
       );

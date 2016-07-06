@@ -33,8 +33,9 @@ namespace reader_events {
     WriterProxy * writer;
   };
 
+  template<typename ReaderT>
   struct heartbeat_received {
-    WriterProxy * writer;
+    ReaderT & reader;
     Heartbeat & heartbeat;
   };
 
@@ -47,8 +48,9 @@ namespace reader_events {
   struct missing_changes_empty {};
   struct missing_changes_not_empty {};
 
+  template<typename ReaderT>
   struct gap_received {
-    WriterProxy * writer;
+    ReaderT & reader;
     Gap & gap;
   };
 }

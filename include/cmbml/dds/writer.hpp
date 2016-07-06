@@ -31,7 +31,7 @@ namespace dds {
       auto receiver_thread = [this, &thread_context]() {
         // This is a blocking call
         thread_context.receive_packet(
-            [&](const auto & packet) { deserialize_message(packet, thread_context); }
+          [&](const auto & packet) { deserialize_message(packet, thread_context); }
         );
       };
       executor.add_task(receiver_thread);
@@ -60,25 +60,6 @@ namespace dds {
       );
     }
 
-    // TODO hooks for user callback, etc.
-    void on_write(Data && data) {
-      // TODO state machine events?
-      rtps_writer.add_change(ChangeKind_t::alive, data, instance_handle);
-    }
-
-    void on_dispose() {
-      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
-        return;
-      }
-      rtps_writer.add_change(ChangeKind_t::not_alive_disposed, instance_handle);
-    }
-
-    void on_unregister() {
-      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
-        return;
-      }
-      rtps_writer.add_change(ChangeKind_t::not_alive_unregistered, instance_handle);
-    }
 
     // TODO Refine MessageReceiver logic
     template<typename SrcT, typename NetworkContext = udp::Context>
@@ -147,7 +128,6 @@ namespace dds {
     }
 
   private:
-
     StatusCode on_acknack(AckNack && acknack, MessageReceiver & receiver) {
       cmbml::acknack_received<RTPSWriter> e{rtps_writer, std::move(acknack), receiver};
       state_machine.process_event(std::move(e));
@@ -196,6 +176,27 @@ namespace dds {
       }
       return StatusCode::ok;
     }
+
+    // TODO hooks for user callback, etc.
+    void on_write(Data && data) {
+      // TODO state machine events?
+      rtps_writer.add_change(ChangeKind_t::alive, data, instance_handle);
+    }
+
+    void on_dispose() {
+      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
+        return;
+      }
+      rtps_writer.add_change(ChangeKind_t::not_alive_disposed, instance_handle);
+    }
+
+    void on_unregister() {
+      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
+        return;
+      }
+      rtps_writer.add_change(ChangeKind_t::not_alive_unregistered, instance_handle);
+    }
+
 
     RTPSWriter rtps_writer;
     InstanceHandle_t instance_handle;

@@ -66,9 +66,6 @@ namespace cmbml {
     uint32_t acknack_count = 0;
   };
 
-  //TODO decide if inheritance or template-bool for Stateful/Stateless is better...
-
-  // TODO Methods yo
   template<bool Stateful, bool expectsInlineQos, typename EndpointParams>
   struct Reader : Endpoint<EndpointParams> {
     Reader() {
@@ -99,8 +96,12 @@ namespace cmbml {
     }
 
     template<typename FunctionT>
-    void for_each_matched_writer(FunctionT && function) const {
-      
+    void for_each_matched_writer(FunctionT && function) {
+      std::for_each(
+        matched_writers.begin().second,
+        matched_writers.end().second,
+        function
+      );
     }
 
     WriterProxy * matched_writer_lookup(const GUID_t & writer_guid) {

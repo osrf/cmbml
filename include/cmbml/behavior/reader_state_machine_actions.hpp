@@ -25,9 +25,12 @@ namespace cmbml {
   };
 
   auto on_heartbeat = [](auto & e) {
-    assert(e.writer);
-    e.writer->update_missing_changes(e.heartbeat.last_sn);
-    e.writer->update_lost_changes(e.heartbeat.first_sn);
+    e.reader.for_each_matched_writer(
+      [&e](auto & writer) {
+        writer.update_missing_changes(e.heartbeat.last_sn);
+        writer.update_lost_changes(e.heartbeat.first_sn);
+      }
+    );
   };
 
   auto on_data = [](auto & e) {
@@ -42,15 +45,18 @@ namespace cmbml {
   };
 
   auto on_gap = [](auto & e) {
-    assert(e.writer);
     // Does the spec describe a range or a pair? Look at other impls
     // I think it's safe to say it's a pair
-    for (const auto & seq_num : {e.gap.gap_start.value(), e.gap.gap_list.base.value() - 1}) {
-      e.writer->set_irrelevant_change(seq_num);
-    }
-    for (const auto & seq_num : e.gap.gap_list.set) {
-      e.writer->set_irrelevant_change(seq_num.value());
-    }
+    e.reader.for_each_matched_writer(
+      [&e](auto & writer) {
+        for (const auto & seq_num : {e.gap.gap_start.value(), e.gap.gap_list.base.value() - 1}) {
+          writer->set_irrelevant_change(seq_num);
+        }
+        for (const auto & seq_num : e.gap.gap_list.set) {
+          writer->set_irrelevant_change(seq_num.value());
+        }
+      }
+    );
   };
 
   auto on_heartbeat_response_delay = [](auto & e) {

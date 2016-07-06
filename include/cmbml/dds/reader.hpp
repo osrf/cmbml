@@ -37,15 +37,6 @@ namespace dds {
         rtps_reader.heartbeat_response_delay.to_ns(), false, heartbeat_response_delay_event);
     }
 
-    List<CacheChange> on_read() {
-      return rtps_reader.reader_cache.get_filtered_cache_changes(&DataReader::dds_filter);
-    }
-    List<CacheChange> on_take() {
-      List<CacheChange> ret = rtps_reader.reader_cache.get_filtered_cache_changes(&DataReader::dds_filter);
-      rtps_reader.reader_cache.clear();
-      return ret;
-    }
-
     // TODO duplicated in writer
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {
@@ -61,7 +52,6 @@ namespace dds {
         deserialize_status = deserialize_submessage(src, index, receiver);
       }
     }
-
 
 
     template<typename SrcT>
@@ -110,19 +100,23 @@ namespace dds {
 
   private:
 
-    // This seems wrong
+    List<CacheChange> on_read() {
+      return rtps_reader.reader_cache.get_filtered_cache_changes(&DataReader::dds_filter);
+    }
+    List<CacheChange> on_take() {
+      List<CacheChange> ret = rtps_reader.reader_cache.get_filtered_cache_changes(
+        &DataReader::dds_filter);
+      rtps_reader.reader_cache.clear();
+      return ret;
+    }
+
     StatusCode on_heartbeat(Heartbeat && heartbeat, MessageReceiver & receiver) {
       // TODO double-check that heartbeat comes from the matched destination...
       // In the implementation we should just emit a warning, e.g. in case someone is 
       // sending bogus packets
-      return hana::eval_if(!RTPSReader::stateful,
+      return hana::eval_if(RTPSReader::reliability_level == ReliabilityKind_t::reliable,
         [this, &heartbeat, &receiver]() {
-          GUID_t writer_guid = {receiver.dest_guid_prefix, heartbeat.writer_id};
-          WriterProxy * proxy = rtps_reader.matched_writer_lookup(writer_guid);
-          if (!proxy) {
-            return StatusCode::precondition_violated;
-          }
-          cmbml::reader_events::heartbeat_received e{proxy, heartbeat};
+          cmbml::reader_events::heartbeat_received<RTPSReader> e{rtps_reader, heartbeat};
           state_machine.process_event(e);
           return StatusCode::ok;
         },
@@ -133,14 +127,16 @@ namespace dds {
     }
 
     StatusCode on_gap(Gap && gap, MessageReceiver & receiver) {
-      GUID_t writer_guid = {receiver.dest_guid_prefix, gap.writer_id};
-      WriterProxy * proxy = rtps_reader.matched_writer_lookup(writer_guid);
-      if (!proxy) {
-        return StatusCode::precondition_violated;
-      }
-      cmbml::reader_events::gap_received e{proxy, gap};
-      state_machine.process_event(e);
-      return StatusCode::ok;
+      return hana::eval_if(RTPSReader::reliability_level == ReliabilityKind_t::reliable,
+        [this, &gap, &receiver]() {
+          cmbml::reader_events::gap_received<RTPSReader> e{rtps_reader, gap};
+          state_machine.process_event(e);
+          return StatusCode::ok;
+        },
+        []() {
+          return StatusCode::ok;
+        }
+      );
     }
 
     StatusCode on_info_destination(InfoDestination && info_dst, MessageReceiver & receiver) {
