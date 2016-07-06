@@ -6,11 +6,15 @@
 #include <algorithm>
 #include <deque>
 
+#include <cmbml/structure/endpoint.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
 #include <cmbml/message/data.hpp>
 #include <cmbml/psm/udp/context.hpp>
 #include <cmbml/structure/history.hpp>
 #include <cmbml/utility/executor.hpp>
+#include <cmbml/utility/metafunctions.hpp>
+
+// TODO Comb over actions again making sure that the Endpoint's unicast_locator_list is being used
 
 namespace cmbml {
   // Forward declarations of state machine types.
@@ -141,6 +145,11 @@ namespace cmbml {
 
   template<bool pushMode, typename EndpointParams>
   struct Writer : Endpoint<EndpointParams> {
+
+    explicit Writer(Participant & p) : Endpoint<EndpointParams>(p) {
+      Entity::guid.entity_id = p.assign_next_entity_id<Writer>();
+    }
+
     CacheChange new_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
       auto ret = CacheChange(k, data, handle, this->guid);
       ret.sequence_number = writer_cache.get_max_sequence_number() + 1;
@@ -166,6 +175,11 @@ namespace cmbml {
     Duration_t heartbeat_period = {3, 0};
     Duration_t nack_suppression_duration = {0, 0};
     static const bool push_mode = pushMode;
+
+    static const EntityKind entity_kind = ternary<
+      EndpointParams::topic_kind == TopicKind_t::with_key, EntityKind,
+      EntityKind::user_writer_with_key, EntityKind::user_writer_no_key>::value;
+
     Count_t heartbeat_count = 0;
   protected:
     SequenceNumber_t last_change_seq_num;
@@ -175,8 +189,8 @@ namespace cmbml {
   template<bool pushMode, typename EndpointParams>
   struct StatelessWriter : Writer<pushMode, EndpointParams> {
 
-    // TODO
-    StatelessWriter() {
+    explicit StatelessWriter(Participant & p) : Writer<pushMode, EndpointParams>(p) {
+      // TODO Instantiate reader locators based on participant defaults?
     }
 
     void add_reader_locator(ReaderLocator && locator) {
@@ -229,6 +243,10 @@ namespace cmbml {
 
   template<bool pushMode, typename EndpointParams>
   struct StatefulWriter : Writer<pushMode, EndpointParams> {
+    explicit StatefulWriter(Participant & p) : Writer<pushMode, EndpointParams>(p) {
+      // TODO Instantiate readerproxies based on participant defaults?
+    }
+
     void add_matched_reader(ReaderProxy && reader_proxy) {
       matched_readers.push_back(reader_proxy);
     }

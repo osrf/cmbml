@@ -1,14 +1,18 @@
 #ifndef CMBML__READER__HPP_
 #define CMBML__READER__HPP_
 
+#include <cmbml/structure/endpoint.hpp>
 #include <cmbml/structure/history.hpp>
 #include <cmbml/message/data.hpp>
 #include <cmbml/psm/udp/context.hpp>
 #include <cmbml/utility/executor.hpp>
+#include <cmbml/utility/metafunctions.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
 
 #include <cassert>
 #include <map>
+
+// TODO Comb over actions again making sure that the Endpoint's unicast_locator_list is being used
 
 namespace cmbml {
   // Forward declarations of state machine types
@@ -68,7 +72,8 @@ namespace cmbml {
 
   template<bool Stateful, bool expectsInlineQos, typename EndpointParams>
   struct Reader : Endpoint<EndpointParams> {
-    Reader() {
+    explicit Reader(Participant & p) : Endpoint<EndpointParams>(p) {
+      Entity::guid.entity_id = p.assign_next_entity_id<Reader>();
     }
 
     HistoryCache reader_cache;
@@ -79,11 +84,17 @@ namespace cmbml {
     using StateMachineT = BestEffortStatelessReaderMsm<Reader>;
     Duration_t heartbeat_response_delay = {0, 500*1000*1000};
     Duration_t heartbeat_suppression_duration = {0, 0};
+
+    // Provide code for a user-defined entity by default.
+    // Built-in entities will have to override this.
+    static const EntityKind entity_kind = ternary<
+      EndpointParams::topic_kind == TopicKind_t::with_key, EntityKind,
+      EntityKind::user_reader_with_key, EntityKind::user_reader_no_key>::value;
   };
 
   template<bool expectsInlineQos, typename EndpointParams>
   struct StatelessReader : Reader<true, expectsInlineQos, EndpointParams> {
-    StatelessReader() {
+    explicit StatelessReader(Participant & p) : Reader<true, expectsInlineQos, EndpointParams>(p) {
     }
 
     void add_matched_writer(WriterProxy && writer_proxy) {
@@ -98,9 +109,7 @@ namespace cmbml {
     template<typename FunctionT>
     void for_each_matched_writer(FunctionT && function) {
       std::for_each(
-        matched_writers.begin().second,
-        matched_writers.end().second,
-        function
+        matched_writers.begin().second, matched_writers.end().second, function
       );
     }
 

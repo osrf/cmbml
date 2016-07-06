@@ -50,7 +50,7 @@ struct LocatorUDPv4_t {
   static IPAddress get_array_from_address(uint32_t address) {
     IPAddress array_address;
     array_address.fill(0);
-    // TODO!!!
+    // TODO!
     // address[0] = local_address ;
     return array_address;
   }
@@ -60,6 +60,7 @@ struct LocatorUDPv4_t {
 // TODO formalize traits of "NetworkContext"
 class Context {
 public:
+  // TODO Nope, this can't be constexpr, needs to be determined by the Domain
   static constexpr LocatorUDPv4_t default_multicast_locator = {
     default_spdp_multicast_port(cmbml_test_domain_id),
     LocatorUDPv4_t::address_from_dot_notation({239, 255, 0, 1})
@@ -67,28 +68,27 @@ public:
   static constexpr LocatorUDPv4_t invalid_locator = {0, 0};
   static const int32_t kind = LOCATOR_KIND_UDPv4;
 
-  static constexpr EntityId_t participant_id =
-    {0x0, 0x0, 0x1, static_cast<uint8_t>(BuiltinEntity::participant)};
+  static constexpr EntityId_t participant_id = {0x0, 0x0, 0x1, EntityKind::participant};
   static constexpr EntityId_t sedp_topic_writer_id =
-    {0x0, 0x0, 0x2, static_cast<uint8_t>(BuiltinEntity::writer_with_key)};
+    {0x0, 0x0, 0x2, EntityKind::builtin_writer_with_key};
   static constexpr EntityId_t sedp_topic_reader_id =
-    {0x0, 0x0, 0x2, static_cast<uint8_t>(BuiltinEntity::reader_with_key)};
+    {0x0, 0x0, 0x2, EntityKind::builtin_reader_with_key};
   static constexpr EntityId_t sedp_pub_writer_id =
-    {0x0, 0x0, 0x3, static_cast<uint8_t>(BuiltinEntity::writer_with_key)};
+    {0x0, 0x0, 0x3, EntityKind::builtin_writer_with_key};
   static constexpr EntityId_t sedp_pub_reader_id =
-    {0x0, 0x0, 0x3, static_cast<uint8_t>(BuiltinEntity::reader_with_key)};
+    {0x0, 0x0, 0x3, EntityKind::builtin_reader_with_key};
   static constexpr EntityId_t sedp_sub_writer_id =
-    {0x0, 0x0, 0x4, static_cast<uint8_t>(BuiltinEntity::writer_with_key)};
+    {0x0, 0x0, 0x4, EntityKind::builtin_writer_with_key};
   static constexpr EntityId_t sedp_sub_reader_id =
-    {0x0, 0x0, 0x4, static_cast<uint8_t>(BuiltinEntity::reader_with_key)};
+    {0x0, 0x0, 0x4, EntityKind::builtin_reader_with_key};
   static constexpr EntityId_t spdp_writer_id =
-    {0x0, 0x1, 0x0, static_cast<uint8_t>(BuiltinEntity::writer_with_key)};
+    {0x0, 0x1, 0x0, EntityKind::builtin_writer_with_key};
   static constexpr EntityId_t spdp_reader_id =
-    {0x0, 0x1, 0x0, static_cast<uint8_t>(BuiltinEntity::reader_with_key)};
+    {0x0, 0x1, 0x0, EntityKind::builtin_reader_with_key};
   static constexpr EntityId_t participant_writer_id =
-    {0x0, 0x2, 0x0, static_cast<uint8_t>(BuiltinEntity::writer_with_key)};
+    {0x0, 0x2, 0x0, EntityKind::builtin_writer_with_key};
   static constexpr EntityId_t participant_reader_id =
-    {0x0, 0x2, 0x0, static_cast<uint8_t>(BuiltinEntity::reader_with_key)};
+    {0x0, 0x2, 0x0, EntityKind::builtin_reader_with_key};
 
   Context();
 

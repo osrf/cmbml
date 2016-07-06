@@ -14,12 +14,13 @@ namespace cmbml {
 namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
-  template<typename RTPSWriter, typename Context = udp::Context, typename Executor = SyncExecutor>
+  template<typename TopicT, typename RTPSWriter,
+    typename Context = udp::Context, typename Executor = SyncExecutor>
   class DataWriter {
   public:
     // Consider taking a Context for this thread in the constructor.
-    DataWriter() {
-      // TODO: Dependency-inject PSM
+    DataWriter(Participant & p) : rtps_writer(p) {
+      // TODO: Dependency-inject PSM via Participant
     }
 
     void add_tasks(Executor & executor) {

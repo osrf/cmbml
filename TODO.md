@@ -13,6 +13,13 @@
 - [ ] Discovery Module
   - [ ] think of a mechanism for natural translation of the SEDP historycache tables (section 8.5.4)
   - [ ] "Interaction with RTPS virtual machine"
+  - [ ] 4 builtin topics:
+    - DCPSParticipant
+    - DCPSSubscription
+    - DCPSPublication
+    - DCPSTopic
+  - [ ] flesh out custom messages interface
+  - [ ] How to assign GuidPrefix for new participants?
 
 - [ ] PIM: Implement UDP/IP (links to generic serialization goal)
 
@@ -32,3 +39,5 @@ Optional behaviors
   - [ ] Implement DDS QoS features using RTPS (section 8.7)
 
 - [ ] Minimum needed DDS api for an rmw implementation
+
+

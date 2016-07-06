@@ -29,9 +29,6 @@ namespace cmbml {
   // 12 octets
   using GuidPrefix_t = std::array<Octet, 12>;
   static const GuidPrefix_t guid_prefix_unknown = {0};
-  // 4 octets
-  using EntityId_t = std::array<Octet, 4>;
-  static const EntityId_t entity_id_unknown = {0x00, 0x00, 0x00, 0x00};
   using VendorId_t = std::array<Octet, 2>;
   static const VendorId_t cmbml_vendor_id = {0xf0, 0x9f};
   static const VendorId_t vendor_id_unknown = {0x0, 0x0};
@@ -45,6 +42,7 @@ namespace cmbml {
   using List = std::vector<T, Allocator>;
 
   using IPAddress = std::array<Octet, 16>;
+  using Count_t = uint32_t;
 
   //using Duration_t = std::chrono::nanoseconds;
   struct Duration_t {
@@ -137,6 +135,61 @@ namespace cmbml {
     }
   };
 
+  enum struct EntityKind : uint8_t {
+    unknown = 0x00,
+    user_writer_with_key = 0x02,
+    user_writer_no_key = 0x03,
+    user_reader_no_key = 0x04,
+    user_reader_with_key = 0x07,
+    participant = 0xc1,
+    builtin_writer_with_key = 0xc2,
+    builtin_writer_no_key = 0xc3,
+    builtin_reader_no_key = 0xc4,
+    builtin_reader_with_key = 0xc7
+  };
+
+
+  struct EntityId_t {
+    BOOST_HANA_DEFINE_STRUCT(EntityId_t,
+      (std::array<Octet, 3>, entity_key),
+      (EntityKind, entity_kind)
+    );
+
+    bool operator==(const EntityId_t & e) const {
+      if (e.entity_kind != entity_kind) {
+        return false;
+      }
+      for (size_t i = 0; i < 3; ++i) {
+        if (e.entity_key[i] != entity_key[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    bool operator!=(const EntityId_t & e) const {
+      return !operator==(e);
+    }
+
+    // internal representation is big-endian by default
+    static uint32_t convert(const std::array<Octet, 3> & id) {
+      return (id[0]*256 + id[1]) * 256 + id[2];
+    }
+
+    // consider unit testing this
+    static std::array<Octet, 3> convert(const uint32_t id) {
+      std::array<Octet, 3> ret;
+      uint32_t mask = UINT32_MAX >> 16;
+      ret[2] = id & mask;
+      mask = (UINT32_MAX >> 16) << 8;
+      ret[1] = id & mask;
+      mask = UINT32_MAX << 16;
+      ret[0] = id & mask;
+      return ret;
+    }
+  };
+
+  static const EntityId_t entity_id_unknown = {0x00, 0x00, 0x00, EntityKind::unknown};
+
   // 16-byte (128 bit) GUID
   struct GUID_t {
     // TODO Prefix always sets the first 2 bytes to vendor ID
@@ -148,10 +201,8 @@ namespace cmbml {
     );
 
     bool operator==(const GUID_t & b) const {
-      for (size_t i = 0; i < entity_id.size(); ++i) {
-        if (entity_id[i] != b.entity_id[i]) {
-          return false;
-        }
+      if (entity_id != b.entity_id) {
+        return false;
       }
       for (size_t i = 0; i < prefix.size(); ++i) {
         if (prefix[i] != b.prefix[i]) {
@@ -165,9 +216,10 @@ namespace cmbml {
   // TODO: collisions with endpoints outside of participant
   struct GUIDCompare {
     constexpr bool operator()(const GUID_t & a, const GUID_t & b) const {
-      bool less = true;
-      for (size_t i = 0; i < 4; ++i) {
-        if (a.entity_id[i] > b.entity_id[i]) {
+      for (size_t i = 0; i < 3; ++i) {
+        if (a.entity_id.entity_key > b.entity_id.entity_key) {
+        }
+        if (a.entity_id.entity_key[i] > b.entity_id.entity_key[i]) {
           return false;
         }
       }
@@ -176,12 +228,13 @@ namespace cmbml {
           return false;
         }
       }
-
       return true;
     }
   };
 
   struct Entity {
+    Entity(GUID_t g) : guid(g) {}
+    Entity() {}
     // Globally and uniquely identifies the
     // RTPS Entity within the DDS domain.
     GUID_t guid;
@@ -201,34 +254,6 @@ namespace cmbml {
   };
   // lower protocol versions are not supported
   static const ProtocolVersion_t rtps_protocol_version = {2, 2};
-
-  struct Participant : Entity {
-    // a participant "contains" Endpoints
-    // Lists of endpoints. 
-    List<Locator_t> default_unicast_locator_list;
-    List<Locator_t> default_multicast_locator_list;
-    uint32_t participant_id;
-    //static constexpr ProtocolVersion_t protocol_version = rtps_protocol_version;
-    //static constexpr VendorId_t vendor_id = cmbml_vendor_id;
-  };
-
-
-  template<ReliabilityKind_t reliabilityLevel, TopicKind_t topicKind>
-  struct EndpointParams {
-    static const ReliabilityKind_t reliability_level = reliabilityLevel;
-    static const TopicKind_t topic_kind = topicKind;
-  };
-
-  // TODO Template error checking
-  // On initialization, initialize Transport-specific data with this Endpoint.
-  template<typename EndpointParams>
-  struct Endpoint : Entity {
-    List<Locator_t> unicast_locator_list;
-    List<Locator_t> multicast_locator_list;
-    static const ReliabilityKind_t reliability_level = EndpointParams::reliability_level;
-    static const TopicKind_t topic_kind = EndpointParams::topic_kind;
-  };
-
 }
 
 #endif  // CMBML__TYPES__HPP_

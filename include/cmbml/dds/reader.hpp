@@ -8,9 +8,13 @@ namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
   // DataReader and DataWriter take an Executor, which abstracts the threading model.
-  template<typename RTPSReader, typename Context = udp::Context, typename Executor = SyncExecutor>
+  template<typename TopicT, typename RTPSReader,
+    typename Context = udp::Context, typename Executor = SyncExecutor>
   class DataReader {
   public:
+    DataReader(Participant & p) : rtps_reader(p) {
+
+    }
 
     void add_tasks(Executor & executor) {
       // TODO Executor should dispense the contexts? Hmm
