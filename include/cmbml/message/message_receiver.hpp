@@ -16,7 +16,7 @@ struct MessageReceiver {
   Time_t timestamp = time_invalid;
 
   // TODO Functions based on the receipt of new messages
-  MessageReceiver(GuidPrefix_t & dest_prefix, int transport_kind, IPAddress && address) :
+  MessageReceiver(const GuidPrefix_t & dest_prefix, int transport_kind, const IPAddress & address) :
     dest_guid_prefix(dest_prefix)
   {
     Locator_t loc{transport_kind, 0, address};

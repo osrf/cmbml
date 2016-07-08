@@ -13,9 +13,9 @@
 namespace cmbml {
 namespace dds {
 
+
   // Combines serialize/deserialize, state machine, etc.
-  template<typename TopicT, typename RTPSWriter,
-    typename Context = udp::Context, typename Executor = SyncExecutor>
+  template<typename TopicT, typename RTPSWriter>
   class DataWriter {
   public:
     // Consider taking a Context for this thread in the constructor.
@@ -23,11 +23,11 @@ namespace dds {
       // TODO: Dependency-inject PSM via Participant
     }
 
-    void add_tasks(Executor & executor) {
+    template<typename Context, typename Executor>
+    void add_tasks(Context & thread_context, Executor & executor) {
       // TODO We really only want to have one context per thread.
       // Currently this is an overestimation.
       // TODO thread safety!
-      Context thread_context;
       // TODO Initialize receiver locators
       auto receiver_thread = [this, &thread_context]() {
         // This is a blocking call
@@ -61,7 +61,6 @@ namespace dds {
       );
     }
 
-
     // TODO Refine MessageReceiver logic
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {
@@ -72,7 +71,8 @@ namespace dds {
         // return StatusCode::packet_invalid;
         return;
       }
-      MessageReceiver receiver(header.guid_prefix, Context::kind, context.address_as_array());
+      MessageReceiver receiver(
+        header.guid_prefix, NetworkContext::kind, context.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
       }

@@ -20,9 +20,7 @@
 #include <cmbml/cdr/place_integral_type.hpp>
 #include <cmbml/types.hpp>  // Provides "List" type
 
-#include <cmbml/message/data.hpp>
-#include <cmbml/message/submessage.hpp>
-#include <cmbml/message/message.hpp>
+#include <cmbml/message/header.hpp>
 
 // What if we used bitsets instead?
 // What is their performance like?
@@ -150,7 +148,9 @@ size_t get_packet_size(const T & element) {
     (void) element;
   };
   traverse(element, count_packet_size, index);
-  return index + 1;
+  // Index is the bitwise index, we need to return # of bytes.
+  // We add sizeof(int8_t) - 1 in order to round up.
+  return (index + 1 + sizeof(int8_t) - 1)/sizeof(int8_t);
 }
 
 template<typename T, typename DstT>

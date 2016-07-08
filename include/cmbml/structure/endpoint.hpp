@@ -23,7 +23,11 @@ namespace cmbml {
     static const ReliabilityKind_t reliability_level = EndpointParams::reliability_level;
     static const TopicKind_t topic_kind = EndpointParams::topic_kind;
 
-    explicit Endpoint(Participant & p) {
+    // Not in the spec: Cache a reference to our participant
+    // TODO ensure that Participant can never go out of scope while Endpoint is alive
+    const Participant & participant;
+
+    explicit Endpoint(Participant & p) : participant(p) {
       unicast_locator_list = p.default_unicast_locator_list;
       multicast_locator_list = p.default_multicast_locator_list;
       guid.prefix = p.guid.prefix;

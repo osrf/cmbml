@@ -6,19 +6,19 @@
 namespace cmbml {
 namespace dds {
 
+
   // Combines serialize/deserialize, state machine, etc.
   // DataReader and DataWriter take an Executor, which abstracts the threading model.
-  template<typename TopicT, typename RTPSReader,
-    typename Context = udp::Context, typename Executor = SyncExecutor>
+  template<typename TopicT, typename RTPSReader>
   class DataReader {
   public:
     DataReader(Participant & p) : rtps_reader(p) {
 
     }
 
-    void add_tasks(Executor & executor) {
-      // TODO Executor should dispense the contexts? Hmm
-      Context thread_context;
+    // This is an initialization step. It can only be called once--enforce this.
+    template<typename Context, typename Executor>
+    void add_tasks(Context & thread_context, Executor & executor) {
       // TODO Initialize receiver locators
       auto receiver_thread = [this, &thread_context]() {
         // This is a blocking call
@@ -51,7 +51,7 @@ namespace dds {
         // return StatusCode::packet_invalid;
         return;
       }
-      MessageReceiver receiver(header.guid_prefix, Context::kind, context.address_as_array());
+      MessageReceiver receiver(header.guid_prefix, NetworkContext::kind, context.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
       }

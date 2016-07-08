@@ -93,7 +93,7 @@ namespace stateful_writer {
       Data data(std::move(change), e.reader_proxy.expects_inline_qos, e.writer_has_key);
       // TODO inline QoS
       data.reader_id = entity_id_unknown;
-      e.reader_proxy.send(std::move(data), e.context);
+      // e.reader_proxy.send(std::move(data), e.context, participant);
     }
   };
 

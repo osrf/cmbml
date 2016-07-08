@@ -67,6 +67,8 @@ udp::Context::Context() {
   local_address = local_sockaddr.sin_addr.s_addr;
   freeifaddrs(addresses);
 
+  address_array = LocatorUDPv4_t::get_array_from_address(local_address);
+
   int result = setsockopt(
     multicast_send_socket, IPPROTO_IP, IP_MULTICAST_IF,
     reinterpret_cast<char *>(&local_sockaddr), sizeof(struct sockaddr_in));
@@ -163,9 +165,8 @@ void udp::Context::socket_send(
       reinterpret_cast<struct sockaddr *>(&dest_address), sizeof(dest_address));
 }
 
-IPAddress udp::Context::address_as_array() const {
-  // Bit twiddling
-  return udp::LocatorUDPv4_t::get_array_from_address(local_address);
+const IPAddress & udp::Context::address_as_array() const {
+  return address_array;
 }
 
 // Maybe have a timeout option for select?

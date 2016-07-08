@@ -5,6 +5,7 @@
 #include <boost/hana/map.hpp>
 
 #include <cmbml/structure/history.hpp>
+#include <cmbml/structure/locator.hpp>
 #include <cmbml/types.hpp>
 
 #include <cmbml/message/submessage.hpp>

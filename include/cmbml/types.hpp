@@ -40,8 +40,9 @@ namespace cmbml {
   // are we going to pass around an allocator std vector?
   template<typename T, typename Allocator = std::allocator<T>>
   using List = std::vector<T, Allocator>;
+  // TODO: Better embedded-friendly string class
+  using String = std::string;
 
-  using IPAddress = std::array<Octet, 16>;
   using Count_t = uint32_t;
 
   //using Duration_t = std::chrono::nanoseconds;
@@ -211,24 +212,29 @@ namespace cmbml {
       }
       return true;
     }
+
+    bool operator<(const GUID_t & a) const {
+      for (size_t i = 0; i < 3; ++i) {
+        if (this->entity_id.entity_kind > a.entity_id.entity_kind) {
+          return false;
+        }
+        if (this->entity_id.entity_key[i] > a.entity_id.entity_key[i]) {
+          return false;
+        }
+      }
+      for (size_t i = 0; i < 12; ++i) {
+        if (this->prefix[i] > a.prefix[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
   };
 
   // TODO: collisions with endpoints outside of participant
   struct GUIDCompare {
     constexpr bool operator()(const GUID_t & a, const GUID_t & b) const {
-      for (size_t i = 0; i < 3; ++i) {
-        if (a.entity_id.entity_key > b.entity_id.entity_key) {
-        }
-        if (a.entity_id.entity_key[i] > b.entity_id.entity_key[i]) {
-          return false;
-        }
-      }
-      for (size_t i = 0; i < 12; ++i) {
-        if (a.prefix[i] > b.prefix[i]) {
-          return false;
-        }
-      }
-      return true;
+      return a < b;
     }
   };
 
@@ -238,13 +244,6 @@ namespace cmbml {
     // Globally and uniquely identifies the
     // RTPS Entity within the DDS domain.
     GUID_t guid;
-  };
-
-  struct Locator_t {
-    BOOST_HANA_DEFINE_STRUCT(Locator_t,
-    (int32_t, kind),
-    (uint32_t, port),
-    (IPAddress, address));
   };
 
   struct ProtocolVersion_t {

@@ -3,6 +3,8 @@
 - Message Module
   - [ ] Generic serialization ("meta-cdr")
   - [x] Deserialization: implement std::forward(callback) in deserialize as suggested by Arthur
+    - benchmark if this is actually useful
+  - [ ] Fix wrapping of messages in send (I'm still not sure about message "glomming")
   - [ ] Parameters
 - Behavior Module
   - [x] Finish missing functions in writer state machines
@@ -19,12 +21,12 @@
     - DCPSPublication
     - DCPSTopic
   - [ ] flesh out custom messages interface
-  - [ ] How to assign GuidPrefix for new participants?
+  - [x] How to assign GuidPrefix for new participants?
 
 - [ ] PIM: Implement UDP/IP (links to generic serialization goal)
 
 - General
-  - [x] Fix the clunky template patterns and figure out which endpoint parameters should be compile-time selectable
+  - [ ] Fix the clunky template patterns and figure out which endpoint parameters should be compile-time selectable
   - [ ] Decide on which dynamically sized data structures or pattern for compile-time selection of data structures and their allocators
   - [x] Decide on patterns for an executor model
     - [ ] Multithreaded executor
@@ -39,5 +41,10 @@ Optional behaviors
   - [ ] Implement DDS QoS features using RTPS (section 8.7)
 
 - [ ] Minimum needed DDS api for an rmw implementation
+
+
+- [ ] Fix Context injection
+  - Maybe Context should probably instead be something like "TransportManager" and be a singleton
+
 
 

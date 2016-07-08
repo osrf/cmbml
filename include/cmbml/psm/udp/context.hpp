@@ -5,6 +5,7 @@
 #include <cmbml/psm/udp/constants.hpp>
 #include <cmbml/psm/udp/ports.hpp>
 #include <cmbml/message/submessage.hpp>
+#include <cmbml/structure/locator.hpp>
 
 #include <sys/socket.h>
 
@@ -49,9 +50,10 @@ struct LocatorUDPv4_t {
 
   static IPAddress get_array_from_address(uint32_t address) {
     IPAddress array_address;
-    array_address.fill(0);
     // TODO!
-    // address[0] = local_address ;
+    for (size_t i = 0; i < 4; ++i) {
+      array_address[i] = (address & (UINT64_MAX >> (8*i))) >> (32 - 8 * i);
+    }
     return array_address;
   }
 };
@@ -133,7 +135,7 @@ public:
     }
   }
 
-  IPAddress address_as_array() const;
+  const IPAddress & address_as_array() const;
 
 private:
 
@@ -144,6 +146,7 @@ private:
   // Intention is to wrap this in a future or async task in the executor.
 
   uint32_t local_address;  // what's the best type?
+  IPAddress address_array;
 
   int unicast_send_socket = -1;
   int multicast_send_socket = -1;

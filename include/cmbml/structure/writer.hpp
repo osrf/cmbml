@@ -61,20 +61,14 @@ namespace cmbml {
       ReaderCacheAccessor(cache),
       expects_inline_qos(inline_qos) {}
 
+    // Still not sure about the usage here.
     template<typename T, typename TransportContext = udp::Context>
-    void send(T && msg, TransportContext & context) {
-      size_t packet_size = get_packet_size(msg);
-      Packet<> packet(packet_size);
-      serialize(msg, packet);
-      // TODO Implement glomming-on of packets during send and wrapping in Message.
-      // context.unicast_send(locator, packet.data(), packet.size());
-      send(packet, context);
+    void send(T && raw_msg, TransportContext & context) {
+      // TODO Yarr
+
+      // context.unicast_send();
     }
-    template<typename TransportContext = udp::Context>
-    void send(Packet<> & packet, TransportContext & context) {
-      // TODO Implement glomming-on of packets during send and wrapping in Message.
-      context.unicast_send(locator, packet.data(), packet.size());
-    }
+
 
     bool locator_compare(const Locator_t & loc);
     void reset_unsent_changes();
@@ -109,11 +103,11 @@ namespace cmbml {
     void add_change_for_reader(ChangeForReader && change);
 
     // TODO This should wrap a submessage in a Message packet
+    // XXX
     template<typename T, typename TransportContext = udp::Context>
-    void send(T && msg, TransportContext & context) {
+    void send(T && msg, TransportContext & context, const Participant & p) {
       size_t packet_size = get_packet_size(msg);
-      Packet<> packet(packet_size);
-      serialize(msg, packet);
+      Packet<> packet = p.serialize_with_header(msg);
 
       for (const auto & locator : unicast_locator_list) {
         context.unicast_send(locator, packet.data(), packet.size());
@@ -131,14 +125,7 @@ namespace cmbml {
     SequenceNumber_t highest_acked_seq_num;
     ReaderCacheAccessor cache_accessor;
     HistoryCache * writer_cache;
-    // List<ChangeForReader> changes_for_reader;
 
-    // List<ChangeForReader> unsent_changes_list;
-    // List<ChangeForReader> requested_changes_list;
-
-    // TODO can we template these booleans? Would need to template the class
-    // and StatefulWriter needs to be able to hold a heterogenous container
-    // static const bool expects_inline_qos = expectsInlineQos;
     // static const bool is_active = isActive;
     bool is_active;
   };
@@ -272,12 +259,9 @@ namespace cmbml {
     // TODO
     bool is_acked_by_all(CacheChange & change);
 
-    // TODO This should wrap a submessage in a Message packet
     template<typename T, typename TransportContext = udp::Context>
     void send(T && msg, TransportContext & context) {
-      size_t packet_size = get_packet_size(msg);
-      Packet<> packet(packet_size);
-      serialize(msg, packet);
+      Packet<> packet = Endpoint<EndpointParams>::participant.serialize_with_header(msg);
 
       for (auto reader : matched_readers) {
         for (const auto & locator : reader.unicast_locator_list) {
