@@ -44,14 +44,10 @@ namespace cmbml {
 
     // who provides the Context?
     template<typename TransportContext = cmbml::udp::Context>
-    void send(AckNack && acknack, TransportContext & context) {
+    void send(AckNack && acknack, const Participant & p, TransportContext & context) {
       // TODO Need to wrap with a SubmessageHeader and Message...
       acknack.count = ++acknack_count;
-      size_t packet_size = get_packet_size(acknack);
-      Packet<> packet(packet_size);
-
-      // AckNack is variable length so we need to "dynamically" allocate the packet
-      serialize(acknack, packet);
+      Packet<> packet = p.serialize_with_header(acknack);
       // needs to know which destination to send to (pass a Locator?)
       // XXX This is dubious.
       for (const auto & locator : unicast_locator_list) {

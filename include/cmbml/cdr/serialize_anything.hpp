@@ -101,6 +101,14 @@ void traverse(const T element, CallbackT && callback, size_t & index)
 
 // TODO Specialization for LocatorList. does not conform to CDR spec
 
+
+template<typename CallbackT>
+void traverse(const std::bitset<8> & src, CallbackT & callback, size_t & index)
+{
+  uint8_t converted_bitset = static_cast<uint8_t>(src.to_ulong());
+  traverse(converted_bitset, callback, index);
+}
+
 // TODO sometimes we serialize the length of variable-length lists and sometimes we don't;
 // clarify when this happens.
 // this is for std::vector and std::array of non-primitive types
@@ -166,9 +174,6 @@ void serialize(const T & element, DstT & dst, size_t & index) {
 template<typename T, typename DstT = Packet<>>
 void serialize(const T & element, DstT & dst)
 {
-  /* how can we be smartest about preallocating?
-   * We can't predict the size of the packet until serialize is called.
-   * We require dst to be zeroed and preallocated before this function is called*/
   size_t index = 0;  // represents the bitwise index
   serialize(element, dst, index);
 }

@@ -31,6 +31,7 @@ constexpr auto max_value_map = hana::make_map(
 );
 
 
+// deceptively, this actually works for bool types
 template<typename T>
 constexpr size_t number_of_bits() {
   return sizeof(T)*CHAR_BIT;
@@ -76,7 +77,6 @@ void place_integral_type(const SrcT src, DstT & dst, const size_t i) {
 
     // OR dst with the widened src
     dst |= widened_src;
-    // i += number_of_bits<SrcT>();
   } else {  // Narrow
     // TODO
     dst = 0;
@@ -91,41 +91,25 @@ void place_integral_type(const SrcT src, DstT & dst, const size_t i) {
     copy &= mask;
     dst = copy;
     // index is incremented outside of this scope
-    // i += number_of_bits<DstT>();
   }
 }
 
 
-// Bool specialization for flags
-// first of all, partial specialization doesn't work :(
-// Need a separate specialization for metadata/flags vs data serialization for uint8 size
+// In CDR bool must be aligned to a byte boundary
+// (header flags are packed into bitsets, which resolve to a different specialization)
 template<typename DstT>
 void place_integral_type(const bool src, DstT & dst, const size_t i) {
-  assert(i < number_of_bits<DstT>());
-  DstT mask = 1;
-  mask = mask << i;
-
-  if (src) {
-    // OR with mask
-      dst |= mask;
-  } else {
-    // Invert mask and AND
-    mask = ~mask;
-    dst &= mask;
-  }
+  uint8_t tmp = src;
+  place_integral_type(tmp, dst, i);
 }
 
+// In CDR bool must be aligned to a byte boundary
 template<typename SrcT>
 void place_integral_type(const SrcT src, bool & dst, const size_t i) {
-  assert(i < number_of_bits<SrcT>());
-  // TODO Reverse
-  SrcT copy = src;
-  copy = copy << i;
-  copy = copy >> (number_of_bits<SrcT>() - 1);
-  dst = copy;
+  uint8_t tmp = 0;
+  place_integral_type(src, tmp, i);
+  dst = (tmp != 0);
 }
-
-
 
 // Specialization for when SrcT == DstT
 template<typename T>

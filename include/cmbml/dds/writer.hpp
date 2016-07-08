@@ -109,31 +109,36 @@ namespace dds {
         switch (header.submessage_id) {
           case SubmessageKind::acknack_id:
             return deserialize<AckNack>(src, index,
-              [this, &receiver](auto && acknack){
+              [this, &receiver, &header](auto && acknack){
+                acknack.assign_flags(header.flags);
                 return on_acknack(std::move(acknack), receiver);
               }
             );
           case SubmessageKind::info_ts_id:
             return deserialize<InfoTimestamp>(src, index,
-              [this, &receiver](auto && timestamp) {
+              [this, &receiver, &header](auto && timestamp) {
+                timestamp.assign_flags(header.flags);
                 return on_info_timestamp(std::move(timestamp), receiver);
               }
             );
           case SubmessageKind::info_src_id:
             return deserialize<InfoSource>(src, index,
-              [this, &receiver](auto && info_src) {
+              [this, &receiver, &header](auto && info_src) {
+                info_src.assign_flags(header.flags);
                 return on_info_source(std::move(info_src), receiver);
               }
             );
           case SubmessageKind::info_reply_ip4_id:
             return deserialize<cmbml::udp::InfoReplyIp4>(src, index,
-              [this, &receiver](auto && info_reply) {
+              [this, &receiver, &header](auto && info_reply) {
+                info_reply.assign_flags(header.flags);
                 return on_info_reply_ip4(std::move(info_reply), receiver);
               }
             );
           case SubmessageKind::info_reply_id:
             return deserialize<InfoReply>(src, index,
-              [this, &receiver](auto && info_reply) {
+              [this, &receiver, &header](auto && info_reply) {
+                info_reply.assign_flags(header.flags);
                 return on_info_reply(std::move(info_reply), receiver);
               }
             );

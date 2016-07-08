@@ -100,22 +100,27 @@ namespace dds {
     StatusCode deserialize_submessage(
       const SrcT & src, size_t & index, MessageReceiver & receiver)
     {
+      // TODO Skip to next submessage based on header.submessage_length
       auto header_callback = [this, &src, &index, &receiver](SubmessageHeader & header) {
+        // Extract flags from the header
         switch (header.submessage_id) {
           case SubmessageKind::heartbeat_id:
             return deserialize<Heartbeat>(src, index,
-              [this, &receiver](auto && heartbeat) {
+              [this, &receiver, &header](auto && heartbeat) {
+                heartbeat.assign_flags(header.flags);
                 return on_heartbeat(std::move(heartbeat), receiver);
               }
             );
           case SubmessageKind::gap_id:
             return deserialize<Gap>(src, index,
-              [this, &receiver](auto && gap) {
+              [this, &receiver, &header](auto && gap) {
+                gap.assign_flags(header.flags);
                 return on_gap(std::move(gap), receiver);
               });
           case SubmessageKind::info_dst_id:
             return deserialize<InfoDestination>(src, index,
-              [this, &receiver](auto && info_destination) {
+              [this, &receiver, &header](auto && info_destination) {
+                info_destination.assign_flags(header.flags);
                 return on_info_destination(std::move(info_destination), receiver);
               }
             );
@@ -124,7 +129,8 @@ namespace dds {
             return StatusCode::not_yet_implemented;
           case SubmessageKind::data_id:
             return deserialize<Data>(src, index,
-              [this, &receiver](auto && data) {
+              [this, &receiver, &header](auto && data) {
+                data.assign_flags(header.flags);
                 return on_data(std::move(data), receiver);
               }
             );

@@ -46,5 +46,3 @@ Optional behaviors
 - [ ] Fix Context injection
   - Maybe Context should probably instead be something like "TransportManager" and be a singleton
 
-
-

@@ -19,10 +19,20 @@ namespace udp {
 
 struct InfoReplyIp4 {
   BOOST_HANA_DEFINE_STRUCT(InfoReplyIp4,
-    (MulticastFlag, multicast_flag),
     (Locator_t, unicast_locator),
     (Locator_t, multicast_locator));
   static const SubmessageKind id = SubmessageKind::info_reply_ip4_id;
+  Endianness endianness;
+  MulticastFlag multicast_flag;
+
+  void assign_flags(const std::bitset<8> & flags) {
+    endianness = flags[7];
+    multicast_flag = flags[6];
+  }
+  void produce_flags(std::bitset<8> & flags) const {
+    flags[7] = endianness;
+    flags[6] = multicast_flag;
+  }
 };
 
 // TODO Express relationship to Locator_t.

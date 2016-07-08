@@ -51,6 +51,14 @@ StatusCode deserialize(DstT & dst, const SrcT & src, size_t & index)
   return StatusCode::ok;
 }
 
+template<typename SrcT>
+StatusCode deserialize(std::bitset<8> & dst, const SrcT & src, size_t & index)
+{
+  uint32_t flags = 0;
+  StatusCode status = deserialize(flags, src, index);
+  dst = std::bitset<8>(flags);
+  return status;
+}
 
 // We always expect callback to take a single argument of the type 
 // We currently expect dst to be preallocated (if dynamically sized)

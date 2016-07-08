@@ -196,9 +196,7 @@ namespace cmbml {
 
     template<typename T, typename TransportContext = udp::Context>
     void send_to_all_locators(T && msg, TransportContext & context) {
-      size_t packet_size = get_packet_size(msg);
-      Packet<> packet(packet_size);
-      serialize(msg, packet);
+      Packet<> packet = Endpoint<EndpointParams>::participant.serialize_with_header(msg);
       // TODO Implement glomming-on of packets during send and wrapping in Message.
       // TODO Check if the locator is unicast or multicast before sending
       for (auto & reader_locator : reader_locators) {

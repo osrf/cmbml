@@ -3,6 +3,7 @@
 
 #include <cmbml/discovery/participant/spdp_disco_data.hpp>
 #include <cmbml/message/header.hpp>
+#include <cmbml/message/submessage.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
 #include <cmbml/types.hpp>
 
@@ -50,11 +51,13 @@ struct Participant : Entity {
   template<typename T>
   Packet<> serialize_with_header(T && msg) const {
     size_t packet_size = get_packet_size(msg);
-    Packet<> packet(sizeof(Header) + packet_size);
+    Packet<> packet((sizeof(Header) + sizeof(SubmessageHeader) + packet_size)/4);
     Header h = construct_message_header();
+    SubmessageHeader sub_h = SubmessageHeader::construct_submessage_header(msg, packet_size);
 
     size_t index = 0;
     serialize(h, packet, index);
+    serialize(sub_h, packet, index);
     serialize(msg, packet, index);
     return packet;
   }

@@ -5,6 +5,8 @@
 #include <vector>
 #include <cinttypes>
 
+#include <bitset>
+
 #include <cmbml/types.hpp>
 #include <boost/hana/define_struct.hpp>
 
@@ -17,13 +19,14 @@ namespace cmbml {
   using ParameterId_t = uint16_t;
   using Timestamp = Time_t;
 
+  using Endianness = SubmessageFlag;
   using FinalFlag = SubmessageFlag;
   using InlineQosFlag = SubmessageFlag;
   using DataFlag = SubmessageFlag;
   using KeyFlag = SubmessageFlag;
   using LivelinessFlag = SubmessageFlag;
   using MulticastFlag = SubmessageFlag;
-  // using InvalidateFlag = SubmessageFlag;
+  using InvalidateFlag = SubmessageFlag;
 
 
   // TODO dynamically sized?
@@ -54,19 +57,23 @@ namespace cmbml {
     data_frag_id = 0x16
   };
 
-  enum Endianness : bool {
-    big_endian = false, little_endian = true
-  };
-  enum InvalidateFlag : bool {
-    has_timestamp = false, no_timestamp = true
-  };
 
   struct SubmessageHeader {
     BOOST_HANA_DEFINE_STRUCT(SubmessageHeader,
       (SubmessageKind, submessage_id),
-      (std::array<SubmessageFlag, 8>, flags),
+      // (std::array<SubmessageFlag, 8>, flags),
+      (std::bitset<8>, flags),
       (uint16_t, submessage_length)
     );
+
+    template<typename T>
+    static SubmessageHeader construct_submessage_header(const T & msg, uint16_t msg_size) {
+      SubmessageHeader h;
+      h.submessage_id = T::id;
+      msg.produce_flags(h.flags);
+      h.submessage_length = msg_size + sizeof(SubmessageHeader);
+      return h;
+    }
   };
 
   // TODO write a utility templated on the type of the message to correctly interpret flags
@@ -102,6 +109,11 @@ namespace cmbml {
 
     Submessage() {
       header.submessage_id = SubmessageElement::id;
+    }
+
+    Submessage(SubmessageElement && e) : element(e) {
+      header.submessage_id = SubmessageElement::id;
+      element.produce_flags(header.flags);
     }
   };
 
