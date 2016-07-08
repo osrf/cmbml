@@ -91,6 +91,12 @@ StatusCode deserialize(DstT & dst, const SrcT & src, size_t & index) {
   return ret;
 }
 
+template<typename DstT, typename SrcT>
+StatusCode deserialize(DstT & dst, const SrcT & src) {
+  size_t i = 0;
+  return deserialize(dst, src, i);
+}
+
 // We could get fancy and use the return type of the callback
 template<typename DstT, typename SrcT, typename CallbackT, typename ...CallbackArgs>
 StatusCode deserialize(

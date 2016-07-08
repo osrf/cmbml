@@ -14,30 +14,39 @@ namespace stateless_writer {
     e.writer.add_reader_locator(std::move(e.locator));
   };
 
-  // Small optimzation could be made: the best effort can_send state does not need a ref. to the Writer
+  // Need to get locator from data id?
+  // Small optimization: best effort can_send state does not need a ref. to the Writer
   auto on_can_send = [](auto & e) {
-    CacheChange next_change = e.locator.pop_next_unsent_change();
-    Data data(std::move(next_change), e.locator.expects_inline_qos, e.writer_has_key);
-    // TODO: inline_qos; need to copy from related DDS writer
-    /*
-    if (data.expects_inline_qos) {
-    }
-    */
-    data.reader_id = entity_id_unknown;
-    e.locator.send(std::move(data), e.context);
+    e.writer.for_each_matched_locator(
+      [&e](auto & reader_locator) {
+        CacheChange next_change = reader_locator.pop_next_unsent_change();
+        Data data(std::move(next_change), reader_locator.expects_inline_qos,
+            std::decay_t<decltype(e.writer)>::topic_kind == TopicKind_t::with_key);
+        data.reader_id = entity_id_unknown;
+        Packet<> packet = e.writer.participant.serialize_with_header(data);
+        e.context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+      }
+    );
   };
 
   auto on_can_send_reliable = [](auto & e) {
-    CacheChange change = e.locator.pop_next_unsent_change();
-    if (e.writer.writer_cache.contains_change(change.sequence_number)) {
-      Data data(std::move(change), e.locator.expects_inline_qos, e.writer_has_key);
-      // TODO: inline_qos; need to copy from related DDS writer
-      data.reader_id = entity_id_unknown;
-      e.locator.send(std::move(data), e.context);
-    } else {
-      Gap gap(entity_id_unknown, e.writer.guid.entity_id, change.sequence_number);
-      e.locator.send(std::move(gap), e.context);
-    }
+    e.writer.for_each_matched_locator(
+      [&e](auto & reader_locator) {
+        CacheChange change = reader_locator.pop_next_unsent_change();
+        if (e.writer.writer_cache.contains_change(change.sequence_number)) {
+          Data data(std::move(change), reader_locator.expects_inline_qos,
+            std::decay_t<decltype(e.writer)>::topic_kind == TopicKind_t::with_key);
+          // TODO: inline_qos; need to copy from related DDS writer
+          data.reader_id = entity_id_unknown;
+          Packet<> packet = e.writer.participant.serialize_with_header(data);
+          e.context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+        } else {
+          Gap gap(entity_id_unknown, e.writer.guid.entity_id, change.sequence_number);
+          Packet<> packet = e.writer.participant.serialize_with_header(gap);
+          e.context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+        }
+      }
+    );
   };
 
   auto on_released_locator = [](auto & e) {
@@ -53,7 +62,7 @@ namespace stateless_writer {
     heartbeat.final_flag = 1;
     heartbeat.reader_id = entity_id_unknown;
     heartbeat.count = e.writer.heartbeat_count++;
-    e.writer.send(heartbeat, e.context);
+    e.writer.send_to_all_locators(heartbeat, e.context);
   };
 
 
@@ -86,15 +95,23 @@ namespace stateful_writer {
     e.writer.remove_matched_reader(e.reader);
   };
 
-  auto on_can_send = [](auto & e) {
-    ChangeForReader change = e.reader_proxy.pop_next_unsent_change();
-    change.status = ChangeForReaderStatus::underway;
-    if (change.is_relevant) {
-      Data data(std::move(change), e.reader_proxy.expects_inline_qos, e.writer_has_key);
-      // TODO inline QoS
-      data.reader_id = entity_id_unknown;
-      // e.reader_proxy.send(std::move(data), e.context, participant);
-    }
+  auto on_can_send_stateful = [](auto & e) {
+    e.writer.for_each_matched_reader(
+      [&e](auto & reader_proxy) {
+        ChangeForReader change = reader_proxy.pop_next_unsent_change();
+        change.status = ChangeForReaderStatus::underway;
+        if (change.is_relevant) {
+          Data data(std::move(change), reader_proxy.expects_inline_qos,
+            std::decay_t<decltype(e.writer)>::topic_kind == TopicKind_t::with_key);
+          // TODO inline QoS
+          data.reader_id = entity_id_unknown;
+          Packet<> packet = e.writer.participant.serialize_with_header(data);
+          for (auto & locator : reader_proxy.unicast_locator_list) {
+            e.context.unicast_send(locator, packet.data(), packet.size());
+          }
+        }
+      }
+    );
   };
 
   auto on_new_change = [](auto & e) {
@@ -124,7 +141,7 @@ namespace stateful_writer {
     heartbeat.reader_id = entity_id_unknown;
     // Send the packet using a multicast socket
     heartbeat.count = e.writer.heartbeat_count++;
-    e.writer.send(heartbeat, e.context);
+    e.writer.send_to_all_locators(heartbeat, e.context);
   };
 
   auto on_acknack = [](auto & e) {
@@ -141,19 +158,36 @@ namespace stateful_writer {
   };
 
   auto on_can_send_repairing = [](auto & e) {
-    ChangeForReader change = e.reader_proxy.pop_next_requested_change();
-    change.status = ChangeForReaderStatus::underway;
-    if (change.is_relevant) {
-      Data data(std::move(change), e.reader_proxy.expects_inline_qos, e.writer_has_key);
-      // ??? Is this implied by the spec?
-      data.reader_id = e.reader_proxy.remote_reader_guid.entity_id;
-      // TODO inline QoS
-      e.reader_proxy.send(std::move(data), e.context);
-    } else {
-      Gap gap(e.reader_proxy.remote_reader_guid.entity_id, change.writer_guid.entity_id,
-          change.sequence_number);
-      e.reader_proxy.send(std::move(gap), e.context);
-    }
+    e.writer.for_each_matched_reader(
+      [&e](auto & reader_proxy) {
+        ChangeForReader change = reader_proxy.pop_next_requested_change();
+        change.status = ChangeForReaderStatus::underway;
+        if (change.is_relevant) {
+          Data data(std::move(change), reader_proxy.expects_inline_qos,
+            std::decay_t<decltype(e.writer)>::topic_kind == TopicKind_t::with_key);
+          // ??? Is this implied by the spec?
+          data.reader_id = reader_proxy.remote_reader_guid.entity_id;
+          // TODO inline QoS
+          Packet<> packet = e.writer.participant.serialize_with_header(data);
+          for (auto & locator : reader_proxy.unicast_locator_list) {
+            e.context.unicast_send(locator, packet.data(), packet.size());
+          }
+          // e.reader_proxy.send(std::move(data), e.context);
+          // e.writer.send(std::move(data), e.context);
+        } else {
+          // TODO
+          Gap gap(reader_proxy.remote_reader_guid.entity_id, change.writer_guid.entity_id,
+              change.sequence_number);
+          Packet<> packet = e.writer.participant.serialize_with_header(gap);
+          for (auto & locator : reader_proxy.unicast_locator_list) {
+            e.context.unicast_send(locator, packet.data(), packet.size());
+          }
+          // e.reader_proxy.send(std::move(gap), e.context);
+          // e.writer.send(std::move(gap), e.context);
+        }
+
+      }
+    );
   };
 
 }  // namespace stateful_writer

@@ -23,6 +23,28 @@ namespace dds {
       // TODO: Dependency-inject PSM via Participant
     }
 
+    InstanceHandle_t register_instance(TopicT & data) {
+      // TODO
+      return instance_handle;
+    }
+
+    template<typename Context>
+    StatusCode write(TopicT && data, InstanceHandle_t & handle, Context & context) {
+      // How to check instance handle against existing data?
+      if (handle == handle_nil) {
+        // TODO
+      }
+
+      rtps_writer.add_change(ChangeKind_t::alive, data, handle);
+
+      // Consider doing this in a different thread as indicated by sequence chart in spec?
+      // Need context here, hmmm
+      can_send<RTPSWriter, Context> e{rtps_writer, context};
+      state_machine.process_event(e);
+      return StatusCode::ok;
+    }
+
+
     template<typename Context, typename Executor>
     void add_tasks(Context & thread_context, Executor & executor) {
       // TODO We really only want to have one context per thread.
@@ -61,6 +83,7 @@ namespace dds {
       );
     }
 
+  private:
     // TODO Refine MessageReceiver logic
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {
@@ -128,7 +151,7 @@ namespace dds {
       return deserialize<SubmessageHeader>(src, index, header_callback);
     }
 
-  private:
+
     StatusCode on_acknack(AckNack && acknack, MessageReceiver & receiver) {
       cmbml::acknack_received<RTPSWriter> e{rtps_writer, std::move(acknack), receiver};
       state_machine.process_event(std::move(e));
@@ -176,12 +199,6 @@ namespace dds {
         receiver.have_timestamp = false;
       }
       return StatusCode::ok;
-    }
-
-    // TODO hooks for user callback, etc.
-    void on_write(Data && data) {
-      // TODO state machine events?
-      rtps_writer.add_change(ChangeKind_t::alive, data, instance_handle);
     }
 
     void on_dispose() {

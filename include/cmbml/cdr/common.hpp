@@ -16,7 +16,9 @@ enum struct StatusCode {
   postcondition_violated,
   not_yet_implemented,
   packet_invalid,
-  out_of_memory
+  out_of_memory,
+  deserialize_failed,
+  no_data
 };
 
 }  // namespace cmbml

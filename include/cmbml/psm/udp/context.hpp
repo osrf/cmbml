@@ -60,6 +60,7 @@ struct LocatorUDPv4_t {
 
 // Networking context.
 // TODO formalize traits of "NetworkContext"
+// Should this be a singleton? Yarr
 class Context {
 public:
   // TODO Nope, this can't be constexpr, needs to be determined by the Domain

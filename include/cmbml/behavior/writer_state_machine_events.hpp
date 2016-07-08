@@ -19,7 +19,6 @@ namespace cmbml {
   template<typename WriterT, typename Transport = udp::Context>
   struct can_send {
     WriterT & writer;
-    ReaderLocator & locator;
     Transport & context;
     bool writer_has_key;
   };
@@ -61,13 +60,6 @@ namespace cmbml {
   struct released_reader {
     StatefulWriterT & writer;
     ReaderProxy * reader;
-  };
-
-  template<typename Transport = udp::Context>
-  struct can_send_stateful {
-    ReaderProxy & reader_proxy;
-    Transport & context;
-    bool writer_has_key;  // TODO writer_has_key everywhere can be compile-time
   };
 
   template<typename StatefulWriterT>

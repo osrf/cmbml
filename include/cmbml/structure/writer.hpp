@@ -61,20 +61,15 @@ namespace cmbml {
       ReaderCacheAccessor(cache),
       expects_inline_qos(inline_qos) {}
 
-    // Still not sure about the usage here.
-    template<typename T, typename TransportContext = udp::Context>
-    void send(T && raw_msg, TransportContext & context) {
-      // TODO Yarr
-
-      // context.unicast_send();
-    }
-
 
     bool locator_compare(const Locator_t & loc);
     void reset_unsent_changes();
 
     // TODO see below note in ReaderProxy about compile-time behavior here
     bool expects_inline_qos;
+    const Locator_t & get_locator() const {
+      return locator;
+    };
 
   private:
     Locator_t locator;
@@ -101,22 +96,6 @@ namespace cmbml {
     ChangeForReader pop_next_unsent_change();
     void set_requested_changes(List<SequenceNumber_t> & request_seq_numbers);
     void add_change_for_reader(ChangeForReader && change);
-
-    // TODO This should wrap a submessage in a Message packet
-    // XXX
-    template<typename T, typename TransportContext = udp::Context>
-    void send(T && msg, TransportContext & context, const Participant & p) {
-      size_t packet_size = get_packet_size(msg);
-      Packet<> packet = p.serialize_with_header(msg);
-
-      for (const auto & locator : unicast_locator_list) {
-        context.unicast_send(locator, packet.data(), packet.size());
-      }
-      for (const auto & locator : multicast_locator_list) {
-        context.multicast_send(locator, packet.data(), packet.size());
-      }
-    }
-
 
     void set_acked_changes(const SequenceNumber_t & seq_num);
 
@@ -208,15 +187,22 @@ namespace cmbml {
       }
     }
 
+    template<typename FunctionT>
+    void for_each_matched_locator(FunctionT && function) {
+      for (auto & locator : reader_locators) {
+        function(locator);
+      }
+    }
+
     template<typename T, typename TransportContext = udp::Context>
-    void send(T && msg, TransportContext & context) {
+    void send_to_all_locators(T && msg, TransportContext & context) {
       size_t packet_size = get_packet_size(msg);
       Packet<> packet(packet_size);
       serialize(msg, packet);
       // TODO Implement glomming-on of packets during send and wrapping in Message.
+      // TODO Check if the locator is unicast or multicast before sending
       for (auto & reader_locator : reader_locators) {
-        //context.unicast_send(reader_locator.locator, packet.data(), packet.size());
-        reader_locator.send(packet, context);
+        context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
       }
     }
 
@@ -260,7 +246,7 @@ namespace cmbml {
     bool is_acked_by_all(CacheChange & change);
 
     template<typename T, typename TransportContext = udp::Context>
-    void send(T && msg, TransportContext & context) {
+    void send_to_all_locators(T && msg, TransportContext & context) {
       Packet<> packet = Endpoint<EndpointParams>::participant.serialize_with_header(msg);
 
       for (auto reader : matched_readers) {
@@ -270,6 +256,13 @@ namespace cmbml {
         for (const auto & locator : reader.multicast_locator_list) {
           context.multicast_send(locator, packet.data(), packet.size());
         }
+      }
+    }
+
+    template<typename CallbackT>
+    void for_each_matched_reader(CallbackT && callback) {
+      for (auto & reader : matched_readers) {
+        callback(reader);
       }
     }
 

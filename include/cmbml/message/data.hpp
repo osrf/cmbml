@@ -43,14 +43,14 @@ namespace cmbml {
 
     // Construct a serialized message from a cache change.
     Data(const CacheChange && change, bool inline_qos, bool key) :
-      expects_inline_qos(inline_qos), has_data(!change.data.empty()),
-      has_key(key), writer_id(change.writer_guid.entity_id), payload(change.data)
+      expects_inline_qos(inline_qos), has_data(!change.serialized_data.empty()),
+      has_key(key), writer_id(change.writer_guid.entity_id), payload(change.serialized_data)
     {
       // TODO: assign writer_sn_state?
     }
     Data(const ChangeForReader && change, bool inline_qos, bool key) :
-      expects_inline_qos(inline_qos), has_data(!change.data.empty()),
-      has_key(key), writer_id(change.writer_guid.entity_id), payload(change.data)
+      expects_inline_qos(inline_qos), has_data(!change.serialized_data.empty()),
+      has_key(key), writer_id(change.writer_guid.entity_id), payload(change.serialized_data)
     {
       // TODO: writer_sn_state?
     }

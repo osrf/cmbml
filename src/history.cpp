@@ -1,8 +1,26 @@
 #include <algorithm>
 #include <cassert>
+
+#include <cmbml/message/data.hpp>
 #include <cmbml/structure/history.hpp>
 
 using namespace cmbml;
+
+CacheChange::CacheChange(ChangeKind_t k, InstanceHandle_t && h, const GUID_t & g) :
+  kind(k), instance_handle(h), writer_guid(g)
+{
+}
+
+// TODO Store data and data info
+CacheChange::CacheChange(ChangeKind_t k, Data && data, InstanceHandle_t && h, const GUID_t & g) :
+  kind(k), instance_handle(h), writer_guid(g), serialized_data(data.payload)
+{
+}
+
+// TODO Store data and data info
+CacheChange::CacheChange(Data && data)
+{
+}
 
 void HistoryCache::add_change(CacheChange && change) {
   min_seq = std::min(change.sequence_number, min_seq, SequenceNumber_t::less_than);
@@ -39,22 +57,6 @@ void HistoryCache::clear() {
   changes.clear();
 }
 
-CacheChange::CacheChange(ChangeKind_t k, InstanceHandle_t && h, const GUID_t & g) :
-  kind(k), instance_handle(h), writer_guid(g)
-{
-}
-
-// TODO Store data and data info
-CacheChange::CacheChange(ChangeKind_t k, Data && data, InstanceHandle_t && h, const GUID_t & g) :
-  kind(k), instance_handle(h), writer_guid(g)
-{
-}
-
-// TODO Store data and data info
-CacheChange::CacheChange(Data && data)
-{
-}
-
 // didn't we decide that this should have pop semantics at some point?
 CacheChange HistoryCache::remove_change(const SequenceNumber_t & seq) {
   return remove_change(seq.value());
@@ -76,3 +78,6 @@ const SequenceNumber_t & HistoryCache::get_max_sequence_number() const {
   return max_seq;
 }
 
+size_t HistoryCache::size_of_cache() const {
+  return changes.size();
+}

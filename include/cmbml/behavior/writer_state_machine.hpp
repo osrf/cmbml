@@ -93,7 +93,7 @@ namespace cmbml {
         *initial_s + event<configured_reader<WriterT>> / on_configured_reader = idle_s,
         idle_s     + event<unsent_changes>                                    = pushing_s,
         pushing_s  + event<unsent_changes_empty>                              = idle_s,
-        pushing_s  + event<can_send_stateful<>>          / on_can_send          = pushing_s,
+        pushing_s  + event<can_send<WriterT>>          / on_can_send_stateful = pushing_s,
         *ready_s   + event<new_change<WriterT>>        / on_new_change        = ready_s,
 
         *any_s + event<released_reader<WriterT>>   / on_released_reader   = final_s
@@ -127,7 +127,7 @@ namespace cmbml {
         *initial_s    + event<configured_reader<Writer>> / on_configured_reader  = announcing_s,
         announcing_s  + event<unsent_changes>                                    = pushing_s,
         pushing_s     + event<unsent_changes_empty>                              = announcing_s,
-        pushing_s     + event<can_send_stateful<>>       / on_can_send           = pushing_s,
+        pushing_s     + event<can_send<WriterT>>       / on_can_send_stateful    = pushing_s,
         announcing_s  + event<unacked_changes_empty>                             = idle_s,
         idle_s        + event<unacked_changes>                                   = announcing_s,
         announcing_s  + event<after_heartbeat<Writer>>   / on_heartbeat = announcing_s,
@@ -135,7 +135,7 @@ namespace cmbml {
         waiting_s     + event<requested_changes>                                 = must_repair_s,
         must_repair_s + event<acknack_received<Writer>>  / on_acknack            = must_repair_s,
         must_repair_s + event<after_nack_delay>                                  = repairing_s,
-        repairing_s   + event<can_send_stateful<>>       / on_can_send_repairing = repairing_s,
+        repairing_s   + event<can_send<WriterT>>       / on_can_send_repairing = repairing_s,
         repairing_s   + event<requested_changes_empty>                           = waiting_s,
 
         *ready_s      + event<new_change<Writer>>        / on_new_change     = ready_s,

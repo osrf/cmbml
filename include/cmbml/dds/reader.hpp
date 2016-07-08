@@ -2,6 +2,7 @@
 #define CMBML__DDS__READER_HPP_
 
 #include <cmbml/behavior/reader_state_machine_events.hpp>
+#include <cmbml/dds/sample_info.hpp>
 
 namespace cmbml {
 namespace dds {
@@ -14,6 +15,42 @@ namespace dds {
   public:
     DataReader(Participant & p) : rtps_reader(p) {
 
+    }
+
+    // Simplification:
+    // sample states, view states, instance states are all ANY
+    // So we just pop in order, minimum sequence number first!
+    StatusCode take(
+        List<TopicT> & data_values, List<SampleInfo> & sample_infos, uint32_t max_samples)
+    {
+      if (rtps_reader.reader_cache.empty()) {
+        return StatusCode::no_data;
+      }
+      size_t sample_length = std::min(max_samples, rtps_reader.reader_cache.size_of_cache());
+      data_values.reserve(sample_length);
+      for (size_t i = 0; i < sample_length; ++i) {
+      // for (auto & data_value : data_values) {
+        CacheChange change = rtps_reader.reader_cache.remove_change(
+            rtps_reader.reader_cache.get_min_sequence_number());
+        if (change.serialized_data.size() == 0) {
+          // Should we not increment i in this case?
+          continue;
+        }
+        // Convert the CacheChange to a TopicT
+        if (deserialize(data_values[i], change.serialized_data) != StatusCode::ok) {
+          return StatusCode::deserialize_failed;
+        }
+      }
+      // TODO SampleInfos
+      return StatusCode::ok;
+    }
+
+    // Hmm
+    List<CacheChange> on_take() {
+      List<CacheChange> ret = rtps_reader.reader_cache.get_filtered_cache_changes(
+        &DataReader::dds_filter);
+      rtps_reader.reader_cache.clear();  // This seems a little extreme!
+      return ret;
     }
 
     // This is an initialization step. It can only be called once--enforce this.
@@ -40,6 +77,7 @@ namespace dds {
       executor.add_timed_task(
         rtps_reader.heartbeat_response_delay.to_ns(), false, heartbeat_response_delay_event);
     }
+  private:
 
     // TODO duplicated in writer
     template<typename SrcT, typename NetworkContext = udp::Context>
@@ -102,17 +140,6 @@ namespace dds {
       return deserialize<SubmessageHeader>(src, index, header_callback);
     }
 
-  private:
-
-    List<CacheChange> on_read() {
-      return rtps_reader.reader_cache.get_filtered_cache_changes(&DataReader::dds_filter);
-    }
-    List<CacheChange> on_take() {
-      List<CacheChange> ret = rtps_reader.reader_cache.get_filtered_cache_changes(
-        &DataReader::dds_filter);
-      rtps_reader.reader_cache.clear();
-      return ret;
-    }
 
     StatusCode on_heartbeat(Heartbeat && heartbeat, MessageReceiver & receiver) {
       // TODO double-check that heartbeat comes from the matched destination...

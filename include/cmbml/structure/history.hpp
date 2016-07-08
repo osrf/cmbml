@@ -11,6 +11,7 @@ namespace cmbml {
     alive, not_alive_disposed, not_alive_unregistered
   };
   using InstanceHandle_t = std::array<Octet, 16>;
+  static const InstanceHandle_t handle_nil = {0};
 
   struct Data;
   struct CacheChange {
@@ -24,11 +25,7 @@ namespace cmbml {
     InstanceHandle_t instance_handle;
     SequenceNumber_t sequence_number = {0, 0};
 
-    // How to represent the type of this data in a generic way?
-    // optional/could be empty
-    // if present, represents the serialized data stored in history
-    // Data data_value;
-    SerializedData data;
+    SerializedData serialized_data;
   };
 
   static bool compare_cache_change_seq(
@@ -66,7 +63,10 @@ namespace cmbml {
     bool contains_change(uint64_t seq_num) const;
     const SequenceNumber_t & get_min_sequence_number() const;
     const SequenceNumber_t & get_max_sequence_number() const;
+    size_t size_of_cache() const;
   private:
+    // writer is required to send in order of addition to cache
+    // queue instead
     std::map<uint64_t, CacheChange> changes;
     SequenceNumber_t min_seq = {INT32_MAX, INT32_MAX};
     SequenceNumber_t max_seq = {INT32_MIN, 0};
