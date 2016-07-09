@@ -30,6 +30,7 @@
   - [ ] Decide on which dynamically sized data structures or pattern for compile-time selection of data structures and their allocators
   - [x] Decide on patterns for an executor model
     - [ ] Multithreaded executor
+  - [ ] Guard conditions
   - [ ] Error handling and console output mechanisms
   - [ ] Put constants in one header (?) and use std::integer_sequence for compile-time integer seqs
   - [ ] header reorg

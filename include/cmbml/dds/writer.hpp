@@ -83,7 +83,7 @@ namespace dds {
       );
     }
 
-  private:
+  protected:
     // TODO Refine MessageReceiver logic
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {

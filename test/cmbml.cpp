@@ -13,6 +13,7 @@ int main(int argc, char ** argv) {
   SpdpDiscoData data;
   Participant p(data);
 
+
   StatelessWriter<true,
     EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>
       best_effort_stateless_writer(p);

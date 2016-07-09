@@ -5,19 +5,54 @@
 #include <cmbml/message/header.hpp>
 #include <cmbml/message/submessage.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
+#include <cmbml/structure/locator.hpp>
 #include <cmbml/types.hpp>
 
 // TODO this COULD be templated on the discovery protocol type.
 
 namespace cmbml {
 
+  static constexpr EntityId_t participant_id = {0x0, 0x0, 0x1, EntityKind::participant};
+
+  static constexpr EntityId_t sedp_topic_writer_id =
+    {0x0, 0x0, 0x2, EntityKind::builtin_writer_with_key};
+
+  static constexpr EntityId_t sedp_topic_reader_id =
+    {0x0, 0x0, 0x2, EntityKind::builtin_reader_with_key};
+
+  static constexpr EntityId_t sedp_pub_writer_id =
+    {0x0, 0x0, 0x3, EntityKind::builtin_writer_with_key};
+
+  static constexpr EntityId_t sedp_pub_reader_id =
+    {0x0, 0x0, 0x3, EntityKind::builtin_reader_with_key};
+
+  static constexpr EntityId_t sedp_sub_writer_id =
+    {0x0, 0x0, 0x4, EntityKind::builtin_writer_with_key};
+
+  static constexpr EntityId_t sedp_sub_reader_id =
+    {0x0, 0x0, 0x4, EntityKind::builtin_reader_with_key};
+
+  static constexpr EntityId_t spdp_writer_id =
+    {0x0, 0x1, 0x0, EntityKind::builtin_writer_with_key};
+
+  static constexpr EntityId_t spdp_reader_id =
+    {0x0, 0x1, 0x0, EntityKind::builtin_reader_with_key};
+
+  static constexpr EntityId_t participant_writer_id =
+    {0x0, 0x2, 0x0, EntityKind::builtin_writer_with_key};
+
+  static constexpr EntityId_t participant_reader_id =
+    {0x0, 0x2, 0x0, EntityKind::builtin_reader_with_key};
+
+
 struct Participant : Entity {
-  explicit Participant(SpdpDiscoData & data) :
-    default_unicast_locator_list(data.default_unicast_locator_list),
-    default_multicast_locator_list(data.default_multicast_locator_list),
+
+  Participant(SpdpDiscoData & data) :
     protocol_version(data.protocol_version),
     vendor_id(data.vendor_id),
-    Entity({data.guid_prefix, 0, 0, 0, EntityKind::participant})
+    default_unicast_locator_list(data.default_unicast_locator_list),
+    default_multicast_locator_list(data.default_multicast_locator_list),
+    Entity({data.guid_prefix, participant_id})
   {
   }
 
@@ -25,7 +60,7 @@ struct Participant : Entity {
     default_multicast_locator_list(multicast_list),
     protocol_version(rtps_protocol_version),
     vendor_id(cmbml_vendor_id),
-    Entity({prefix, 0, 0, 0, EntityKind::participant})
+    Entity({prefix, participant_id})
   {
   }
 
@@ -60,6 +95,16 @@ struct Participant : Entity {
     serialize(sub_h, packet, index);
     serialize(msg, packet, index);
     return packet;
+  }
+
+  SpdpDiscoData create_discovery_data() const {
+    SpdpDiscoData ret;
+    ret.protocol_version = protocol_version;
+    ret.guid_prefix = guid.prefix;
+    ret.vendor_id = vendor_id;
+    ret.default_unicast_locator_list = default_unicast_locator_list;
+    ret.default_multicast_locator_list = default_multicast_locator_list;
+    return ret;
   }
 
 private:

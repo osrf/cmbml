@@ -99,8 +99,6 @@ void traverse(const T element, CallbackT && callback, size_t & index)
 
 // TODO Specialization for ParameterList. Parameters currently do not conform to CDR spec
 
-// TODO Specialization for LocatorList. does not conform to CDR spec
-
 
 template<typename CallbackT>
 void traverse(const std::bitset<8> & src, CallbackT & callback, size_t & index)

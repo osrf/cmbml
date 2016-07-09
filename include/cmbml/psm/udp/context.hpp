@@ -81,28 +81,6 @@ public:
   static constexpr LocatorUDPv4_t invalid_locator = {0, 0};
   static const int32_t kind = LOCATOR_KIND_UDPv4;
 
-  static constexpr EntityId_t participant_id = {0x0, 0x0, 0x1, EntityKind::participant};
-  static constexpr EntityId_t sedp_topic_writer_id =
-    {0x0, 0x0, 0x2, EntityKind::builtin_writer_with_key};
-  static constexpr EntityId_t sedp_topic_reader_id =
-    {0x0, 0x0, 0x2, EntityKind::builtin_reader_with_key};
-  static constexpr EntityId_t sedp_pub_writer_id =
-    {0x0, 0x0, 0x3, EntityKind::builtin_writer_with_key};
-  static constexpr EntityId_t sedp_pub_reader_id =
-    {0x0, 0x0, 0x3, EntityKind::builtin_reader_with_key};
-  static constexpr EntityId_t sedp_sub_writer_id =
-    {0x0, 0x0, 0x4, EntityKind::builtin_writer_with_key};
-  static constexpr EntityId_t sedp_sub_reader_id =
-    {0x0, 0x0, 0x4, EntityKind::builtin_reader_with_key};
-  static constexpr EntityId_t spdp_writer_id =
-    {0x0, 0x1, 0x0, EntityKind::builtin_writer_with_key};
-  static constexpr EntityId_t spdp_reader_id =
-    {0x0, 0x1, 0x0, EntityKind::builtin_reader_with_key};
-  static constexpr EntityId_t participant_writer_id =
-    {0x0, 0x2, 0x0, EntityKind::builtin_writer_with_key};
-  static constexpr EntityId_t participant_reader_id =
-    {0x0, 0x2, 0x0, EntityKind::builtin_reader_with_key};
-
   Context();
 
   // Settings

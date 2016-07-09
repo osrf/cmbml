@@ -26,7 +26,7 @@ public:
     guid_prefix[1] = cmbml_vendor_id[1];
     // Choose the GUID prefix values based on the current time, our local IP,
     // and a random hash
-    // TODO This is very IP specific. Is Context required to provide an IP address?
+    // TODO This is IP specific. Is Context required to provide an IP address?
     // we have 10 bytes of info
     // IP is either 6 or 4 octets
     // prefix 2-8: Take the most significant 6 bytes of time
@@ -47,26 +47,39 @@ public:
   }
 
   // Maybe these functions should bein spdp.hpp
-  template<typename Executor>
-  static auto create_spdp_writer(Participant & p) {
+  template<typename Executor, typename Context>
+  static auto create_spdp_writer(Participant & p, Context & context) {
     SpdpParticipantDataWriter spdp_builtin_writer(p);
     Executor & executor = Executor::get_instance();
     // Callback configuration:
     // The SpdpParticipantDataWriter needs to periodically send the
     // SpdpDiscoData representing this datawriter
     executor.add_timed_task(participant_data_resend_period, false,
-      [&spdp_builtin_writer]() {
+      [&spdp_builtin_writer, &context]() {
+        spdp_builtin_writer.send_discovery_data(context);
       }
     );
 
     return spdp_builtin_writer;
+    // Push onto endpoints list
   }
 
   template<typename Executor>
   static auto create_spdp_reader(Participant & p) {
     SpdpParticipantDataReader spdp_builtin_reader(p);
+    Executor & executor = Executor::get_instance();
+    // Time for guard conditions and read conditions
+    /*
+    executor.add_task(
+      [](&spdp_builtin_reader) {
+        // TODO Block until take is ready
+        List<SpdpDiscoData> disco_data;
+        spdp_builtin_reader.take(disco_data);
+      }
+    );
+    */
 
-    // Callback configuration:
+    // Callback configuration?
 
     return spdp_builtin_reader;
   }
@@ -76,8 +89,10 @@ public:
     known_participants.emplace_back(
       get_next_guid_prefix(transport_context), {transport_context.default_multicast_locator});
     // Add builtin endpoints to container
-    auto spdp_writer = Domain::create_spdp_writer<Executor>(known_participants.back());
-    auto spdp_reader = Domain::create_spdp_reader<Executor>(known_participants.back());
+    auto spdp_writer = Domain::create_spdp_writer<Executor>(
+      known_participants.back(), transport_context);
+    auto spdp_reader = Domain::create_spdp_reader<Executor>(
+      known_participants.back(), transport_context);
 
     // add builtin sedp endpoints
 

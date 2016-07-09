@@ -5,12 +5,18 @@ namespace cmbml {
 namespace dds {
 
   // TODO
+  struct UserDataQosPolicy {
+  };
+
+  // TODO
   struct SubscriptionQos {
   };
 
+  // TODO
   struct PublisherQos {
   };
 
+  // TODO
   struct TopicQos {
   };
 

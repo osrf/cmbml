@@ -77,7 +77,7 @@ namespace dds {
       executor.add_timed_task(
         rtps_reader.heartbeat_response_delay.to_ns(), false, heartbeat_response_delay_event);
     }
-  private:
+  protected:
 
     // TODO duplicated in writer
     template<typename SrcT, typename NetworkContext = udp::Context>

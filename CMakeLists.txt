@@ -12,9 +12,9 @@ include_directories(external/hana/include/)
 
 add_library(cmbml
   STATIC
+  src/history.cpp
   src/reader.cpp
   src/writer.cpp
-  src/history.cpp
   src/psm/udp/context.cpp
 )
 

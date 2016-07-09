@@ -5,12 +5,6 @@
 
 namespace cmbml {
 
-  struct BuiltinTopicKey_t {
-    BOOST_HANA_DEFINE_STRUCT(BuiltinTopicKey_t,
-      (uint32_t, value[3])
-    );
-  }
-
   struct SubscriptionBuiltinTopicData {
     BOOST_HANA_DEFINE_STRUCT(
       (BuiltinTopicKey_t, key),
