@@ -33,7 +33,7 @@ public:
     uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
       std::chrono::system_clock::now().time_since_epoch()).count();
 
-    // Danger zone
+    // Danger zone: hardcoded values
     for (size_t i = 0; i < 6; ++i) {
       guid_prefix[i + 2] = (time & (UINT64_MAX >> (8 * i))) >> (48 - 8 * i);
     }

@@ -4,7 +4,7 @@
 #include <bitset>
 
 #include <cmbml/dds/qos.hpp>
-#include <cmbml/discovery/common.hpp>
+// #include <cmbml/discovery/common.hpp>
 #include <cmbml/structure/locator.hpp>
 #include <cmbml/types.hpp>
 
@@ -23,7 +23,7 @@ enum class BuiltinEndpointKind : uint8_t {
 // "ParticipantBuiltinTopicData", "ParticipantProxy", and "SpdpDiscoveredParticipantData"
 struct SpdpDiscoData {
   BOOST_HANA_DEFINE_STRUCT(SpdpDiscoData,
-    (BuiltinTopicKey_t, key),
+    // (BuiltinTopicKey_t, key),
     (dds::UserDataQosPolicy, user_data),
     (ProtocolVersion_t, protocol_version),
     (GuidPrefix_t, guid_prefix),

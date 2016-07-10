@@ -7,7 +7,13 @@ buckle your seat belts and prepare for awesome
 ## INSTALLATION
 
 ```
-mkdir ~/lib🍔🍟🍺
-cd ~
-git clone https://github.com/osrf/cmbml lib🍔🍟🍺
+git clone https://github.com/osrf/cmbml
+cd cmbml
+git submodule init
+git submodule update
+mkdir build
+cd build
+cmake ..
+make
 ```
+
