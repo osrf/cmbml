@@ -9,6 +9,11 @@ CacheChange ReaderCacheAccessor::pop_next_requested_change() {
   CacheChange change = writer_cache->copy_change(lowest_requested_seq_num);
   requested_seq_num_set.pop_front();
   lowest_requested_seq_num = requested_seq_num_set.front();
+  assert(num_requested_changes > 0);
+  --num_requested_changes;
+  if (num_requested_changes == 0) {
+    requested_changes_empty.set_trigger_value();
+  }
   return change;
 }
 
@@ -19,11 +24,23 @@ CacheChange ReaderCacheAccessor::pop_next_unsent_change() {
   // Copy out the cachechange here
   CacheChange change = writer_cache->copy_change(next_seq);
   highest_seq_num_sent = change.sequence_number;
+  assert(num_unsent_changes > 0);
+  --num_unsent_changes;
+  if (num_unsent_changes == 0) {
+    unsent_changes_empty.set_trigger_value();
+  }
   return change;
 }
 
 // request_seq_numbers must be sorted in ascending order
+// Should this clear the set of requested changes first?
 void ReaderCacheAccessor::set_requested_changes(const List<SequenceNumber_t> & request_seq_numbers) {
+  if (num_requested_changes == 0 && request_seq_numbers.size() > 0) {
+    requested_changes_not_empty.set_trigger_value();
+  }
+
+  num_requested_changes += request_seq_numbers.size();
+
   for (const auto & seq : request_seq_numbers) {
     requested_seq_num_set.push_back(seq);
     // writer_cache[seq].status = requested;
@@ -32,6 +49,8 @@ void ReaderCacheAccessor::set_requested_changes(const List<SequenceNumber_t> & r
 
 void ReaderLocator::reset_unsent_changes() {
   highest_seq_num_sent = writer_cache->get_min_sequence_number();
+  num_unsent_changes = 0;
+  unsent_changes_empty.set_trigger_value();
 }
 
 bool ReaderLocator::locator_compare(const Locator_t & loc) {
@@ -44,25 +63,54 @@ bool ReaderLocator::locator_compare(const Locator_t & loc) {
 }
 
 ChangeForReader ReaderProxy::pop_next_requested_change() {
-  CacheChange change = cache_accessor.pop_next_requested_change();
+  CacheChange change = ReaderCacheAccessor::pop_next_requested_change();
   return ChangeForReader(std::move(change));
 }
 
 ChangeForReader ReaderProxy::pop_next_unsent_change() {
-  CacheChange change = cache_accessor.pop_next_unsent_change();
+  CacheChange change = ReaderCacheAccessor::pop_next_unsent_change();
   return ChangeForReader(std::move(change));
 }
 
 void ReaderProxy::set_requested_changes(List<SequenceNumber_t> & request_seq_numbers) {
-  cache_accessor.set_requested_changes(request_seq_numbers);
+  num_requested_changes = request_seq_numbers.size();
+  set_requested_changes(request_seq_numbers);
 }
 
 void ReaderProxy::set_acked_changes(const SequenceNumber_t & seq_num) {
+  if (seq_num > highest_acked_seq_num) {
+    // Assume we acked sequentially
+    num_unacked_changes = 0;
+    unsent_changes_empty.set_trigger_value();
+  }
   highest_acked_seq_num = seq_num;
 }
 
 void ReaderProxy::add_change_for_reader(ChangeForReader && change) {
   // Naive?
+  switch (change.status) {
+    case ChangeForReaderStatus::unsent:
+      if (num_unsent_changes == 0) {
+        unsent_changes_not_empty.set_trigger_value();
+      }
+      ++num_unsent_changes;
+      break;
+    case ChangeForReaderStatus::unacknowledged:
+      if (num_unacked_changes == 0) {
+        unacked_changes_not_empty.set_trigger_value();
+      }
+      ++num_unacked_changes;
+      break;
+    case ChangeForReaderStatus::requested:
+      if (num_requested_changes == 0) {
+        requested_changes_not_empty.set_trigger_value();
+      }
+      ++num_requested_changes;
+      break;
+    default:
+      break;
+      // Status is of a type we don't track, so don't worry about it
+  }
 
   writer_cache->add_change(std::move(change));
 }

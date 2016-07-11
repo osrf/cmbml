@@ -20,7 +20,6 @@ namespace cmbml {
   struct can_send {
     WriterT & writer;
     Transport & context;
-    bool writer_has_key;
   };
 
   template<typename StatelessWriterT>

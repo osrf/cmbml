@@ -30,7 +30,7 @@ namespace reader_events {
   template<typename ReaderT>
   struct reader_deleted {
     ReaderT & reader;
-    WriterProxy * writer;
+    WriterProxy & writer;
   };
 
   template<typename ReaderT>

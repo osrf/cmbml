@@ -33,14 +33,29 @@ namespace cmbml {
       unicast_locator_list(unicast_locators),
       multicast_locator_list(multicast_locators) {}
 
-    const SequenceNumber_t & max_available_changes();
+    SequenceNumber_t max_available_changes();
     void set_irrelevant_change(const SequenceNumber_t & seq_num);
     void set_irrelevant_change(const int64_t seq_num);
     void update_lost_changes(const SequenceNumber_t & first_available_seq_num);
     void update_missing_changes(const SequenceNumber_t & last_available_seq_num);
     void set_received_change(const SequenceNumber_t & seq_num);
-    const List<ChangeFromWriter> & missing_changes();
+
+    template<typename Function>
+    void for_each_missing_change(Function && function) {
+      for (auto & change_pair : changes_from_writer) {
+        ChangeFromWriter & change = change_pair.second;
+        if (change.status == ChangeFromWriterStatus::missing) {
+          function(change);
+        }
+      }
+    }
+
     const GUID_t & get_guid();
+    void update_missing_changes_count(
+      const ChangeFromWriter & change, ChangeFromWriterStatus future_status);
+
+    dds::GuardCondition missing_changes_empty;
+    dds::GuardCondition missing_changes_not_empty;
 
     // who provides the Context?
     template<typename TransportContext = cmbml::udp::Context>
@@ -57,6 +72,7 @@ namespace cmbml {
         context.multicast_send(locator, packet.data(), packet.size());
       }
     }
+
 
   private:
     GUID_t remote_writer_guid;
@@ -91,44 +107,50 @@ namespace cmbml {
   };
 
   template<bool expectsInlineQos, typename EndpointParams>
-  struct StatelessReader : Reader<true, expectsInlineQos, EndpointParams> {
-    explicit StatelessReader(Participant & p) : Reader<true, expectsInlineQos, EndpointParams>(p) {
+  struct StatefulReader : Reader<true, expectsInlineQos, EndpointParams> {
+    explicit StatefulReader(Participant & p) : Reader<true, expectsInlineQos, EndpointParams>(p) {
     }
 
-    void add_matched_writer(WriterProxy && writer_proxy) {
-      matched_writers.insert(std::make_pair(writer_proxy.get_guid(), std::move(writer_proxy)));
+    template<typename ...Args>
+    void emplace_matched_writer(Args... args) {
+      matched_writers.emplace_back(args...);
     }
-    // Why not remove by GUID?
-    void remove_matched_writer(WriterProxy * writer_proxy) {
-      assert(writer_proxy);
-      matched_writers.erase(writer_proxy->get_guid());
+
+    void remove_matched_writer(const GUID_t & guid) {
+      std::remove_if(
+        matched_writers.begin(), matched_writers.end(),
+        [&guid](auto & writer) {
+          return writer.get_guid() == guid;
+        });
     }
 
     template<typename FunctionT>
     void for_each_matched_writer(FunctionT && function) {
       std::for_each(
-        matched_writers.begin().second, matched_writers.end().second, function
+        matched_writers.begin(), matched_writers.end(), function
       );
     }
 
     WriterProxy * matched_writer_lookup(const GUID_t & writer_guid) {
-      if (!matched_writers.count(writer_guid)) {
-        return nullptr;
+      for (auto & writer : matched_writers) {
+        if (writer.get_guid() == writer_guid) {
+          return &writer;
+        }
       }
-      return &matched_writers.at(writer_guid);
+      return nullptr;
     }
 
     HistoryCache reader_cache;
 
     using StateMachineT = typename std::conditional<
-      StatelessReader::reliability_level == ReliabilityKind_t::best_effort,
-      BestEffortStatefulReaderMsm<StatelessReader>, ReliableStatefulReaderMsm<StatelessReader>>::type;
+      StatefulReader::reliability_level == ReliabilityKind_t::best_effort,
+      BestEffortStatefulReaderMsm<StatefulReader>, ReliableStatefulReaderMsm<StatefulReader>>::type;
   private:
-    std::map<GUID_t, WriterProxy, GUIDCompare> matched_writers;
+    List<WriterProxy> matched_writers;
   };
 
   template<bool expectsInlineQos, typename... Params>
-  using StatefulReader = Reader<true, expectsInlineQos, Params...>;
+  using StatelessReader = Reader<true, expectsInlineQos, Params...>;
 
 }
 

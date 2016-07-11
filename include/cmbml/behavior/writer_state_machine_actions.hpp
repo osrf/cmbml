@@ -17,7 +17,7 @@ namespace stateless_writer {
   // Need to get locator from data id?
   // Small optimization: best effort can_send state does not need a ref. to the Writer
   auto on_can_send = [](auto & e) {
-    e.writer.for_each_matched_locator(
+    e.writer.for_each_matched_reader(
       [&e](auto & reader_locator) {
         CacheChange next_change = reader_locator.pop_next_unsent_change();
         Data data(std::move(next_change), reader_locator.expects_inline_qos,
@@ -30,7 +30,7 @@ namespace stateless_writer {
   };
 
   auto on_can_send_reliable = [](auto & e) {
-    e.writer.for_each_matched_locator(
+    e.writer.for_each_matched_reader(
       [&e](auto & reader_locator) {
         CacheChange change = reader_locator.pop_next_unsent_change();
         if (e.writer.writer_cache.contains_change(change.sequence_number)) {

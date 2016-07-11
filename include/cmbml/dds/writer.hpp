@@ -98,6 +98,47 @@ namespace dds {
         header.guid_prefix, NetworkContext::kind, context.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
+        // This is pretty awful. Need an overhaul of the structure of Writer, maybe Writer provides
+        // all relevant guard conditions
+        rtps_writer.for_each_matched_reader(
+          [this, &context](auto & reader) {
+            if (reader.unsent_changes_not_empty.get_and_reset_trigger_value()) {
+              unsent_changes e;
+              state_machine.process_event(e);
+            } else if (reader.unsent_changes_empty.get_and_reset_trigger_value()) {
+              unsent_changes_empty e;
+              state_machine.process_event(e);
+            }
+            if (reader.can_send.get_and_reset_trigger_value()) {
+              can_send<RTPSWriter, NetworkContext> e{rtps_writer, context};
+              state_machine.process_event(e);
+            }
+            conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable>::call(
+              [this, &reader]() {
+                if (reader.requested_changes_not_empty.get_and_reset_trigger_value()) {
+                  requested_changes e;
+                  state_machine.process_event(e);
+                } else if (reader.requested_changes_empty.get_and_reset_trigger_value()) {
+                  requested_changes_empty e;
+                  state_machine.process_event(e);
+                }
+              }
+            );
+
+            conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable
+              && RTPSWriter::stateful>::call(
+              [this](auto & reader) {
+                if (reader.unacked_changes_not_empty.get_and_reset_trigger_value()) {
+                  unacked_changes e;
+                  state_machine.process_event(e);
+                } else if (reader.unacked_changes_empty.get_and_reset_trigger_value()) {
+                  unacked_changes_empty e;
+                  state_machine.process_event(e);
+                }
+              }, reader);
+          }
+        );
+
       }
     }
 

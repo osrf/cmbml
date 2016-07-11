@@ -34,8 +34,6 @@ namespace cmbml {
 
     CacheChange pop_next_requested_change();
 
-    // I believe it is most convenient if next_unsent_change has pop semantics:
-    // (removes the change from the unsent_changes list and moves it out of the function.)
     CacheChange pop_next_unsent_change();
 
     void set_requested_changes(const List<SequenceNumber_t> & request_seq_numbers);
@@ -48,6 +46,15 @@ namespace cmbml {
     std::deque<SequenceNumber_t> requested_seq_num_set;
     // TODO In order to make multithreading safe, how to express synchronization between readers?
     HistoryCache * writer_cache;
+
+    uint32_t num_unsent_changes = 0;
+    uint32_t num_requested_changes = 0;
+
+    dds::GuardCondition unsent_changes_empty;
+    // TODO There are no hooks through ReaderLocator that set unsent_changes_not_empty
+    dds::GuardCondition unsent_changes_not_empty;
+    dds::GuardCondition requested_changes_empty;
+    dds::GuardCondition requested_changes_not_empty;
   };
 
   // ReaderLocator is MoveAssignable and MoveConstructible
@@ -71,12 +78,13 @@ namespace cmbml {
       return locator;
     };
 
+    dds::GuardCondition can_send;
   private:
     Locator_t locator;
   };
 
 
-  struct ReaderProxy {
+  struct ReaderProxy : ReaderCacheAccessor {
     // move these structs in
     ReaderProxy(GUID_t & remoteReaderGuid,
         bool expectsInlineQos,
@@ -84,7 +92,7 @@ namespace cmbml {
         List<Locator_t> && multicastLocatorList, HistoryCache * cache) :
       remote_reader_guid(remoteReaderGuid), expects_inline_qos(expectsInlineQos),
       unicast_locator_list(unicastLocatorList), multicast_locator_list(multicastLocatorList),
-      cache_accessor(cache), writer_cache(cache)
+      writer_cache(cache), ReaderCacheAccessor(cache)
     {
     }
 
@@ -100,13 +108,18 @@ namespace cmbml {
     void set_acked_changes(const SequenceNumber_t & seq_num);
 
     bool expects_inline_qos;
+    dds::GuardCondition unacked_changes_not_empty;
+    dds::GuardCondition unacked_changes_empty;
+    dds::GuardCondition can_send;
   private:
     SequenceNumber_t highest_acked_seq_num;
-    ReaderCacheAccessor cache_accessor;
+    // ReaderCacheAccessor cache_accessor;
     HistoryCache * writer_cache;
 
     // static const bool is_active = isActive;
     bool is_active;
+
+    uint32_t num_unacked_changes = 0;
   };
 
   template<bool pushMode, typename EndpointParams>
@@ -154,7 +167,7 @@ namespace cmbml {
   // Forward declare state machine struct
   template<bool pushMode, typename EndpointParams>
   struct StatelessWriter : Writer<pushMode, EndpointParams> {
-
+    using ParentWriter = Writer<pushMode, EndpointParams>;
     explicit StatelessWriter(Participant & p) : Writer<pushMode, EndpointParams>(p) {
       // TODO Instantiate reader locators based on participant defaults?
     }
@@ -187,8 +200,30 @@ namespace cmbml {
       }
     }
 
+    void add_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
+      ParentWriter::add_change(k, data, handle);
+      // writer_cache.add_change(std::move(new_change(k, data, handle)));
+      for (auto & reader_locator : reader_locators) {
+        if (reader_locator.num_unsent_changes == 0) {
+          reader_locator.unsent_changes_not_empty.set_trigger_value();
+        }
+        ++reader_locator.num_unsent_changes;
+      }
+    }
+
+    void add_change(ChangeKind_t k, InstanceHandle_t && handle) {
+      ParentWriter::add_change(k, handle);
+      // writer_cache.add_change(std::move(new_change(k, handle)));
+      for (auto & reader_locator : reader_locators) {
+        if (reader_locator.num_unsent_changes == 0) {
+          reader_locator.unsent_changes_not_empty.set_trigger_value();
+        }
+        ++reader_locator.num_unsent_changes;
+      }
+    }
+
     template<typename FunctionT>
-    void for_each_matched_locator(FunctionT && function) {
+    void for_each_matched_reader(FunctionT && function) {
       for (auto & locator : reader_locators) {
         function(locator);
       }
@@ -271,6 +306,7 @@ namespace cmbml {
     using StateMachineT = typename std::conditional<
       StatefulWriter::reliability_level == ReliabilityKind_t::best_effort,
       BestEffortStatefulWriterMsm<StatefulWriter>, ReliableStatefulWriterMsm<StatefulWriter>>::type;
+
   private:
     List<ReaderProxy> matched_readers;
   };

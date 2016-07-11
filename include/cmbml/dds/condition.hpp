@@ -14,6 +14,19 @@ namespace dds {
     {
     }
 
+    Condition(const Condition & c) : trigger_value(c.trigger_value.load())
+    {
+    }
+
+    Condition(Condition && c) : trigger_value(c.trigger_value.load())
+    {
+    }
+
+    void operator=(const Condition & c)
+    {
+      trigger_value = c.trigger_value.load();
+    }
+
     bool get_trigger_value() const {
       return trigger_value.load();
     }
@@ -22,16 +35,19 @@ namespace dds {
     std::atomic_bool trigger_value;
   };
 
-  class GuardCondition : Condition {
+  class GuardCondition : public Condition {
   public:
     void set_trigger_value() {
       trigger_value.store(true);
+    }
+    bool get_and_reset_trigger_value() {
+      return trigger_value.exchange(false);
     }
 
   };
 
   template<typename T>
-  class StatusCondition : Condition {
+  class StatusCondition : public Condition {
   public:
     void set_enabled_statuses() {
       // TODO
@@ -51,7 +67,7 @@ namespace dds {
   };
 
   template<typename ReaderT>
-  class ReadCondition : Condition {
+  class ReadCondition : public Condition {
   public:
     ReadCondition(ReaderT & reader_) : reader(reader_)
     {

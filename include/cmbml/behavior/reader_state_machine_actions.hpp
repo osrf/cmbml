@@ -9,14 +9,14 @@
 namespace cmbml {
 
   auto on_reader_created = [](auto & e) {
-    WriterProxy writer_proxy(e.remote_writer_guid, e.unicast_locators, e.multicast_locators);
-    e.reader.add_matched_writer(std::move(writer_proxy));
+    // e.reader.add_matched_writer(WriterProxy(e.remote_writer_guid, e.unicast_locators, e.multicast_locators));
+    e.reader.emplace_matched_writer(e.remote_writer_guid, e.unicast_locators, e.multicast_locators);
     // TODO WriterProxy is initialized with all past and future samples from the Writer
     // as discussed in 8.4.10.4.
   };
 
   auto on_reader_deleted = [](auto & e) {
-    e.reader.remove_matched_writer(e.writer);
+    e.reader.remove_matched_writer(e.writer.get_guid());
   };
 
   auto on_data_received_stateless = [](auto & e) {
@@ -34,7 +34,7 @@ namespace cmbml {
   };
 
   auto on_data = [](auto & e) {
-    CacheChange change(e.data);
+    CacheChange change(std::move(e.data));
     e.reader.reader_cache.add_change(std::move(change));
     // TODO Check that this lookup is correct.
     GUID_t writer_guid = {e.receiver.source_guid_prefix, e.data.writer_id};
@@ -50,10 +50,10 @@ namespace cmbml {
     e.reader.for_each_matched_writer(
       [&e](auto & writer) {
         for (const auto & seq_num : {e.gap.gap_start.value(), e.gap.gap_list.base.value() - 1}) {
-          writer->set_irrelevant_change(seq_num);
+          writer.set_irrelevant_change(seq_num);
         }
         for (const auto & seq_num : e.gap.gap_list.set) {
-          writer->set_irrelevant_change(seq_num.value());
+          writer.set_irrelevant_change(seq_num.value());
         }
       }
     );
@@ -65,18 +65,20 @@ namespace cmbml {
       [&e](auto & writer) {
         SequenceNumberSet missing_seq_num_set({writer.max_available_changes() + 1});
         assert(missing_seq_num_set.set.empty());
-        for (const auto & change : writer.missing_changes()) {
-          missing_seq_num_set.set.push_back(change.sequence_number);
-        }
+        writer.for_each_missing_change(
+          [&missing_seq_num_set](const auto & change) {
+            missing_seq_num_set.set.push_back(change.sequence_number);
+          }
+        );
         // TODO Implement send and maybe a constructor for acknack
         // TODO see spec page  127 for capacity handling behavior in sequence set
         AckNack acknack;
-        acknack.reader_id = e.reader.entity_id;
+        acknack.reader_id = e.reader.guid.entity_id;
         acknack.writer_id = writer.get_guid().entity_id;
         acknack.reader_sn_state = std::move(missing_seq_num_set);
         // Current setting final=1, which means we do not expect a response from the writer
         acknack.final_flag = 1;
-        e.writer.send(std::move(acknack), e.transport_context);
+        writer.send(std::move(acknack), e.reader.participant, e.transport_context);
       }
     );
   };

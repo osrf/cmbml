@@ -3,10 +3,25 @@
 
 #include <cmbml/behavior/reader_state_machine_events.hpp>
 #include <cmbml/dds/sample_info.hpp>
+#include <cmbml/utility/metafunctions.hpp>
 
 namespace cmbml {
 namespace dds {
 
+  auto process_guard_conditions = [](auto & reader, auto & state_machine) {
+    reader.for_each_matched_writer(
+      [&reader, &state_machine](auto & writer) {
+        if (writer.missing_changes_empty.get_and_reset_trigger_value()) {
+          reader_events::missing_changes_empty e;
+          state_machine.process_event(e);
+        }
+        if (writer.missing_changes_not_empty.get_and_reset_trigger_value()) {
+          reader_events::missing_changes_not_empty e;
+          state_machine.process_event(e);
+        }
+      }
+    );
+  };
 
   // Combines serialize/deserialize, state machine, etc.
   // DataReader and DataWriter take an Executor, which abstracts the threading model.
@@ -92,6 +107,9 @@ namespace dds {
       MessageReceiver receiver(header.guid_prefix, NetworkContext::kind, context.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
+
+        conditionally_execute<RTPSReader::reliability_level == ReliabilityKind_t::reliable>::call(
+            process_guard_conditions, rtps_reader, state_machine);
       }
     }
 
@@ -106,16 +124,16 @@ namespace dds {
         switch (header.submessage_id) {
           case SubmessageKind::heartbeat_id:
             return deserialize<Heartbeat>(src, index,
-              [this, &receiver, &header](auto && heartbeat) {
+              [this, &header](auto && heartbeat) {
                 heartbeat.assign_flags(header.flags);
-                return on_heartbeat(std::move(heartbeat), receiver);
+                return on_heartbeat(std::move(heartbeat));
               }
             );
           case SubmessageKind::gap_id:
             return deserialize<Gap>(src, index,
-              [this, &receiver, &header](auto && gap) {
+              [this, &header](auto && gap) {
                 gap.assign_flags(header.flags);
-                return on_gap(std::move(gap), receiver);
+                return on_gap(std::move(gap));
               });
           case SubmessageKind::info_dst_id:
             return deserialize<InfoDestination>(src, index,
@@ -147,12 +165,12 @@ namespace dds {
     }
 
 
-    StatusCode on_heartbeat(Heartbeat && heartbeat, MessageReceiver & receiver) {
+    StatusCode on_heartbeat(Heartbeat && heartbeat) {
       // TODO double-check that heartbeat comes from the matched destination...
       // In the implementation we should just emit a warning, e.g. in case someone is 
       // sending bogus packets
       return hana::eval_if(RTPSReader::reliability_level == ReliabilityKind_t::reliable,
-        [this, &heartbeat, &receiver]() {
+        [this, &heartbeat]() {
           cmbml::reader_events::heartbeat_received<RTPSReader> e{rtps_reader, heartbeat};
           state_machine.process_event(e);
           return StatusCode::ok;
@@ -163,9 +181,9 @@ namespace dds {
       );
     }
 
-    StatusCode on_gap(Gap && gap, MessageReceiver & receiver) {
+    StatusCode on_gap(Gap && gap) {
       return hana::eval_if(RTPSReader::reliability_level == ReliabilityKind_t::reliable,
-        [this, &gap, &receiver]() {
+        [this, &gap]() {
           cmbml::reader_events::gap_received<RTPSReader> e{rtps_reader, gap};
           state_machine.process_event(e);
           return StatusCode::ok;
@@ -188,7 +206,6 @@ namespace dds {
     }
 
     StatusCode on_data(Data && data, MessageReceiver & receiver) {
-      // user_data_callback(data);
       cmbml::reader_events::data_received<RTPSReader> e{rtps_reader, std::move(data), receiver};
       state_machine.process_event(e);
       return StatusCode::ok;
@@ -203,6 +220,7 @@ namespace dds {
     RTPSReader rtps_reader;
     boost::msm::lite::sm<typename RTPSReader::StateMachineT> state_machine;
   };
+
 }  // namespace dds
 }  // namespace cmbml
 
