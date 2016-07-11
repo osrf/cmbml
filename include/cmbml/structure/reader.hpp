@@ -64,6 +64,8 @@ namespace cmbml {
     List<Locator_t> multicast_locator_list;
     std::map<uint64_t, ChangeFromWriter> changes_from_writer;
     uint32_t acknack_count = 0;
+
+    uint32_t num_missing_changes = 0;
   };
 
   template<bool Stateful, bool expectsInlineQos, typename EndpointParams>

@@ -34,6 +34,7 @@
   - [ ] Error handling and console output mechanisms
   - [ ] Put constants in one header (?) and use std::integer_sequence for compile-time integer seqs
   - [ ] header reorg
+  - [ ] Static dispatch
 
 - Unit test sockets module
 
@@ -47,3 +48,4 @@ Optional behaviors
 - [ ] Fix Context injection
   - Maybe Context should probably instead be something like "TransportManager" and be a singleton
 
+Reader and Writer should have a guard condition to check the state of history cache and if the writer can send.

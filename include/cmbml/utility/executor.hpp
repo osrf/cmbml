@@ -5,6 +5,7 @@
 #include <functional>
 #include <future>
 
+#include <cmbml/dds/condition.hpp>
 #include <cmbml/types.hpp>
 
 namespace cmbml {
@@ -15,6 +16,7 @@ namespace cmbml {
       bool oneshot_) : callback(callback_), oneshot(oneshot_)
     {
     }
+
     std::function<void()> callback;
     bool oneshot = false;
   };

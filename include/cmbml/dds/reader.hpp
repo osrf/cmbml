@@ -200,7 +200,6 @@ namespace dds {
       return true;
     }
 
-    // MessageReceiver receiver;
     RTPSReader rtps_reader;
     boost::msm::lite::sm<typename RTPSReader::StateMachineT> state_machine;
   };
