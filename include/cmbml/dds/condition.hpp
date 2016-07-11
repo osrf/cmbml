@@ -39,11 +39,27 @@ namespace dds {
   public:
     void set_trigger_value() {
       trigger_value.store(true);
+      cv.notify_all();
     }
+
     bool get_and_reset_trigger_value() {
       return trigger_value.exchange(false);
     }
 
+    // Blocking call that waits until the guard condition is triggered
+    void wait_until_trigger() {
+      std::unique_lock<std::mutex> lock(cv_mutex);
+      cv.wait(lock, [&trigger_value]() {trigger_value.load() == true;});
+    }
+
+    void wait_until_trigger(const std::chrono::nanoseconds & timeout) {
+      std::unique_lock<std::mutex> lock(cv_mutex);
+      cv.wait_for(lock, timeout, [&trigger_value]() {trigger_value.load() == true;});
+    }
+
+  protected:
+    std::mutex cv_mutex;
+    std::condition_variable cv;
   };
 
   template<typename T>

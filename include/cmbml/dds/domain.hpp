@@ -84,7 +84,7 @@ public:
     return spdp_builtin_reader;
   }
 
-  template<typename Context, typename Executor>
+  template<typename Executor, typename Context>
   Participant & create_new_participant(Context & transport_context) {
     known_participants.emplace_back(
       get_next_guid_prefix(transport_context), {transport_context.default_multicast_locator});
