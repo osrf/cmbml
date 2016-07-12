@@ -14,6 +14,7 @@ namespace dds {
     {
     }
 
+    /*
     Condition(const Condition & c) : trigger_value(c.trigger_value.load())
     {
     }
@@ -26,6 +27,7 @@ namespace dds {
     {
       trigger_value = c.trigger_value.load();
     }
+    */
 
     bool get_trigger_value() const {
       return trigger_value.load();
@@ -49,12 +51,12 @@ namespace dds {
     // Blocking call that waits until the guard condition is triggered
     void wait_until_trigger() {
       std::unique_lock<std::mutex> lock(cv_mutex);
-      cv.wait(lock, [&trigger_value]() {trigger_value.load() == true;});
+      cv.wait(lock, [this]() {return trigger_value.load();});
     }
 
     void wait_until_trigger(const std::chrono::nanoseconds & timeout) {
       std::unique_lock<std::mutex> lock(cv_mutex);
-      cv.wait_for(lock, timeout, [&trigger_value]() {trigger_value.load() == true;});
+      cv.wait_for(lock, timeout, [this]() { return trigger_value.load();});
     }
 
   protected:

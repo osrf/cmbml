@@ -102,23 +102,23 @@ namespace dds {
         // all relevant guard conditions
         rtps_writer.for_each_matched_reader(
           [this, &context](auto & reader) {
-            if (reader.unsent_changes_not_empty.get_and_reset_trigger_value()) {
+            if (reader.unsent_changes_not_empty.exchange(false)) {
               unsent_changes e;
               state_machine.process_event(e);
-            } else if (reader.unsent_changes_empty.get_and_reset_trigger_value()) {
+            } else if (reader.unsent_changes_empty.exchange(false)) {
               unsent_changes_empty e;
               state_machine.process_event(e);
             }
-            if (reader.can_send.get_and_reset_trigger_value()) {
+            if (reader.can_send.exchange(false)) {
               can_send<RTPSWriter, NetworkContext> e{rtps_writer, context};
               state_machine.process_event(e);
             }
-            conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable>::call(
-              [this, &reader]() {
-                if (reader.requested_changes_not_empty.get_and_reset_trigger_value()) {
+            conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable>::
+              call([this, &reader]() {
+                if (reader.requested_changes_not_empty.exchange(false)) {
                   requested_changes e;
                   state_machine.process_event(e);
-                } else if (reader.requested_changes_empty.get_and_reset_trigger_value()) {
+                } else if (reader.requested_changes_empty.exchange(false)) {
                   requested_changes_empty e;
                   state_machine.process_event(e);
                 }
@@ -128,10 +128,10 @@ namespace dds {
             conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable
               && RTPSWriter::stateful>::call(
               [this](auto & reader) {
-                if (reader.unacked_changes_not_empty.get_and_reset_trigger_value()) {
+                if (reader.unacked_changes_not_empty.exchange(false)) {
                   unacked_changes e;
                   state_machine.process_event(e);
-                } else if (reader.unacked_changes_empty.get_and_reset_trigger_value()) {
+                } else if (reader.unacked_changes_empty.exchange(false)) {
                   unacked_changes_empty e;
                   state_machine.process_event(e);
                 }

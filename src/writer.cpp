@@ -12,7 +12,7 @@ CacheChange ReaderCacheAccessor::pop_next_requested_change() {
   assert(num_requested_changes > 0);
   --num_requested_changes;
   if (num_requested_changes == 0) {
-    requested_changes_empty.set_trigger_value();
+    requested_changes_empty.store(true);
   }
   return change;
 }
@@ -27,7 +27,7 @@ CacheChange ReaderCacheAccessor::pop_next_unsent_change() {
   assert(num_unsent_changes > 0);
   --num_unsent_changes;
   if (num_unsent_changes == 0) {
-    unsent_changes_empty.set_trigger_value();
+    unsent_changes_empty.store(true);
   }
   return change;
 }
@@ -36,7 +36,7 @@ CacheChange ReaderCacheAccessor::pop_next_unsent_change() {
 // Should this clear the set of requested changes first?
 void ReaderCacheAccessor::set_requested_changes(const List<SequenceNumber_t> & request_seq_numbers) {
   if (num_requested_changes == 0 && request_seq_numbers.size() > 0) {
-    requested_changes_not_empty.set_trigger_value();
+    requested_changes_not_empty.store(true);
   }
 
   num_requested_changes += request_seq_numbers.size();
@@ -50,7 +50,7 @@ void ReaderCacheAccessor::set_requested_changes(const List<SequenceNumber_t> & r
 void ReaderLocator::reset_unsent_changes() {
   highest_seq_num_sent = writer_cache->get_min_sequence_number();
   num_unsent_changes = 0;
-  unsent_changes_empty.set_trigger_value();
+  unsent_changes_empty.store(true);
 }
 
 bool ReaderLocator::locator_compare(const Locator_t & loc) {
@@ -81,7 +81,7 @@ void ReaderProxy::set_acked_changes(const SequenceNumber_t & seq_num) {
   if (seq_num > highest_acked_seq_num) {
     // Assume we acked sequentially
     num_unacked_changes = 0;
-    unsent_changes_empty.set_trigger_value();
+    unsent_changes_empty.store(true);
   }
   highest_acked_seq_num = seq_num;
 }
@@ -91,19 +91,19 @@ void ReaderProxy::add_change_for_reader(ChangeForReader && change) {
   switch (change.status) {
     case ChangeForReaderStatus::unsent:
       if (num_unsent_changes == 0) {
-        unsent_changes_not_empty.set_trigger_value();
+        unsent_changes_not_empty.store(true);
       }
       ++num_unsent_changes;
       break;
     case ChangeForReaderStatus::unacknowledged:
       if (num_unacked_changes == 0) {
-        unacked_changes_not_empty.set_trigger_value();
+        unacked_changes_not_empty.store(true);
       }
       ++num_unacked_changes;
       break;
     case ChangeForReaderStatus::requested:
       if (num_requested_changes == 0) {
-        requested_changes_not_empty.set_trigger_value();
+        requested_changes_not_empty.store(true);
       }
       ++num_requested_changes;
       break;

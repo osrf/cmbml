@@ -11,11 +11,11 @@ namespace dds {
   auto process_guard_conditions = [](auto & reader, auto & state_machine) {
     reader.for_each_matched_writer(
       [&reader, &state_machine](auto & writer) {
-        if (writer.missing_changes_empty.get_and_reset_trigger_value()) {
+        if (writer.missing_changes_empty.exchange(false)) {
           reader_events::missing_changes_empty e;
           state_machine.process_event(e);
         }
-        if (writer.missing_changes_not_empty.get_and_reset_trigger_value()) {
+        if (writer.missing_changes_not_empty.exchange(false)) {
           reader_events::missing_changes_not_empty e;
           state_machine.process_event(e);
         }

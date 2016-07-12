@@ -11,7 +11,7 @@ namespace cmbml {
 
 namespace stateless_writer {
   auto on_configured_locator = [](auto & e) {
-    e.writer.add_reader_locator(std::move(e.locator));
+    e.writer.emplace_reader_locator(std::move(e.locator));
   };
 
   // Need to get locator from data id?

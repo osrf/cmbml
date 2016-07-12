@@ -54,8 +54,8 @@ namespace cmbml {
     void update_missing_changes_count(
       const ChangeFromWriter & change, ChangeFromWriterStatus future_status);
 
-    dds::GuardCondition missing_changes_empty;
-    dds::GuardCondition missing_changes_not_empty;
+    std::atomic<bool> missing_changes_empty;
+    std::atomic<bool> missing_changes_not_empty;
 
     // who provides the Context?
     template<typename TransportContext = cmbml::udp::Context>

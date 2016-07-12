@@ -50,11 +50,11 @@ namespace cmbml {
     uint32_t num_unsent_changes = 0;
     uint32_t num_requested_changes = 0;
 
-    dds::GuardCondition unsent_changes_empty;
+    std::atomic<bool> unsent_changes_empty;
     // TODO There are no hooks through ReaderLocator that set unsent_changes_not_empty
-    dds::GuardCondition unsent_changes_not_empty;
-    dds::GuardCondition requested_changes_empty;
-    dds::GuardCondition requested_changes_not_empty;
+    std::atomic<bool> unsent_changes_not_empty;
+    std::atomic<bool> requested_changes_empty;
+    std::atomic<bool> requested_changes_not_empty;
   };
 
   // ReaderLocator is MoveAssignable and MoveConstructible
@@ -78,7 +78,7 @@ namespace cmbml {
       return locator;
     };
 
-    dds::GuardCondition can_send;
+    std::atomic<bool> can_send;
   private:
     Locator_t locator;
   };
@@ -108,9 +108,9 @@ namespace cmbml {
     void set_acked_changes(const SequenceNumber_t & seq_num);
 
     bool expects_inline_qos;
-    dds::GuardCondition unacked_changes_not_empty;
-    dds::GuardCondition unacked_changes_empty;
-    dds::GuardCondition can_send;
+    std::atomic<bool> unacked_changes_not_empty;
+    std::atomic<bool> unacked_changes_empty;
+    std::atomic<bool> can_send;
   private:
     SequenceNumber_t highest_acked_seq_num;
     // ReaderCacheAccessor cache_accessor;
@@ -176,6 +176,11 @@ namespace cmbml {
       reader_locators.push_back(locator);
     }
 
+    template<typename ...Args>
+    void emplace_reader_locator(Args && ...args) {
+      reader_locators.emplace_back(args...);
+    }
+
     // TODO Better identifier?
     void remove_reader_locator(ReaderLocator * locator) {
       assert(locator);
@@ -205,7 +210,7 @@ namespace cmbml {
       // writer_cache.add_change(std::move(new_change(k, data, handle)));
       for (auto & reader_locator : reader_locators) {
         if (reader_locator.num_unsent_changes == 0) {
-          reader_locator.unsent_changes_not_empty.set_trigger_value();
+          reader_locator.unsent_changes_not_empty.store(true);
         }
         ++reader_locator.num_unsent_changes;
       }
@@ -216,7 +221,7 @@ namespace cmbml {
       // writer_cache.add_change(std::move(new_change(k, handle)));
       for (auto & reader_locator : reader_locators) {
         if (reader_locator.num_unsent_changes == 0) {
-          reader_locator.unsent_changes_not_empty.set_trigger_value();
+          reader_locator.unsent_changes_not_empty.store(true);
         }
         ++reader_locator.num_unsent_changes;
       }
