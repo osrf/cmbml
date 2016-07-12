@@ -66,6 +66,9 @@ struct LocatorUDPv4_t {
     }
     return array_address;
   }
+  constexpr static IPAddress get_array_from_address(const std::array<Octet, 4> & adr) {
+    return {0, 0, 0, 0, 0, 0, 0, 0, adr[0], adr[1], adr[2], adr[3]};
+  }
 };
 
 // Networking context.
@@ -73,13 +76,16 @@ struct LocatorUDPv4_t {
 // Should this be a singleton? Yarr
 class Context {
 public:
-  // TODO Nope, this can't be constexpr, needs to be determined by the Domain
-  static constexpr LocatorUDPv4_t default_multicast_locator = {
-    default_spdp_multicast_port(cmbml_test_domain_id),
-    LocatorUDPv4_t::address_from_dot_notation({239, 255, 0, 1})
-  };
-  static constexpr LocatorUDPv4_t invalid_locator = {0, 0};
   static const int32_t kind = LOCATOR_KIND_UDPv4;
+
+  constexpr static Locator_t get_default_multicast_locator() {
+    return {
+      LOCATOR_KIND_UDPv4,
+      udp::default_spdp_multicast_port(cmbml_test_domain_id),
+      udp::LocatorUDPv4_t::get_array_from_address({239, 255, 0, 1})
+    };
+  }
+  constexpr static LocatorUDPv4_t invalid_locator = {0, 0};
 
   Context();
 

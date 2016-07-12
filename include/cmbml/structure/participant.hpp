@@ -56,7 +56,7 @@ struct Participant : Entity {
   {
   }
 
-  Participant(GuidPrefix_t & prefix, List<Locator_t> & multicast_list) :
+  Participant(GuidPrefix_t && prefix, List<Locator_t> && multicast_list) :
     default_multicast_locator_list(multicast_list),
     protocol_version(rtps_protocol_version),
     vendor_id(cmbml_vendor_id),

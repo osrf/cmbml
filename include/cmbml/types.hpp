@@ -45,12 +45,13 @@ namespace cmbml {
 
   using Count_t = uint32_t;
 
-  //using Duration_t = std::chrono::nanoseconds;
   struct Duration_t {
-    constexpr Duration_t(uint32_t s, uint32_t ns) : sec(s), nsec(ns) {}
+    BOOST_HANA_DEFINE_STRUCT(Duration_t,
+      (uint32_t, sec),
+      (uint32_t, nsec)
+    );
 
-    uint32_t sec;
-    uint32_t nsec;
+    constexpr Duration_t(uint32_t s, uint32_t ns) : sec(s), nsec(ns) {}
     std::chrono::nanoseconds to_ns() const {
       return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(sec)) +
         std::chrono::nanoseconds(nsec);

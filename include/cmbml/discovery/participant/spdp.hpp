@@ -26,7 +26,7 @@ namespace cmbml {
       // Make a new message every time to keep it fresh
       SpdpDiscoData message = rtps_writer.participant.create_discovery_data();
       // TODO Do I need to set metatraffic_*_locator_list ?
-      write(message, this->instance_handle, context);
+      return write(std::move(message), this->instance_handle, context);
     }
 
   private:

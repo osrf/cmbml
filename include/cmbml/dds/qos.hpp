@@ -6,6 +6,9 @@ namespace dds {
 
   // TODO
   struct UserDataQosPolicy {
+    BOOST_HANA_DEFINE_STRUCT(UserDataQosPolicy,
+      (List<Octet>, value)
+    );
   };
 
   // TODO

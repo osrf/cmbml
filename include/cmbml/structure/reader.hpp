@@ -54,8 +54,8 @@ namespace cmbml {
     void update_missing_changes_count(
       const ChangeFromWriter & change, ChangeFromWriterStatus future_status);
 
-    bool missing_changes_empty;
-    bool missing_changes_not_empty;
+    bool missing_changes_empty = true;
+    bool missing_changes_not_empty = false;
 
     // who provides the Context?
     template<typename TransportContext = cmbml::udp::Context>

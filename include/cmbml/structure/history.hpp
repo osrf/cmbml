@@ -18,8 +18,8 @@ namespace cmbml {
     CacheChange(const CacheChange &) = default;
     CacheChange(CacheChange &&) = default;
     CacheChange(
-      ChangeKind_t k, Data && data, InstanceHandle_t && handle, const GUID_t & writer_guid);
-    CacheChange(ChangeKind_t k, InstanceHandle_t && handle, const GUID_t & writer_guid);
+      ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle, const GUID_t & writer_guid);
+    CacheChange(ChangeKind_t k, InstanceHandle_t & handle, const GUID_t & writer_guid);
     CacheChange(Data && data);
 
     ChangeKind_t kind;

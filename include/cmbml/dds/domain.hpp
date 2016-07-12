@@ -9,7 +9,7 @@ namespace cmbml {
 
 struct DiscoveredParticipant {
   Participant p;
-
+  // TODO
 };
 
 class Domain {
@@ -86,16 +86,16 @@ public:
 
   template<typename Executor, typename Context>
   Participant & create_new_participant(Context & transport_context) {
+    List<Locator_t> multicast_locator_list = {transport_context.get_default_multicast_locator()};
     known_participants.emplace_back(
-      get_next_guid_prefix(transport_context), {transport_context.default_multicast_locator});
+      get_next_guid_prefix(transport_context), std::move(multicast_locator_list));
     // Add builtin endpoints to container
     auto spdp_writer = Domain::create_spdp_writer<Executor>(
       known_participants.back(), transport_context);
-    auto spdp_reader = Domain::create_spdp_reader<Executor>(
-      known_participants.back(), transport_context);
+    auto spdp_reader = Domain::create_spdp_reader<Executor>(known_participants.back());
 
     // add builtin sedp endpoints
-
+    return known_participants.back();
   }
 
   // When a remote participant is discovered

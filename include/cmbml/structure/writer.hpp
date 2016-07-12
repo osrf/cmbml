@@ -51,11 +51,11 @@ namespace cmbml {
     uint32_t num_unsent_changes = 0;
     uint32_t num_requested_changes = 0;
 
-    bool unsent_changes_empty;
+    bool unsent_changes_empty = true;
     // TODO There are no hooks through ReaderLocator that set unsent_changes_not_empty
-    bool unsent_changes_not_empty;
-    bool requested_changes_empty;
-    bool requested_changes_not_empty;
+    bool unsent_changes_not_empty = false;
+    bool requested_changes_empty = true;
+    bool requested_changes_not_empty = false;
   };
 
   // ReaderLocator is MoveAssignable and MoveConstructible
@@ -110,9 +110,9 @@ namespace cmbml {
 
     bool expects_inline_qos;
 
-    bool unacked_changes_not_empty;
-    bool unacked_changes_empty;
-    bool can_send;
+    bool unacked_changes_not_empty = false;
+    bool unacked_changes_empty = true;
+    bool can_send = false;
   private:
     SequenceNumber_t highest_acked_seq_num;
     // ReaderCacheAccessor cache_accessor;
@@ -131,23 +131,23 @@ namespace cmbml {
       Entity::guid.entity_id = p.assign_next_entity_id<Writer>();
     }
 
-    CacheChange new_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
-      auto ret = CacheChange(k, data, handle, this->guid);
+    CacheChange new_change(ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle) {
+      auto ret = CacheChange(k, std::move(data), handle, this->guid);
       ret.sequence_number = writer_cache.get_max_sequence_number() + 1;
       return ret;
     }
 
-    CacheChange new_change(ChangeKind_t k, InstanceHandle_t && handle) {
+    CacheChange new_change(ChangeKind_t k, InstanceHandle_t & handle) {
       auto ret = CacheChange(k, handle, this->guid);
       ret.sequence_number = writer_cache.get_max_sequence_number() + 1;
       return ret;
     }
 
-    void add_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
-      writer_cache.add_change(std::move(new_change(k, data, handle)));
+    void add_change(ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle) {
+      writer_cache.add_change(std::move(new_change(k, std::move(data), handle)));
     }
 
-    void add_change(ChangeKind_t k, InstanceHandle_t && handle) {
+    void add_change(ChangeKind_t k, InstanceHandle_t & handle) {
       writer_cache.add_change(std::move(new_change(k, handle)));
     }
 
@@ -205,8 +205,8 @@ namespace cmbml {
       }
     }
 
-    void add_change(ChangeKind_t k, Data && data, InstanceHandle_t && handle) {
-      ParentWriter::add_change(k, data, handle);
+    void add_change(ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle) {
+      ParentWriter::add_change(k, std::move(data), handle);
       // writer_cache.add_change(std::move(new_change(k, data, handle)));
       for (auto & reader_locator : reader_locators) {
         if (reader_locator.num_unsent_changes == 0) {
@@ -216,7 +216,7 @@ namespace cmbml {
       }
     }
 
-    void add_change(ChangeKind_t k, InstanceHandle_t && handle) {
+    void add_change(ChangeKind_t k, InstanceHandle_t & handle) {
       ParentWriter::add_change(k, handle);
       // writer_cache.add_change(std::move(new_change(k, handle)));
       for (auto & reader_locator : reader_locators) {

@@ -15,7 +15,7 @@ namespace dds {
 
 
   // Combines serialize/deserialize, state machine, etc.
-  template<typename TopicT, typename RTPSWriter>
+  template<typename TopicT, typename OptionMap>
   class DataWriter {
   public:
     // Consider taking a Context for this thread in the constructor.
@@ -35,7 +35,11 @@ namespace dds {
         // TODO
       }
 
-      rtps_writer.add_change(ChangeKind_t::alive, data, handle);
+      SerializedData packet;
+      packet.reserve(get_packet_size(data));
+      serialize(data, packet);
+      // Need to wrap data in a message type
+      rtps_writer.add_change(ChangeKind_t::alive, std::move(packet), handle);
 
       // Consider doing this in a different thread as indicated by sequence chart in spec?
       // Need context here, hmmm
@@ -84,6 +88,7 @@ namespace dds {
     }
 
   protected:
+
     // TODO Refine MessageReceiver logic
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {

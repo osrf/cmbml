@@ -1,6 +1,7 @@
 #ifndef CMBML__CMBML__HPP_
 #define CMBML__CMBML__HPP_
 
+#include <cmbml/dds/domain.hpp>
 #include <cmbml/dds/writer.hpp>
 #include <cmbml/dds/reader.hpp>
 

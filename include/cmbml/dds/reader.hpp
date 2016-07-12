@@ -1,7 +1,7 @@
 #ifndef CMBML__DDS__READER_HPP_
 #define CMBML__DDS__READER_HPP_
 
-#include <cmbml/behavior/reader_state_machine_events.hpp>
+#include <cmbml/behavior/reader_state_machine.hpp>
 #include <cmbml/dds/sample_info.hpp>
 #include <cmbml/utility/metafunctions.hpp>
 

@@ -33,4 +33,6 @@ if(ENABLE_TESTING)
   basic_cmbml_test(cmbml_test test/cmbml.cpp)
 
   basic_cmbml_test(serialization_test test/serialization.cpp)
+
+  basic_cmbml_test(nominal_usage test/nominal_usage.cpp)
 endif()

@@ -1,7 +1,5 @@
 #include <cmbml/cmbml.hpp>
 
-#include <cmbml/dds/domain.hpp>
-
 using namespace cmbml;
 
 int main(int argc, char ** argv) {
@@ -33,8 +31,8 @@ int main(int argc, char ** argv) {
   StatelessReader<false,
     EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>
       best_effort_stateless_reader(p);
-StatefulReader<true, EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>
-      best_effort_stateful_reader(p);
+  StatefulReader<true, EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>
+    best_effort_stateful_reader(p);
 
   StatefulReader<true,
     EndpointParams<ReliabilityKind_t::reliable, TopicKind_t::with_key>>
