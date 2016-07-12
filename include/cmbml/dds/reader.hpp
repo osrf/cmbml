@@ -27,8 +27,9 @@ namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
   // DataReader and DataWriter take an Executor, which abstracts the threading model.
-  template<typename TopicT, typename RTPSReader>
+  template<typename TopicT, typename OptionsMap, OptionsMap & options_map>
   class DataReader {
+    using ReaderT = RTPSReader<OptionsMap, options_map>;
   public:
     DataReader(Participant & p) : rtps_reader(p) {
 
@@ -86,7 +87,7 @@ namespace dds {
         // TODO need to reference declaration in state machine?
         boost::msm::lite::state<class must_ack> must_ack_s;
         if (state_machine.is(must_ack_s)) {
-          reader_events::heartbeat_response_delay<RTPSReader, Context>
+          reader_events::heartbeat_response_delay<ReaderT, Context>
             e{rtps_reader, thread_context};
           state_machine.process_event(e);
         }
@@ -110,7 +111,7 @@ namespace dds {
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
 
-        conditionally_execute<RTPSReader::reliability_level == ReliabilityKind_t::reliable>::call(
+        conditionally_execute<ReaderT::reliability_level == ReliabilityKind_t::reliable>::call(
             process_guard_conditions, rtps_reader, state_machine);
       }
     }
@@ -171,9 +172,9 @@ namespace dds {
       // TODO double-check that heartbeat comes from the matched destination...
       // In the implementation we should just emit a warning, e.g. in case someone is 
       // sending bogus packets
-      return hana::eval_if(RTPSReader::reliability_level == ReliabilityKind_t::reliable,
+      return hana::eval_if(ReaderT::reliability_level == ReliabilityKind_t::reliable,
         [this, &heartbeat]() {
-          cmbml::reader_events::heartbeat_received<RTPSReader> e{rtps_reader, heartbeat};
+          cmbml::reader_events::heartbeat_received<ReaderT> e{rtps_reader, heartbeat};
           state_machine.process_event(e);
           return StatusCode::ok;
         },
@@ -184,9 +185,9 @@ namespace dds {
     }
 
     StatusCode on_gap(Gap && gap) {
-      return hana::eval_if(RTPSReader::reliability_level == ReliabilityKind_t::reliable,
+      return hana::eval_if(ReaderT::reliability_level == ReliabilityKind_t::reliable,
         [this, &gap]() {
-          cmbml::reader_events::gap_received<RTPSReader> e{rtps_reader, gap};
+          cmbml::reader_events::gap_received<ReaderT> e{rtps_reader, gap};
           state_machine.process_event(e);
           return StatusCode::ok;
         },
@@ -208,7 +209,7 @@ namespace dds {
     }
 
     StatusCode on_data(Data && data, MessageReceiver & receiver) {
-      cmbml::reader_events::data_received<RTPSReader> e{rtps_reader, std::move(data), receiver};
+      cmbml::reader_events::data_received<ReaderT> e{rtps_reader, std::move(data), receiver};
       state_machine.process_event(e);
       return StatusCode::ok;
     }
@@ -219,8 +220,8 @@ namespace dds {
       return true;
     }
 
-    RTPSReader rtps_reader;
-    boost::msm::lite::sm<typename RTPSReader::StateMachineT> state_machine;
+    ReaderT rtps_reader;
+    boost::msm::lite::sm<typename ReaderT::StateMachineT> state_machine;
   };
 
 }  // namespace dds

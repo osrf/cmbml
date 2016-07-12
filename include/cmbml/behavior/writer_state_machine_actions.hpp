@@ -11,7 +11,8 @@ namespace cmbml {
 
 namespace stateless_writer {
   auto on_configured_locator = [](auto & e) {
-    e.writer.emplace_reader_locator(std::forward<Locator_t>(e.locator), e.inline_qos, &e.writer.writer_cache);
+    e.writer.emplace_matched_reader(
+      std::forward<Locator_t>(e.locator), e.inline_qos, &e.writer.writer_cache);
   };
 
   // Need to get locator from data id?
@@ -52,7 +53,7 @@ namespace stateless_writer {
   auto on_released_locator = [](auto & e) {
     // we are moving the ReaderLocator out of the writer.
     // will we need a better way to refer to it? an iterator perhaps?
-    e.writer.remove_reader_locator(e.locator);
+    e.writer.remove_matched_reader(e.locator);
   };
 
   auto on_heartbeat = [](auto & e) {
@@ -68,7 +69,7 @@ namespace stateless_writer {
 
   auto on_acknack = [](auto & e) {
     auto locator_lambda = [&e](Locator_t & locator) {
-      ReaderLocator & reader_locator = e.writer.lookup_reader_locator(locator);
+      ReaderLocator & reader_locator = e.writer.lookup_matched_reader(locator);
       reader_locator.set_requested_changes(e.acknack.reader_sn_state.set);
     };
     for (auto & reply_locator : e.receiver.unicast_reply_locator_list) {

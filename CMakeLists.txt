@@ -30,7 +30,7 @@ function(basic_cmbml_test test_name src)
 endfunction()
 
 if(ENABLE_TESTING)
-  basic_cmbml_test(cmbml_test test/cmbml.cpp)
+  # basic_cmbml_test(cmbml_test test/cmbml.cpp)
 
   basic_cmbml_test(serialization_test test/serialization.cpp)
 

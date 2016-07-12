@@ -88,6 +88,22 @@ namespace cmbml {
     }
   };
 
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct SelectStatefulReaderSM {
+    using type = typename std::conditional_t<
+        options_map[hana::type_c<EndpointOptions::reliability>] == ReliabilityKind_t::reliable,
+        ReliableStatefulReaderMsm<RTPSReader<OptionsMap, options_map>,
+          typename decltype(+options_map[hana::type_c<EndpointOptions::transport>])::type>,
+        BestEffortStatefulReaderMsm<RTPSReader<OptionsMap, options_map>>>;
+  };
+
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct SelectReaderStateMachineType {
+    using type = typename std::conditional_t<options_map[hana::type_c<EndpointOptions::stateful>],
+        typename SelectStatefulReaderSM<OptionsMap, options_map>::type,
+        BestEffortStatelessReaderMsm<RTPSReader<OptionsMap, options_map>>>;
+  };
+
 }
 
 #endif  // CMBML__READER_STATE_MACHINE__HPP_

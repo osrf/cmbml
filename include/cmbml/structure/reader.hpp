@@ -15,14 +15,10 @@
 // TODO Comb over actions again making sure that the Endpoint's unicast_locator_list is being used
 
 namespace cmbml {
-  // Forward declarations of state machine types
-  // TODO organize headers
-  template<typename T>
-  struct BestEffortStatelessReaderMsm;
-  template<typename T>
-  struct BestEffortStatefulReaderMsm;
-  template<typename T, typename Transport = cmbml::udp::Context>
-  struct ReliableStatefulReaderMsm;
+
+  // Metafunction declaration, implemented in reader_state_machine.hpp
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct SelectReaderStateMachineType;
 
   struct WriterProxy {
     WriterProxy(
@@ -84,39 +80,22 @@ namespace cmbml {
     uint32_t num_missing_changes = 0;
   };
 
-  template<bool Stateful, bool expectsInlineQos, typename EndpointParams>
-  struct Reader : Endpoint<EndpointParams> {
-    explicit Reader(Participant & p) : Endpoint<EndpointParams>(p) {
-      Entity::guid.entity_id = p.assign_next_entity_id<Reader>();
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct RTPSReader : Endpoint<OptionsMap, options_map> {
+    static const bool stateful = options_map[hana::type_c<EndpointOptions::stateful>];
+
+    explicit RTPSReader(Participant & p) : Endpoint<OptionsMap, options_map>(p) {
+      Entity::guid.entity_id = p.assign_next_entity_id<RTPSReader>();
     }
 
-    HistoryCache reader_cache;
-    static const bool stateful = Stateful;
-    static const bool expects_inline_qos = expectsInlineQos;
-
-    // gets overridden by Stateful impl
-    using StateMachineT = BestEffortStatelessReaderMsm<Reader>;
-    Duration_t heartbeat_response_delay = {0, 500*1000*1000};
-    Duration_t heartbeat_suppression_duration = {0, 0};
-
-    // Provide code for a user-defined entity by default.
-    // Built-in entities will have to override this.
-    static const EntityKind entity_kind = ternary<
-      EndpointParams::topic_kind == TopicKind_t::with_key, EntityKind,
-      EntityKind::user_reader_with_key, EntityKind::user_reader_no_key>::value;
-  };
-
-  template<bool expectsInlineQos, typename EndpointParams>
-  struct StatefulReader : Reader<true, expectsInlineQos, EndpointParams> {
-    explicit StatefulReader(Participant & p) : Reader<true, expectsInlineQos, EndpointParams>(p) {
-    }
-
+    // template<typename ...Args, typename std::enable_if_t<stateful> * = nullptr>
     template<typename ...Args>
     void emplace_matched_writer(Args && ...args) {
       matched_writers.emplace_back(std::forward<Args>(args)...);
     }
 
     // TODO Error code if failed
+    //std::enable_if_t<stateful> remove_matched_writer(const GUID_t & guid) {
     void remove_matched_writer(const GUID_t & guid) {
       for (auto it = matched_writers.begin(); it != matched_writers.end(); ++it) {
         if (it->get_guid() == guid) {
@@ -126,6 +105,7 @@ namespace cmbml {
       }
     }
 
+    // template<typename FunctionT, typename std::enable_if_t<stateful> * = nullptr>
     template<typename FunctionT>
     void for_each_matched_writer(FunctionT && function) {
       std::for_each(
@@ -133,6 +113,7 @@ namespace cmbml {
       );
     }
 
+    // std::enable_if_t<stateful, WriterProxy *>
     WriterProxy * matched_writer_lookup(const GUID_t & writer_guid) {
       for (auto & writer : matched_writers) {
         if (writer.get_guid() == writer_guid) {
@@ -142,17 +123,26 @@ namespace cmbml {
       return nullptr;
     }
 
-    HistoryCache reader_cache;
 
-    using StateMachineT = typename std::conditional<
-      StatefulReader::reliability_level == ReliabilityKind_t::best_effort,
-      BestEffortStatefulReaderMsm<StatefulReader>, ReliableStatefulReaderMsm<StatefulReader>>::type;
-  private:
+    HistoryCache reader_cache;
+    static const bool expects_inline_qos = options_map[
+      hana::type_c<EndpointOptions::expects_inline_qos>];
+
+    // gets overridden by Stateful impl
+    Duration_t heartbeat_response_delay = {0, 500*1000*1000};
+    Duration_t heartbeat_suppression_duration = {0, 0};
+
+    // Provide code for a user-defined entity by default.
+    // Built-in entities will have to override this.
+    static const EntityKind entity_kind = ternary<
+      options_map[hana::type_c<EndpointOptions::topic_kind>] == TopicKind_t::with_key,
+      EntityKind, EntityKind::user_reader_with_key, EntityKind::user_reader_no_key>::value;
+
+    using StateMachineT = typename SelectReaderStateMachineType<OptionsMap, options_map>::type;
+
+    // these should be disabled for stateless reader
     List<WriterProxy> matched_writers;
   };
-
-  template<bool expectsInlineQos, typename... Params>
-  using StatelessReader = Reader<true, expectsInlineQos, Params...>;
 
 }
 

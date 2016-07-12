@@ -13,14 +13,15 @@
 namespace cmbml {
 namespace dds {
 
-
   // Combines serialize/deserialize, state machine, etc.
-  template<typename TopicT, typename OptionMap>
+  // template<typename TopicT, typename RTPSWriter>
+  template<typename TopicT, typename OptionMap, OptionMap & options_map>
   class DataWriter {
+    using WriterT = RTPSWriter<OptionMap, options_map>;
   public:
+
     // Consider taking a Context for this thread in the constructor.
     DataWriter(Participant & p) : rtps_writer(p) {
-      // TODO: Dependency-inject PSM via Participant
     }
 
     InstanceHandle_t register_instance(TopicT & data) {
@@ -43,7 +44,7 @@ namespace dds {
 
       // Consider doing this in a different thread as indicated by sequence chart in spec?
       // Need context here, hmmm
-      can_send<RTPSWriter, Context> e{rtps_writer, context};
+      can_send<WriterT, Context> e{rtps_writer, context};
       state_machine.process_event(e);
       return StatusCode::ok;
     }
@@ -73,12 +74,12 @@ namespace dds {
       executor.add_timed_task(
         rtps_writer.nack_response_delay.to_ns(), false, nack_response_delay_event);
 
-      hana::eval_if(RTPSWriter::reliability_level == ReliabilityKind_t::reliable,
+      hana::eval_if(WriterT::reliability_level == ReliabilityKind_t::reliable,
         [this, &executor, &thread_context]() {
           executor.add_timed_task(
             rtps_writer.heartbeat_period.to_ns(), false,
             [this, &thread_context]() {
-              cmbml::after_heartbeat<RTPSWriter, Context> e{rtps_writer, thread_context};
+              cmbml::after_heartbeat<WriterT, Context> e{rtps_writer, thread_context};
               state_machine.process_event(e);
             }
           );
@@ -117,11 +118,11 @@ namespace dds {
               reader.unsent_changes_empty = false;
             }
             if (reader.can_send) {
-              can_send<RTPSWriter, NetworkContext> e{rtps_writer, context};
+              can_send<WriterT, NetworkContext> e{rtps_writer, context};
               state_machine.process_event(e);
               reader.can_send = false;
             }
-            conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable>::
+            conditionally_execute<WriterT::reliability_level == ReliabilityKind_t::reliable>::
               call([this, &reader]() {
                 if (reader.requested_changes_not_empty) {
                   requested_changes e;
@@ -135,8 +136,8 @@ namespace dds {
               }
             );
 
-            conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable
-              && RTPSWriter::stateful>::call(
+            conditionally_execute<WriterT::reliability_level == ReliabilityKind_t::reliable
+              && WriterT::stateful>::call(
               [this](auto & reader) {
                 if (reader.unacked_changes_not_empty) {
                   unacked_changes e;
@@ -211,7 +212,7 @@ namespace dds {
 
 
     StatusCode on_acknack(AckNack && acknack, MessageReceiver & receiver) {
-      cmbml::acknack_received<RTPSWriter> e{rtps_writer, std::move(acknack), receiver};
+      cmbml::acknack_received<WriterT> e{rtps_writer, std::move(acknack), receiver};
       state_machine.process_event(std::move(e));
       return StatusCode::ok;
     }
@@ -260,23 +261,23 @@ namespace dds {
     }
 
     void on_dispose() {
-      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
+      if (WriterT::topic_kind == TopicKind_t::no_key) {
         return;
       }
       rtps_writer.add_change(ChangeKind_t::not_alive_disposed, instance_handle);
     }
 
     void on_unregister() {
-      if (RTPSWriter::topic_kind == TopicKind_t::no_key) {
+      if (WriterT::topic_kind == TopicKind_t::no_key) {
         return;
       }
       rtps_writer.add_change(ChangeKind_t::not_alive_unregistered, instance_handle);
     }
 
 
-    RTPSWriter rtps_writer;
+    WriterT rtps_writer;
     InstanceHandle_t instance_handle;
-    boost::msm::lite::sm<typename RTPSWriter::StateMachineT> state_machine;
+    boost::msm::lite::sm<typename WriterT::StateMachineT> state_machine;
   };
 
 }  // namespace dds

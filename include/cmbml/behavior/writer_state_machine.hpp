@@ -146,6 +146,30 @@ namespace cmbml {
     }
   };
 
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct SelectStatefulWriterSM {
+    using type = typename std::conditional_t<
+      options_map[hana::type_c<EndpointOptions::reliability>] == ReliabilityKind_t::reliable,
+      ReliableStatefulWriterMsm<RTPSWriter<OptionsMap, options_map>>,
+      BestEffortStatefulWriterMsm<RTPSWriter<OptionsMap, options_map>>>;
+  };
+
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct SelectStatelessWriterSM {
+    using type = typename std::conditional_t<
+      options_map[hana::type_c<EndpointOptions::reliability>] == ReliabilityKind_t::reliable,
+      ReliableStatelessWriterMsm<RTPSWriter<OptionsMap, options_map>>,
+      BestEffortStatelessWriterMsm<RTPSWriter<OptionsMap, options_map>>>;
+  };
+
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct SelectWriterStateMachineType {
+    using type = typename std::conditional_t<options_map[hana::type_c<EndpointOptions::stateful>],
+      SelectStatefulWriterSM<OptionsMap, options_map>,
+      SelectStatelessWriterSM<OptionsMap, options_map>
+    >::type;
+  };
+
 }
 
 #endif  // CMBML__WRITER_STATE_MACHINE__HPP_

@@ -3,17 +3,23 @@
 
 #include <cmbml/dds/writer.hpp>
 #include <cmbml/dds/reader.hpp>
-
 #include <cmbml/discovery/participant/spdp_disco_data.hpp>
+#include <cmbml/utility/option_map.hpp>
 
 namespace cmbml {
+  constexpr auto spdp_writer_options = make_option_map(
+    hana::make_pair(hana::type_c<EndpointOptions::stateful>, false),
+    hana::make_pair(hana::type_c<EndpointOptions::push_mode>, true),
+    hana::make_pair(hana::type_c<EndpointOptions::reliability>, ReliabilityKind_t::best_effort),
+    hana::make_pair(hana::type_c<EndpointOptions::topic_kind>, TopicKind_t::with_key)
+  );
+
   class SpdpParticipantDataWriter :
-    public dds::DataWriter<SpdpDiscoData, StatelessWriter<true,
-          EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>>
+    public dds::DataWriter<SpdpDiscoData, decltype(spdp_writer_options), spdp_writer_options>
   {
   public:
-    using ParentType = dds::DataWriter<SpdpDiscoData, StatelessWriter<true,
-          EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>>;
+    using ParentType = dds::DataWriter<
+      SpdpDiscoData, decltype(spdp_writer_options), spdp_writer_options>;
 
     SpdpParticipantDataWriter(Participant & p) : ParentType(p) {
       message = p.create_discovery_data();
@@ -33,14 +39,20 @@ namespace cmbml {
     SpdpDiscoData message;
   };
 
+  constexpr auto spdp_reader_options = make_option_map(
+    hana::make_pair(hana::type_c<EndpointOptions::stateful>, false),
+    hana::make_pair(hana::type_c<EndpointOptions::expects_inline_qos>, true),
+    hana::make_pair(hana::type_c<EndpointOptions::reliability>, ReliabilityKind_t::best_effort),
+    hana::make_pair(hana::type_c<EndpointOptions::topic_kind>, TopicKind_t::with_key),
+    hana::make_pair(hana::type_c<EndpointOptions::transport>, hana::type_c<udp::Context>)
+  );
 
   class SpdpParticipantDataReader :
-    public dds::DataReader<SpdpDiscoData, StatelessReader<true,
-          EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>>
+    public dds::DataReader<SpdpDiscoData, decltype(spdp_reader_options), spdp_reader_options>
   {
   public:
-    using ParentType = dds::DataReader<SpdpDiscoData, StatelessReader<true,
-          EndpointParams<ReliabilityKind_t::best_effort, TopicKind_t::with_key>>>;
+    using ParentType = dds::DataReader<SpdpDiscoData,
+          decltype(spdp_reader_options), spdp_reader_options>;
 
     SpdpParticipantDataReader(Participant & p) : ParentType(p) {
       rtps_reader.guid.entity_id = spdp_reader_id;

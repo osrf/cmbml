@@ -8,7 +8,6 @@
 #include <cmbml/structure/writer.hpp>
 #include <cmbml/structure/reader.hpp>
 
-// TODO
 #include <cmbml/behavior/writer_state_machine.hpp>
 #include <cmbml/behavior/reader_state_machine.hpp>
 

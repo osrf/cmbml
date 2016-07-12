@@ -53,7 +53,11 @@ void ReaderLocator::reset_unsent_changes() {
   unsent_changes_empty = true;
 }
 
-bool ReaderLocator::locator_compare(const Locator_t & loc) {
+bool ReaderLocator::operator==(const ReaderLocator & loc) {
+  return key_matches(loc.get_locator());
+}
+
+bool ReaderLocator::key_matches(const Locator_t & loc) {
   for (size_t i = 0; i < 16; ++i) {
     if (loc.address[i] != locator.address[i]) {
       return false;
@@ -84,6 +88,14 @@ void ReaderProxy::set_acked_changes(const SequenceNumber_t & seq_num) {
     unsent_changes_empty = true;
   }
   highest_acked_seq_num = seq_num;
+}
+
+bool ReaderProxy::operator==(const ReaderProxy & proxy) {
+  return remote_reader_guid == proxy.remote_reader_guid;
+}
+
+bool ReaderProxy::key_matches(const GUID_t & guid) {
+  return remote_reader_guid == guid;
 }
 
 void ReaderProxy::add_change_for_reader(ChangeForReader && change) {

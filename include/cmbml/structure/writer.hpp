@@ -18,16 +18,10 @@
 // TODO Comb over actions again making sure that the Endpoint's unicast_locator_list is being used
 
 namespace cmbml {
-  // Forward declarations of state machine types.
 
-  template<typename T>
-  struct BestEffortStatelessWriterMsm;
-  template<typename T>
-  struct ReliableStatelessWriterMsm;
-  template<typename T>
-  struct BestEffortStatefulWriterMsm;
-  template<typename T>
-  struct ReliableStatefulWriterMsm;
+  // Metafunction declaration, implemented in writer_state_machine.hpp
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct SelectWriterStateMachineType;
 
   struct ReaderCacheAccessor {
     ReaderCacheAccessor(HistoryCache * cache) : writer_cache(cache) {
@@ -69,8 +63,9 @@ namespace cmbml {
       ReaderCacheAccessor(cache),
       expects_inline_qos(inline_qos) {}
 
+    bool operator==(const ReaderLocator & loc);
+    bool key_matches(const Locator_t & loc);
 
-    bool locator_compare(const Locator_t & loc);
     void reset_unsent_changes();
 
     // TODO see below note in ReaderProxy about compile-time behavior here
@@ -107,28 +102,65 @@ namespace cmbml {
     void add_change_for_reader(ChangeForReader && change);
 
     void set_acked_changes(const SequenceNumber_t & seq_num);
+    bool operator==(const ReaderProxy & proxy);
+    bool key_matches(const GUID_t & guid);
 
-    bool expects_inline_qos;
+    const bool expects_inline_qos;
 
     bool unacked_changes_not_empty = false;
     bool unacked_changes_empty = true;
     bool can_send = false;
   private:
     SequenceNumber_t highest_acked_seq_num;
-    // ReaderCacheAccessor cache_accessor;
     HistoryCache * writer_cache;
 
-    // static const bool is_active = isActive;
-    bool is_active;
+    bool is_active = false;  // hmm
 
     uint32_t num_unacked_changes = 0;
   };
 
-  template<bool pushMode, typename EndpointParams>
-  struct Writer : Endpoint<EndpointParams> {
 
-    explicit Writer(Participant & p) : Endpoint<EndpointParams>(p) {
-      Entity::guid.entity_id = p.assign_next_entity_id<Writer>();
+  template<typename OptionsMap, OptionsMap & options_map>
+  struct RTPSWriter : Endpoint<OptionsMap, options_map> {
+    static const bool push_mode = options_map[hana::type_c<EndpointOptions::push_mode>];
+    static const bool stateful = options_map[hana::type_c<EndpointOptions::stateful>];
+    using MatchedReader = std::conditional_t<stateful, ReaderProxy, ReaderLocator>;
+    using ReaderKey = std::conditional_t<stateful, GUID_t, Locator_t>;
+
+    explicit RTPSWriter(Participant & p) : Endpoint<OptionsMap, options_map>(p) {
+      Entity::guid.entity_id = p.assign_next_entity_id<RTPSWriter>();
+    }
+
+    template<typename ...Args>
+    void emplace_matched_reader(Args && ...args) {
+      matched_readers.emplace_back(std::forward<Args>(args)...);
+    }
+
+    void remove_matched_reader(MatchedReader * reader_proxy) {
+      assert(reader_proxy);
+      for (auto it = matched_readers.begin(); it != matched_readers.end(); ++it) {
+        if (*it == *reader_proxy) {
+          matched_readers.erase(it);
+          return;
+        }
+      }
+    }
+
+    // Precondition: reader is in matched_readers
+    MatchedReader & lookup_matched_reader(ReaderKey & key) {
+      for (auto & reader : matched_readers) {
+        if (reader.key_matches(key)) {
+          return reader;
+        }
+      }
+      assert(false);
+    }
+
+    template<typename FunctionT>
+    void for_each_matched_reader(FunctionT && function) {
+      for (auto & reader : matched_readers) {
+        function(reader);
+      }
     }
 
     CacheChange new_change(ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle) {
@@ -145,178 +177,87 @@ namespace cmbml {
 
     void add_change(ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle) {
       writer_cache.add_change(std::move(new_change(k, std::move(data), handle)));
+      conditionally_execute<!stateful>::call(
+        [](auto & reader_locators) {
+          for (auto & reader_locator : reader_locators) {
+            if (reader_locator.num_unsent_changes == 0) {
+              reader_locator.unsent_changes_not_empty = true;
+            }
+            ++reader_locator.num_unsent_changes;
+          }
+        }, matched_readers);
     }
 
     void add_change(ChangeKind_t k, InstanceHandle_t & handle) {
       writer_cache.add_change(std::move(new_change(k, handle)));
+      conditionally_execute<!stateful>::call(
+        [](auto & reader_locators) {
+          for (auto & reader_locator : reader_locators) {
+            if (reader_locator.num_unsent_changes == 0) {
+              reader_locator.unsent_changes_not_empty = true;
+            }
+            ++reader_locator.num_unsent_changes;
+          }
+        }, matched_readers);
+    }
+
+    // Stateless-specific
+    std::enable_if_t<!stateful> reset_unsent_changes() {
+      for (auto & reader : matched_readers) {
+        reader.reset_unsent_changes();
+      }
+    }
+
+    template<typename T, typename TransportContext = udp::Context,
+      typename std::enable_if_t<!stateful> * = nullptr>
+    void send_to_all_locators(T && msg, TransportContext & context) {
+      Packet<> packet = Endpoint<OptionsMap, options_map>::participant.serialize_with_header(msg);
+      // TODO Implement glomming-on of packets during send and wrapping in Message.
+      // TODO Check if the locator is unicast or multicast before sending
+      //
+    }
+
+    template<typename T, typename TransportContext = udp::Context>
+    void send_to_all_locators(T && msg, TransportContext & context) {
+      Packet<> packet = Endpoint<OptionsMap, options_map>::participant.serialize_with_header(msg);
+
+      conditionally_execute<stateful>::call(
+        [&context, &packet](auto & readers) {
+          for (auto & reader : readers) {
+            for (const auto & locator : reader.unicast_locator_list) {
+              context.unicast_send(locator, packet.data(), packet.size());
+            }
+            for (const auto & locator : reader.multicast_locator_list) {
+              context.multicast_send(locator, packet.data(), packet.size());
+            }
+          }
+        }, matched_readers);
+      conditionally_execute<!stateful>::call(
+        [&context, &packet](auto & readers) {
+          for (auto & reader_locator : readers) {
+            context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+          }
+        }, matched_readers);
     }
 
     HistoryCache writer_cache;
     Duration_t nack_response_delay = {0, 500*1000*1000};
     Duration_t heartbeat_period = {3, 0};
     Duration_t nack_suppression_duration = {0, 0};
-    static const bool push_mode = pushMode;
+
+    // only applies to stateful
+    Duration_t resend_data_period = {3, 0};
 
     static const EntityKind entity_kind = ternary<
-      EndpointParams::topic_kind == TopicKind_t::with_key, EntityKind,
+      options_map[hana::type_c<EndpointOptions::topic_kind>] == TopicKind_t::with_key, EntityKind,
       EntityKind::user_writer_with_key, EntityKind::user_writer_no_key>::value;
 
+    using StateMachineT = typename SelectWriterStateMachineType<OptionsMap, options_map>::type;
+
     Count_t heartbeat_count = 0;
-  protected:
+  private:
+    List<MatchedReader> matched_readers;
     SequenceNumber_t last_change_seq_num;
-  };
-
-  // Forward declare state machine struct
-  template<bool pushMode, typename EndpointParams>
-  struct StatelessWriter : Writer<pushMode, EndpointParams> {
-    using ParentWriter = Writer<pushMode, EndpointParams>;
-    explicit StatelessWriter(Participant & p) : Writer<pushMode, EndpointParams>(p) {
-      // TODO Instantiate reader locators based on participant defaults?
-    }
-
-    template<typename ...Args>
-    void emplace_reader_locator(Args && ...args) {
-      reader_locators.emplace_back(std::forward<Args>(args)...);
-    }
-
-    // TODO Better identifier?
-    void remove_reader_locator(ReaderLocator * locator) {
-      assert(locator);
-      for (auto it = reader_locators.begin(); it != reader_locators.end(); ++it) {
-        if (it->locator_compare(locator->get_locator())) {
-          reader_locators.erase(it);
-          return;
-        }
-      }
-    }
-
-    ReaderLocator & lookup_reader_locator(Locator_t & locator) {
-      for (auto & reader_locator : reader_locators) {
-        if (reader_locator.locator_compare(locator)) {
-          return reader_locator;
-        }
-      }
-      assert(false);
-    }
-
-    void reset_unsent_changes() {
-      for (auto & reader : reader_locators) {
-        reader.reset_unsent_changes();
-      }
-    }
-
-    void add_change(ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle) {
-      ParentWriter::add_change(k, std::move(data), handle);
-      // writer_cache.add_change(std::move(new_change(k, data, handle)));
-      for (auto & reader_locator : reader_locators) {
-        if (reader_locator.num_unsent_changes == 0) {
-          reader_locator.unsent_changes_not_empty = true;
-        }
-        ++reader_locator.num_unsent_changes;
-      }
-    }
-
-    void add_change(ChangeKind_t k, InstanceHandle_t & handle) {
-      ParentWriter::add_change(k, handle);
-      // writer_cache.add_change(std::move(new_change(k, handle)));
-      for (auto & reader_locator : reader_locators) {
-        if (reader_locator.num_unsent_changes == 0) {
-          reader_locator.unsent_changes_not_empty = true;
-        }
-        ++reader_locator.num_unsent_changes;
-      }
-    }
-
-    template<typename FunctionT>
-    void for_each_matched_reader(FunctionT && function) {
-      for (auto & locator : reader_locators) {
-        function(locator);
-      }
-    }
-
-    template<typename T, typename TransportContext = udp::Context>
-    void send_to_all_locators(T && msg, TransportContext & context) {
-      Packet<> packet = Endpoint<EndpointParams>::participant.serialize_with_header(msg);
-      // TODO Implement glomming-on of packets during send and wrapping in Message.
-      // TODO Check if the locator is unicast or multicast before sending
-      for (auto & reader_locator : reader_locators) {
-        context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
-      }
-    }
-
-    static const bool stateful = false;
-    using StateMachineT = typename std::conditional<
-      StatelessWriter::reliability_level == ReliabilityKind_t::best_effort,
-      BestEffortStatelessWriterMsm<StatelessWriter>, ReliableStatelessWriterMsm<StatelessWriter>>::type;
-  private:
-    List<ReaderLocator> reader_locators;
-  };
-
-  template<bool pushMode, typename EndpointParams>
-  struct StatefulWriter : Writer<pushMode, EndpointParams> {
-    explicit StatefulWriter(Participant & p) : Writer<pushMode, EndpointParams>(p) {
-      // TODO Instantiate readerproxies based on participant defaults?
-    }
-
-    template<typename ...Args>
-    void emplace_matched_reader(Args && ...args) {
-      matched_readers.emplace_back(std::forward<Args>(args)...);
-    }
-
-    // TODO Error if failed
-    void remove_matched_reader(ReaderProxy * reader_proxy) {
-      assert(reader_proxy);
-      for (auto it = matched_readers.begin(); it != matched_readers.end(); ++it) {
-        if (it->remote_reader_guid == reader_proxy->remote_reader_guid) {
-          matched_readers.erase(it);
-          return;
-        }
-      }
-    }
-
-    ReaderProxy & lookup_matched_reader(const GUID_t & reader_guid) {
-      for (auto & reader : matched_readers) {
-        if (reader.remote_reader_guid == reader_guid) {
-          return reader;
-        }
-      }
-      assert(false);
-    }
-
-    // TODO
-    bool is_acked_by_all(CacheChange & change);
-
-    template<typename T, typename TransportContext = udp::Context>
-    void send_to_all_locators(T && msg, TransportContext & context) {
-      Packet<> packet = Endpoint<EndpointParams>::participant.serialize_with_header(msg);
-
-      for (auto & reader : matched_readers) {
-        for (const auto & locator : reader.unicast_locator_list) {
-          context.unicast_send(locator, packet.data(), packet.size());
-        }
-        for (const auto & locator : reader.multicast_locator_list) {
-          context.multicast_send(locator, packet.data(), packet.size());
-        }
-      }
-    }
-
-    template<typename CallbackT>
-    void for_each_matched_reader(CallbackT && callback) {
-      for (auto & reader : matched_readers) {
-        callback(reader);
-      }
-    }
-
-
-    // TODO is this default reasonable? (not in the spec)
-    Duration_t resend_data_period = {3, 0};
-    static const bool stateful = true;
-    using StateMachineT = typename std::conditional<
-      StatefulWriter::reliability_level == ReliabilityKind_t::best_effort,
-      BestEffortStatefulWriterMsm<StatefulWriter>, ReliableStatefulWriterMsm<StatefulWriter>>::type;
-
-  private:
-    List<ReaderProxy> matched_readers;
   };
 
   // ACTUALLY we could template the Writer on the Reader Type
