@@ -11,7 +11,8 @@ namespace cmbml {
   template<typename StatelessWriterT>
   struct configured_locator {
     StatelessWriterT & writer;
-    ReaderLocator && locator;
+    Locator_t && locator;
+    bool inline_qos;
   };
   struct unsent_changes {};
   struct unsent_changes_empty {};

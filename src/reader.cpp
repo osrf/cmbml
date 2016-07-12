@@ -34,14 +34,14 @@ void WriterProxy::update_missing_changes_count(
     assert(num_missing_changes > 0);
     --num_missing_changes;
     if (num_missing_changes == 0) {
-      missing_changes_empty.store(true);
+      missing_changes_empty = true;
     }
   } else if (change.status != ChangeFromWriterStatus::missing &&
       future_status == ChangeFromWriterStatus::missing)
   {
     ++num_missing_changes;
     if (num_missing_changes == 1) {
-      missing_changes_not_empty.store(true);
+      missing_changes_not_empty = true;
     }
   }
 }

@@ -26,7 +26,7 @@ template<>
 struct conditionally_execute<true> {
   template<typename CallbackT, typename ...Args>
   static void call(CallbackT && callback, Args && ...args) {
-    callback(args...);
+    callback(std::forward<Args>(args)...);
   }
 };
 

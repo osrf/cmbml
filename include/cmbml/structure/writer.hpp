@@ -1,10 +1,11 @@
 #ifndef CMBML__WRITER__HPP_
 #define CMBML__WRITER__HPP_
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
-#include <algorithm>
 #include <deque>
+#include <utility>
 
 #include <cmbml/structure/endpoint.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
@@ -50,11 +51,11 @@ namespace cmbml {
     uint32_t num_unsent_changes = 0;
     uint32_t num_requested_changes = 0;
 
-    std::atomic<bool> unsent_changes_empty;
+    bool unsent_changes_empty;
     // TODO There are no hooks through ReaderLocator that set unsent_changes_not_empty
-    std::atomic<bool> unsent_changes_not_empty;
-    std::atomic<bool> requested_changes_empty;
-    std::atomic<bool> requested_changes_not_empty;
+    bool unsent_changes_not_empty;
+    bool requested_changes_empty;
+    bool requested_changes_not_empty;
   };
 
   // ReaderLocator is MoveAssignable and MoveConstructible
@@ -78,7 +79,7 @@ namespace cmbml {
       return locator;
     };
 
-    std::atomic<bool> can_send;
+    bool can_send;
   private:
     Locator_t locator;
   };
@@ -108,9 +109,10 @@ namespace cmbml {
     void set_acked_changes(const SequenceNumber_t & seq_num);
 
     bool expects_inline_qos;
-    std::atomic<bool> unacked_changes_not_empty;
-    std::atomic<bool> unacked_changes_empty;
-    std::atomic<bool> can_send;
+
+    bool unacked_changes_not_empty;
+    bool unacked_changes_empty;
+    bool can_send;
   private:
     SequenceNumber_t highest_acked_seq_num;
     // ReaderCacheAccessor cache_accessor;
@@ -172,22 +174,20 @@ namespace cmbml {
       // TODO Instantiate reader locators based on participant defaults?
     }
 
-    void add_reader_locator(ReaderLocator && locator) {
-      reader_locators.push_back(locator);
-    }
-
     template<typename ...Args>
     void emplace_reader_locator(Args && ...args) {
-      reader_locators.emplace_back(args...);
+      reader_locators.emplace_back(std::forward<Args>(args)...);
     }
 
     // TODO Better identifier?
     void remove_reader_locator(ReaderLocator * locator) {
       assert(locator);
-      std::remove_if(reader_locators.begin(), reader_locators.end(),
-        [locator](auto x) {
-          return &x == locator;
-        });
+      for (auto it = reader_locators.begin(); it != reader_locators.end(); ++it) {
+        if (it->locator_compare(locator->get_locator())) {
+          reader_locators.erase(it);
+          return;
+        }
+      }
     }
 
     ReaderLocator & lookup_reader_locator(Locator_t & locator) {
@@ -210,7 +210,7 @@ namespace cmbml {
       // writer_cache.add_change(std::move(new_change(k, data, handle)));
       for (auto & reader_locator : reader_locators) {
         if (reader_locator.num_unsent_changes == 0) {
-          reader_locator.unsent_changes_not_empty.store(true);
+          reader_locator.unsent_changes_not_empty = true;
         }
         ++reader_locator.num_unsent_changes;
       }
@@ -221,7 +221,7 @@ namespace cmbml {
       // writer_cache.add_change(std::move(new_change(k, handle)));
       for (auto & reader_locator : reader_locators) {
         if (reader_locator.num_unsent_changes == 0) {
-          reader_locator.unsent_changes_not_empty.store(true);
+          reader_locator.unsent_changes_not_empty = true;
         }
         ++reader_locator.num_unsent_changes;
       }
@@ -258,17 +258,20 @@ namespace cmbml {
       // TODO Instantiate readerproxies based on participant defaults?
     }
 
-    void add_matched_reader(ReaderProxy && reader_proxy) {
-      matched_readers.push_back(reader_proxy);
+    template<typename ...Args>
+    void emplace_matched_reader(Args && ...args) {
+      matched_readers.emplace_back(std::forward<Args>(args)...);
     }
 
+    // TODO Error if failed
     void remove_matched_reader(ReaderProxy * reader_proxy) {
       assert(reader_proxy);
-      std::remove_if(matched_readers.begin(), matched_readers.end(),
-        [reader_proxy](auto & reader) {
-          return reader.remote_reader_guid == reader_proxy->remote_reader_guid;
+      for (auto it = matched_readers.begin(); it != matched_readers.end(); ++it) {
+        if (it->remote_reader_guid == reader_proxy->remote_reader_guid) {
+          matched_readers.erase(it);
+          return;
         }
-      );
+      }
     }
 
     ReaderProxy & lookup_matched_reader(const GUID_t & reader_guid) {
@@ -287,7 +290,7 @@ namespace cmbml {
     void send_to_all_locators(T && msg, TransportContext & context) {
       Packet<> packet = Endpoint<EndpointParams>::participant.serialize_with_header(msg);
 
-      for (auto reader : matched_readers) {
+      for (auto & reader : matched_readers) {
         for (const auto & locator : reader.unicast_locator_list) {
           context.unicast_send(locator, packet.data(), packet.size());
         }

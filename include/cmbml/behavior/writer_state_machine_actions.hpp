@@ -11,7 +11,7 @@ namespace cmbml {
 
 namespace stateless_writer {
   auto on_configured_locator = [](auto & e) {
-    e.writer.emplace_reader_locator(std::move(e.locator));
+    e.writer.emplace_reader_locator(std::forward<Locator_t>(e.locator), e.inline_qos, &e.writer.writer_cache);
   };
 
   // Need to get locator from data id?
@@ -84,11 +84,10 @@ namespace stateless_writer {
 namespace stateful_writer {
 
   auto on_configured_reader = [](auto & e) {
-    ReaderProxy reader(
-        e.reader_guid, e.expects_inline_qos, std::move(e.unicast_locator_list),
-        std::move(e.multicast_locator_list),
-        &e.writer.writer_cache);
-    e.writer.add_matched_reader(std::move(reader));
+    e.writer.emplace_matched_reader(
+      e.reader_guid, e.expects_inline_qos, std::move(e.unicast_locator_list),
+      std::move(e.multicast_locator_list),
+      &e.writer.writer_cache);
   };
 
   auto on_released_reader = [](auto & e) {

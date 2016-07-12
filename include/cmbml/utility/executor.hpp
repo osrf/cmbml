@@ -60,14 +60,17 @@ namespace cmbml {
     void add_task(bool oneshot, CallbackT && callback, Args &&... args) {
       // Wrap it in a bound lambda that takes no arguments
       task_list.emplace_back(
-        std::function<void()>([callback, &args...]() { callback(args...); }),
+        std::function<void()>(
+          [callback, &args...]() {
+            callback(std::forward<Args>(args)...);
+          }),
         oneshot
       );
     }
 
     template<typename CallbackT, typename ...Args>
     void add_task(CallbackT && callback, Args &&... args) {
-      add_task(false, callback, args...);
+      add_task(false, callback, std::forward<Args>(args)...);
     }
 
     template<typename CallbackT, typename ...Args>

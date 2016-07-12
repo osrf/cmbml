@@ -102,25 +102,30 @@ namespace dds {
         // all relevant guard conditions
         rtps_writer.for_each_matched_reader(
           [this, &context](auto & reader) {
-            if (reader.unsent_changes_not_empty.exchange(false)) {
+            if (reader.unsent_changes_not_empty) {
               unsent_changes e;
               state_machine.process_event(e);
-            } else if (reader.unsent_changes_empty.exchange(false)) {
+              reader.unsent_changes_not_empty = false;
+            } else if (reader.unsent_changes_empty) {
               unsent_changes_empty e;
               state_machine.process_event(e);
+              reader.unsent_changes_empty = false;
             }
-            if (reader.can_send.exchange(false)) {
+            if (reader.can_send) {
               can_send<RTPSWriter, NetworkContext> e{rtps_writer, context};
               state_machine.process_event(e);
+              reader.can_send = false;
             }
             conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable>::
               call([this, &reader]() {
-                if (reader.requested_changes_not_empty.exchange(false)) {
+                if (reader.requested_changes_not_empty) {
                   requested_changes e;
                   state_machine.process_event(e);
-                } else if (reader.requested_changes_empty.exchange(false)) {
+                  reader.can_send = false;
+                } else if (reader.requested_changes_empty) {
                   requested_changes_empty e;
                   state_machine.process_event(e);
+                  reader.requested_changes_empty = false;
                 }
               }
             );
@@ -128,12 +133,14 @@ namespace dds {
             conditionally_execute<RTPSWriter::reliability_level == ReliabilityKind_t::reliable
               && RTPSWriter::stateful>::call(
               [this](auto & reader) {
-                if (reader.unacked_changes_not_empty.exchange(false)) {
+                if (reader.unacked_changes_not_empty) {
                   unacked_changes e;
                   state_machine.process_event(e);
-                } else if (reader.unacked_changes_empty.exchange(false)) {
+                  reader.unacked_changes_not_empty = false;
+                } else if (reader.unacked_changes_empty) {
                   unacked_changes_empty e;
                   state_machine.process_event(e);
+                  reader.unacked_changes_empty = false;
                 }
               }, reader);
           }

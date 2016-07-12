@@ -54,8 +54,8 @@ namespace cmbml {
     void update_missing_changes_count(
       const ChangeFromWriter & change, ChangeFromWriterStatus future_status);
 
-    std::atomic<bool> missing_changes_empty;
-    std::atomic<bool> missing_changes_not_empty;
+    bool missing_changes_empty;
+    bool missing_changes_not_empty;
 
     // who provides the Context?
     template<typename TransportContext = cmbml::udp::Context>
@@ -112,16 +112,18 @@ namespace cmbml {
     }
 
     template<typename ...Args>
-    void emplace_matched_writer(Args... args) {
-      matched_writers.emplace_back(args...);
+    void emplace_matched_writer(Args && ...args) {
+      matched_writers.emplace_back(std::forward<Args>(args)...);
     }
 
+    // TODO Error code if failed
     void remove_matched_writer(const GUID_t & guid) {
-      std::remove_if(
-        matched_writers.begin(), matched_writers.end(),
-        [&guid](auto & writer) {
-          return writer.get_guid() == guid;
-        });
+      for (auto it = matched_writers.begin(); it != matched_writers.end(); ++it) {
+        if (it->get_guid() == guid) {
+          matched_writers.erase(it);
+          return;
+        }
+      }
     }
 
     template<typename FunctionT>

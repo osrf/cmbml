@@ -11,13 +11,15 @@ namespace dds {
   auto process_guard_conditions = [](auto & reader, auto & state_machine) {
     reader.for_each_matched_writer(
       [&reader, &state_machine](auto & writer) {
-        if (writer.missing_changes_empty.exchange(false)) {
+        if (writer.missing_changes_empty) {
           reader_events::missing_changes_empty e;
           state_machine.process_event(e);
+          writer.missing_changes_empty = false;
         }
-        if (writer.missing_changes_not_empty.exchange(false)) {
+        if (writer.missing_changes_not_empty) {
           reader_events::missing_changes_not_empty e;
           state_machine.process_event(e);
+          writer.missing_changes_not_empty = false;
         }
       }
     );
