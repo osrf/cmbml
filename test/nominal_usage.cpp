@@ -1,7 +1,6 @@
 #include <cmbml/cmbml.hpp>
 
 using namespace cmbml;
-
 using namespace cmbml::dds;
 
 namespace hana = boost::hana;
@@ -14,29 +13,28 @@ struct Int32 {
   );
 };
 
+
 int main(int argc, char ** argv) {
+
   Domain & domain = Domain::get_instance();
   udp::Context context;
+  SyncExecutor & executor = SyncExecutor::get_instance();
   Participant & participant = domain.create_new_participant<SyncExecutor>(context);
   // TODO Block until discovery is over?
 
-  // compile-time strings... don't want to incur a runtime overhead on these keys...
-  // may prefer an enum
-  /*
-  auto writer_options = make_option_map(
-    hana::pair{EndpointOptions::topic_type, hana::type_c<Int32>},
-    hana::pair{EndpointOptions::stateful, false},
-    hana::pair{EndpointOptions::reliability, ReliabilityKind_t::best_effort},
-    hana::pair{EndpointOptions::topic_kind, TopicKind_t::with_key}
-    hana::pair{EndpointOptions::push_mode, true}
+  constexpr auto writer_options = make_option_map(
+    hana::make_pair(hana::type_c<EndpointOptions::stateful>, false),
+    hana::make_pair(hana::type_c<EndpointOptions::reliability>, ReliabilityKind_t::best_effort),
+    hana::make_pair(hana::type_c<EndpointOptions::topic_kind>, TopicKind_t::with_key),
+    hana::make_pair(hana::type_c<EndpointOptions::push_mode>, true)
   );
-  */
 
   // TODO Finish these interfaces and functions
+  auto writer = Domain::create_data_writer<Int32>(
+      participant, writer_options, context, executor);
   /*
-  auto & writer = participant.create_data_writer<Int32>(writer_options);
 
-  auto & reader = participant.create_data_reader<Int32>(reader_options);
+  auto reader = participant.create_data_reader<Int32>(reader_options);
 
   writer.write();
 

@@ -2,6 +2,7 @@
 #define CMBML__DDS__READER_HPP_
 
 #include <cmbml/behavior/reader_state_machine.hpp>
+#include <cmbml/dds/endpoint.hpp>
 #include <cmbml/dds/sample_info.hpp>
 #include <cmbml/utility/metafunctions.hpp>
 
@@ -28,10 +29,10 @@ namespace dds {
   // Combines serialize/deserialize, state machine, etc.
   // DataReader and DataWriter take an Executor, which abstracts the threading model.
   template<typename TopicT, typename OptionsMap, OptionsMap & options_map>
-  class DataReader {
+  class DataReader : public EndpointBase {
     using ReaderT = RTPSReader<OptionsMap, options_map>;
   public:
-    DataReader(Participant & p) : rtps_reader(p) {
+    DataReader(Participant & p) : rtps_reader(p), EndpointBase(rtps_reader.guid) {
 
     }
 
@@ -96,6 +97,7 @@ namespace dds {
         rtps_reader.heartbeat_response_delay.to_ns(), false, heartbeat_response_delay_event);
     }
   protected:
+    // DataReader(const DataReader &) = delete;
 
     // TODO duplicated in writer
     template<typename SrcT, typename NetworkContext = udp::Context>

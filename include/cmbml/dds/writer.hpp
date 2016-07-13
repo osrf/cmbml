@@ -4,6 +4,7 @@
 #include <cmbml/behavior/writer_state_machine.hpp>
 #include <cmbml/cdr/serialize_anything.hpp>
 #include <cmbml/cdr/deserialize_anything.hpp>
+#include <cmbml/dds/endpoint.hpp>
 #include <cmbml/structure/writer.hpp>
 
 #include <cmbml/psm/udp/context.hpp>
@@ -16,12 +17,12 @@ namespace dds {
   // Combines serialize/deserialize, state machine, etc.
   // template<typename TopicT, typename RTPSWriter>
   template<typename TopicT, typename OptionMap, OptionMap & options_map>
-  class DataWriter {
+  class DataWriter : public EndpointBase {
     using WriterT = RTPSWriter<OptionMap, options_map>;
   public:
 
     // Consider taking a Context for this thread in the constructor.
-    DataWriter(Participant & p) : rtps_writer(p) {
+    DataWriter(Participant & p) : rtps_writer(p), EndpointBase(rtps_writer.guid) {
     }
 
     InstanceHandle_t register_instance(TopicT & data) {
@@ -89,7 +90,6 @@ namespace dds {
     }
 
   protected:
-
     // TODO Refine MessageReceiver logic
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {

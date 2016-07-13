@@ -46,10 +46,12 @@ public:
     return guid_prefix;
   }
 
-  // Maybe these functions should bein spdp.hpp
+  // Maybe these functions should be in spdp.hpp
   template<typename Executor, typename Context>
-  static auto create_spdp_writer(Participant & p, Context & context) {
-    SpdpParticipantDataWriter spdp_builtin_writer(p);
+  SpdpParticipantDataWriter &
+  create_spdp_writer(Participant & p, Context & context) {
+    known_spdp_writers.emplace_back(p);
+    SpdpParticipantDataWriter & spdp_builtin_writer = known_spdp_writers.back();
     Executor & executor = Executor::get_instance();
     // Callback configuration:
     // The SpdpParticipantDataWriter needs to periodically send the
@@ -61,12 +63,13 @@ public:
     );
 
     return spdp_builtin_writer;
-    // Push onto endpoints list
   }
 
   template<typename Executor>
-  static auto create_spdp_reader(Participant & p) {
-    SpdpParticipantDataReader spdp_builtin_reader(p);
+  SpdpParticipantDataReader &
+  create_spdp_reader(Participant & p) {
+    known_spdp_readers.emplace_back(p);
+    SpdpParticipantDataReader & spdp_builtin_reader = known_spdp_readers.back();
     Executor & executor = Executor::get_instance();
     // Time for guard conditions and read conditions
     /*
@@ -90,9 +93,9 @@ public:
     known_participants.emplace_back(
       get_next_guid_prefix(transport_context), std::move(multicast_locator_list));
     // Add builtin endpoints to container
-    auto spdp_writer = Domain::create_spdp_writer<Executor>(
+    create_spdp_writer<Executor>(
       known_participants.back(), transport_context);
-    auto spdp_reader = Domain::create_spdp_reader<Executor>(known_participants.back());
+    create_spdp_reader<Executor>(known_participants.back());
 
     // add builtin sedp endpoints
     return known_participants.back();
@@ -106,8 +109,20 @@ public:
       }
     }
     known_participants.emplace_back(data);
-
   }
+
+  // Make sure this returns a reference
+  template<typename TopicT, typename OptionsMap,
+    typename Context, typename Executor>
+  static auto create_data_writer(
+      Participant & p, OptionsMap & options_map, Context & context, Executor & executor)
+  {
+    dds::DataWriter<TopicT, OptionsMap, options_map> data_writer(p);
+    data_writer.add_tasks(context, executor);
+    // Caller retains ownership of the created endpoint.
+    return std::move(data_writer);
+  }
+
 
 private:
   Domain() {};
@@ -115,6 +130,9 @@ private:
   Domain(Domain &&) = delete;
 
   List<Participant> known_participants;
+  List<SpdpParticipantDataWriter> known_spdp_writers;
+  List<SpdpParticipantDataReader> known_spdp_readers;
+  List<dds::EndpointBase *> known_endpoints;
 
   // Come up with casting scheme based on the EntityKind
   // template parameters though...
