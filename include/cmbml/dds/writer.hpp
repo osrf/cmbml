@@ -54,10 +54,11 @@ namespace dds {
       // Currently this is an overestimation.
       // TODO thread safety!
       // TODO Initialize receiver locators
-      auto receiver_thread = [this, &thread_context]() {
+      auto receiver_thread = [this, &thread_context](const auto & timeout) {
         // This is a blocking call
-        thread_context.receive_packet(
-          [&](const auto & packet) { deserialize_message(packet, thread_context); }
+        return thread_context.receive_packet(
+          [&](const auto & packet) { deserialize_message(packet, thread_context); },
+          timeout
         );
       };
       executor.add_task(receiver_thread);

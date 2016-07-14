@@ -111,20 +111,6 @@ public:
     known_participants.emplace_back(data);
   }
 
-  template<typename TopicT, typename OptionsMap>
-  static auto create_data_writer(Participant & p)
-  {
-    // Caller retains ownership of the created endpoint.
-    return dds::DataWriter<TopicT, OptionsMap>(p);
-  }
-
-  template<typename TopicT, typename OptionsMap>
-  static auto create_data_reader(Participant & p)
-  {
-    // Caller retains ownership of the created endpoint.
-    return dds::DataReader<TopicT, OptionsMap>(p);
-  }
-
 
 private:
   Domain() {};

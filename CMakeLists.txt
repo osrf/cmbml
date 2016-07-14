@@ -12,6 +12,8 @@ include_directories(external/hana/include/)
 
 add_library(cmbml
   STATIC
+  src/common.cpp
+  src/dds/condition.cpp
   src/history.cpp
   src/reader.cpp
   src/writer.cpp

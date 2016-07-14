@@ -34,7 +34,7 @@ int main(int argc, char ** argv) {
   CMBML__MAKE_WRITER_OPTIONS(WriterOptions, writer_options_map);
 
   // TODO Finish these interfaces and functions
-  auto writer = Domain::create_data_writer<Int32, WriterOptions>(participant);
+  DataWriter<Int32, WriterOptions> writer(participant);
   writer.add_tasks(context, executor);
 
   constexpr auto reader_options_map = make_option_map(
@@ -47,22 +47,35 @@ int main(int argc, char ** argv) {
 
   CMBML__MAKE_READER_OPTIONS(ReaderOptions, reader_options_map);
 
-  auto reader = Domain::create_data_reader<Int32, ReaderOptions>(participant);
+  DataReader<Int32, ReaderOptions> reader(participant);
 
-  if (writer.write(Int32{42}, context) != StatusCode::ok) {
-    CMBML__PRINT("Write returned error code\n");
+  {
+    auto error_code = writer.write(Int32{42}, context);
+    if (error_code != StatusCode::ok) {
+      const char * error_string = error_code_string(error_code);
+      CMBML__PRINT("Write returned error code: %s\n", error_string);
+      return -1;
+    }
+  }
+
+  Waitset<SyncExecutor> waitset;
+  ReadCondition<decltype(reader)> & read_condition = reader.create_read_condition();
+  waitset.attach_condition(read_condition);
+  waitset.wait();
+  if (!read_condition.get_trigger_value()) {
+    CMBML__PRINT("Wait woke up, but the read condition was not triggered.\n");
     return -1;
   }
 
-  /*
-  Waitset waitset;
-  waitset.attach_condition(reader.read_condition);
-  */
-
   Int32 response;
-  if (reader.take(response) != StatusCode::ok) {
-    CMBML__PRINT("Take returned error code: \n");
-    return -1;
+
+  {
+    auto error_code = reader.take(response);
+    if (error_code != StatusCode::ok) {
+      const char * error_string = error_code_string(error_code);
+      CMBML__PRINT("Take returned error code: %s\n", error_string);
+      return -1;
+    }
   }
 
   assert(response.data == 42);

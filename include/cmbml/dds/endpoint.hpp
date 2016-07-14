@@ -8,10 +8,9 @@ namespace dds {
   class EndpointBase {
   public:
     explicit EndpointBase(GUID_t & g) : guid(g) {}
-    EndpointBase(EndpointBase &&) = default;
     GUID_t & guid;
   protected:
-    EndpointBase(const EndpointBase &) = delete;
+    // EndpointBase(const EndpointBase &) = delete;
   };
 
 }  // namespace dds

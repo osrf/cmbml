@@ -2,8 +2,9 @@
 #define CMBML__CMBML__HPP_
 
 #include <cmbml/dds/domain.hpp>
-#include <cmbml/dds/writer.hpp>
 #include <cmbml/dds/reader.hpp>
+#include <cmbml/dds/waitset.hpp>
+#include <cmbml/dds/writer.hpp>
 
 #include <cmbml/structure/writer.hpp>
 #include <cmbml/structure/reader.hpp>

@@ -1,6 +1,8 @@
 #ifndef CMBML__DDS__READER_HPP_
 #define CMBML__DDS__READER_HPP_
 
+#include <memory>
+
 #include <cmbml/behavior/reader_state_machine.hpp>
 #include <cmbml/dds/endpoint.hpp>
 #include <cmbml/dds/sample_info.hpp>
@@ -95,10 +97,11 @@ namespace dds {
     template<typename Context, typename Executor>
     void add_tasks(Context & thread_context, Executor & executor) {
       // TODO Initialize receiver locators
-      auto receiver_thread = [this, &thread_context]() {
+      auto receiver_thread = [this, &thread_context](const auto & timeout) {
         // This is a blocking call
-        thread_context.receive_packet(
-            [&](const auto & packet) { deserialize_message(packet, thread_context); }
+        return thread_context.receive_packet(
+          [&](const auto & packet) { deserialize_message(packet, thread_context); },
+          timeout
         );
       };
       executor.add_task(receiver_thread);
@@ -115,9 +118,13 @@ namespace dds {
       executor.add_timed_task(
         rtps_reader.heartbeat_response_delay.to_ns(), false, heartbeat_response_delay_event);
     }
-  protected:
-    // DataReader(const DataReader &) = delete;
 
+    ReadCondition<DataReader> & create_read_condition() {
+      read_condition = std::make_unique<ReadCondition<DataReader>>(*this);
+      return *read_condition;
+    }
+
+  protected:
     // TODO duplicated in writer
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {
@@ -230,8 +237,10 @@ namespace dds {
     }
 
     StatusCode on_data(Data && data, MessageReceiver & receiver) {
-      cmbml::reader_events::data_received<ReaderT> e{rtps_reader, std::move(data), receiver};
+      cmbml::reader_events::data_received<ReaderT> e{
+        rtps_reader, std::move(data), receiver};
       state_machine.process_event(e);
+      // read_condition.set_trigger_value();
       return StatusCode::ok;
     }
 
@@ -243,6 +252,10 @@ namespace dds {
 
     ReaderT rtps_reader;
     boost::msm::lite::sm<typename ReaderT::StateMachineT> state_machine;
+
+    // TODO: Allocator
+    // TODO Actually, we could have multiple read conditions
+    std::unique_ptr<ReadCondition<DataReader>> read_condition = nullptr;
   };
 
 }  // namespace dds
