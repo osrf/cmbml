@@ -61,7 +61,7 @@ int main(int argc, char ** argv) {
 
   Int32 response;
   if (reader.take(response) != StatusCode::ok) {
-    CMBML__PRINT("Take returned error code\n");
+    CMBML__PRINT("Take returned error code: \n");
     return -1;
   }
 
