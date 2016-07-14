@@ -111,16 +111,18 @@ public:
     known_participants.emplace_back(data);
   }
 
-  // Make sure this returns a reference
-  template<typename TopicT, typename OptionsMap,
-    typename Context, typename Executor>
-  static auto create_data_writer(
-      Participant & p, OptionsMap & options_map, Context & context, Executor & executor)
+  template<typename TopicT, typename OptionsMap>
+  static auto create_data_writer(Participant & p)
   {
-    dds::DataWriter<TopicT, OptionsMap, options_map> data_writer(p);
-    data_writer.add_tasks(context, executor);
     // Caller retains ownership of the created endpoint.
-    return std::move(data_writer);
+    return dds::DataWriter<TopicT, OptionsMap>(p);
+  }
+
+  template<typename TopicT, typename OptionsMap>
+  static auto create_data_reader(Participant & p)
+  {
+    // Caller retains ownership of the created endpoint.
+    return dds::DataReader<TopicT, OptionsMap>(p);
   }
 
 

@@ -146,27 +146,27 @@ namespace cmbml {
     }
   };
 
-  template<typename OptionsMap, OptionsMap & options_map>
+  template<typename WriterOptions>
   struct SelectStatefulWriterSM {
     using type = typename std::conditional_t<
-      options_map[hana::type_c<EndpointOptions::reliability>] == ReliabilityKind_t::reliable,
-      ReliableStatefulWriterMsm<RTPSWriter<OptionsMap, options_map>>,
-      BestEffortStatefulWriterMsm<RTPSWriter<OptionsMap, options_map>>>;
+      WriterOptions::reliability == ReliabilityKind_t::reliable,
+      ReliableStatefulWriterMsm<RTPSWriter<WriterOptions>>,
+      BestEffortStatefulWriterMsm<RTPSWriter<WriterOptions>>>;
   };
 
-  template<typename OptionsMap, OptionsMap & options_map>
+  template<typename WriterOptions>
   struct SelectStatelessWriterSM {
     using type = typename std::conditional_t<
-      options_map[hana::type_c<EndpointOptions::reliability>] == ReliabilityKind_t::reliable,
-      ReliableStatelessWriterMsm<RTPSWriter<OptionsMap, options_map>>,
-      BestEffortStatelessWriterMsm<RTPSWriter<OptionsMap, options_map>>>;
+      WriterOptions::reliability == ReliabilityKind_t::reliable,
+      ReliableStatelessWriterMsm<RTPSWriter<WriterOptions>>,
+      BestEffortStatelessWriterMsm<RTPSWriter<WriterOptions>>>;
   };
 
-  template<typename OptionsMap, OptionsMap & options_map>
+  template<typename WriterOptions>
   struct SelectWriterStateMachineType {
-    using type = typename std::conditional_t<options_map[hana::type_c<EndpointOptions::stateful>],
-      SelectStatefulWriterSM<OptionsMap, options_map>,
-      SelectStatelessWriterSM<OptionsMap, options_map>
+    using type = typename std::conditional_t<WriterOptions::stateful,
+      SelectStatefulWriterSM<WriterOptions>,
+      SelectStatelessWriterSM<WriterOptions>
     >::type;
   };
 

@@ -17,7 +17,7 @@
 namespace cmbml {
 
   // Metafunction declaration, implemented in reader_state_machine.hpp
-  template<typename OptionsMap, OptionsMap & options_map>
+  template<typename ReaderOptions>
   struct SelectReaderStateMachineType;
 
   struct WriterProxy {
@@ -80,11 +80,11 @@ namespace cmbml {
     uint32_t num_missing_changes = 0;
   };
 
-  template<typename OptionsMap, OptionsMap & options_map>
-  struct RTPSReader : Endpoint<OptionsMap, options_map> {
-    static const bool stateful = options_map[hana::type_c<EndpointOptions::stateful>];
+  template<typename ReaderOptions>
+  struct RTPSReader : Endpoint<ReaderOptions> {
+    static const bool stateful = ReaderOptions::stateful;
 
-    explicit RTPSReader(Participant & p) : Endpoint<OptionsMap, options_map>(p) {
+    explicit RTPSReader(Participant & p) : Endpoint<ReaderOptions>(p) {
       Entity::guid.entity_id = p.assign_next_entity_id<RTPSReader>();
     }
 
@@ -125,8 +125,7 @@ namespace cmbml {
 
 
     HistoryCache reader_cache;
-    static const bool expects_inline_qos = options_map[
-      hana::type_c<EndpointOptions::expects_inline_qos>];
+    static const bool expects_inline_qos = ReaderOptions::expects_inline_qos;
 
     // gets overridden by Stateful impl
     Duration_t heartbeat_response_delay = {0, 500*1000*1000};
@@ -134,11 +133,11 @@ namespace cmbml {
 
     // Provide code for a user-defined entity by default.
     // Built-in entities will have to override this.
-    static const EntityKind entity_kind = ternary<
-      options_map[hana::type_c<EndpointOptions::topic_kind>] == TopicKind_t::with_key,
+    static const EntityKind entity_kind =
+      ternary<ReaderOptions::topic_kind == TopicKind_t::with_key,
       EntityKind, EntityKind::user_reader_with_key, EntityKind::user_reader_no_key>::value;
 
-    using StateMachineT = typename SelectReaderStateMachineType<OptionsMap, options_map>::type;
+    using StateMachineT = typename SelectReaderStateMachineType<ReaderOptions>::type;
 
     // these should be disabled for stateless reader
     List<WriterProxy> matched_writers;

@@ -11,7 +11,7 @@ namespace cmbml {
     alive, not_alive_disposed, not_alive_unregistered
   };
   using InstanceHandle_t = std::array<Octet, 16>;
-  static const InstanceHandle_t handle_nil = {0};
+  const InstanceHandle_t handle_nil = {0};
 
   struct Data;
   struct CacheChange {
@@ -20,6 +20,10 @@ namespace cmbml {
     CacheChange(
       ChangeKind_t k, SerializedData && data, InstanceHandle_t & handle, const GUID_t & writer_guid);
     CacheChange(ChangeKind_t k, InstanceHandle_t & handle, const GUID_t & writer_guid);
+
+    CacheChange(ChangeKind_t k, SerializedData && data, const GUID_t & writer_guid);
+    CacheChange(ChangeKind_t k, const GUID_t & writer_guid);
+
     CacheChange(Data && data);
 
     ChangeKind_t kind;

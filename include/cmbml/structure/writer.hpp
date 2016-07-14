@@ -20,7 +20,7 @@
 namespace cmbml {
 
   // Metafunction declaration, implemented in writer_state_machine.hpp
-  template<typename OptionsMap, OptionsMap & options_map>
+  template<typename WriterOptions>
   struct SelectWriterStateMachineType;
 
   struct ReaderCacheAccessor {
@@ -120,14 +120,17 @@ namespace cmbml {
   };
 
 
-  template<typename OptionsMap, OptionsMap & options_map>
-  struct RTPSWriter : Endpoint<OptionsMap, options_map> {
-    static const bool push_mode = options_map[hana::type_c<EndpointOptions::push_mode>];
-    static const bool stateful = options_map[hana::type_c<EndpointOptions::stateful>];
+  template<typename WriterOptions>
+  struct RTPSWriter : Endpoint<WriterOptions> {
+    static const bool push_mode = WriterOptions::push_mode;
+    static const bool stateful = WriterOptions::stateful;
+
     using MatchedReader = std::conditional_t<stateful, ReaderProxy, ReaderLocator>;
     using ReaderKey = std::conditional_t<stateful, GUID_t, Locator_t>;
 
-    explicit RTPSWriter(Participant & p) : Endpoint<OptionsMap, options_map>(p) {
+    explicit RTPSWriter(Participant & p) :
+      Endpoint<WriterOptions>(p)
+    {
       Entity::guid.entity_id = p.assign_next_entity_id<RTPSWriter>();
     }
 
@@ -211,7 +214,7 @@ namespace cmbml {
     template<typename T, typename TransportContext = udp::Context,
       typename std::enable_if_t<!stateful> * = nullptr>
     void send_to_all_locators(T && msg, TransportContext & context) {
-      Packet<> packet = Endpoint<OptionsMap, options_map>::participant.serialize_with_header(msg);
+      Packet<> packet = Endpoint<WriterOptions>::participant.serialize_with_header(msg);
       // TODO Implement glomming-on of packets during send and wrapping in Message.
       // TODO Check if the locator is unicast or multicast before sending
       //
@@ -219,7 +222,7 @@ namespace cmbml {
 
     template<typename T, typename TransportContext = udp::Context>
     void send_to_all_locators(T && msg, TransportContext & context) {
-      Packet<> packet = Endpoint<OptionsMap, options_map>::participant.serialize_with_header(msg);
+      Packet<> packet = Endpoint<WriterOptions>::participant.serialize_with_header(msg);
 
       conditionally_execute<stateful>::call(
         [&context, &packet](auto & readers) {
@@ -249,10 +252,10 @@ namespace cmbml {
     Duration_t resend_data_period = {3, 0};
 
     static const EntityKind entity_kind = ternary<
-      options_map[hana::type_c<EndpointOptions::topic_kind>] == TopicKind_t::with_key, EntityKind,
+      WriterOptions::topic_kind == TopicKind_t::with_key, EntityKind,
       EntityKind::user_writer_with_key, EntityKind::user_writer_no_key>::value;
 
-    using StateMachineT = typename SelectWriterStateMachineType<OptionsMap, options_map>::type;
+    using StateMachineT = typename SelectWriterStateMachineType<WriterOptions>::type;
 
     Count_t heartbeat_count = 0;
   private:

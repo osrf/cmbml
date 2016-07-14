@@ -28,12 +28,31 @@ namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
   // DataReader and DataWriter take an Executor, which abstracts the threading model.
-  template<typename TopicT, typename OptionsMap, OptionsMap & options_map>
+  template<typename TopicT, typename ReaderOptions>
   class DataReader : public EndpointBase {
-    using ReaderT = RTPSReader<OptionsMap, options_map>;
+    using ReaderT = RTPSReader<ReaderOptions>;
   public:
     DataReader(Participant & p) : rtps_reader(p), EndpointBase(rtps_reader.guid) {
 
+    }
+
+    // Single-message with no sample info
+    StatusCode take(TopicT & data)
+    {
+      if (rtps_reader.reader_cache.size_of_cache() == 0) {
+        return StatusCode::no_data;
+      }
+      CacheChange change = rtps_reader.reader_cache.remove_change(
+          rtps_reader.reader_cache.get_min_sequence_number());
+      // Skip deserialization in this case.
+      if (change.serialized_data.size() == 0) {
+        return StatusCode::ok;
+      }
+      // Convert the CacheChange to a TopicT
+      if (deserialize(data, change.serialized_data) != StatusCode::ok) {
+        return StatusCode::deserialize_failed;
+      }
+      return StatusCode::ok;
     }
 
     // Simplification:
@@ -42,7 +61,7 @@ namespace dds {
     StatusCode take(
         List<TopicT> & data_values, List<SampleInfo> & sample_infos, uint32_t max_samples)
     {
-      if (rtps_reader.reader_cache.empty()) {
+      if (rtps_reader.reader_cache.size_of_cache() == 0) {
         return StatusCode::no_data;
       }
       size_t sample_length = std::min(max_samples, rtps_reader.reader_cache.size_of_cache());
@@ -64,7 +83,7 @@ namespace dds {
       return StatusCode::ok;
     }
 
-    // Hmm
+    // Hmm--currently this is unused
     List<CacheChange> on_take() {
       List<CacheChange> ret = rtps_reader.reader_cache.get_filtered_cache_changes(
         &DataReader::dds_filter);
@@ -85,7 +104,7 @@ namespace dds {
       executor.add_task(receiver_thread);
 
       auto heartbeat_response_delay_event = [this, &thread_context]() {
-        // TODO need to reference declaration in state machine?
+        // TODO do I need to reference declaration of this state in state machine?
         boost::msm::lite::state<class must_ack> must_ack_s;
         if (state_machine.is(must_ack_s)) {
           reader_events::heartbeat_response_delay<ReaderT, Context>
@@ -113,7 +132,7 @@ namespace dds {
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
 
-        conditionally_execute<ReaderT::reliability_level == ReliabilityKind_t::reliable>::call(
+        conditionally_execute<ReaderT::reliability == ReliabilityKind_t::reliable>::call(
             process_guard_conditions, rtps_reader, state_machine);
       }
     }
@@ -174,7 +193,7 @@ namespace dds {
       // TODO double-check that heartbeat comes from the matched destination...
       // In the implementation we should just emit a warning, e.g. in case someone is 
       // sending bogus packets
-      return hana::eval_if(ReaderT::reliability_level == ReliabilityKind_t::reliable,
+      return hana::eval_if(ReaderT::reliability == ReliabilityKind_t::reliable,
         [this, &heartbeat]() {
           cmbml::reader_events::heartbeat_received<ReaderT> e{rtps_reader, heartbeat};
           state_machine.process_event(e);
@@ -187,7 +206,7 @@ namespace dds {
     }
 
     StatusCode on_gap(Gap && gap) {
-      return hana::eval_if(ReaderT::reliability_level == ReliabilityKind_t::reliable,
+      return hana::eval_if(ReaderT::reliability == ReliabilityKind_t::reliable,
         [this, &gap]() {
           cmbml::reader_events::gap_received<ReaderT> e{rtps_reader, gap};
           state_machine.process_event(e);

@@ -16,35 +16,32 @@ namespace dds {
 
   // Combines serialize/deserialize, state machine, etc.
   // template<typename TopicT, typename RTPSWriter>
-  template<typename TopicT, typename OptionMap, OptionMap & options_map>
+  template<typename TopicT, typename WriterOptions>
   class DataWriter : public EndpointBase {
-    using WriterT = RTPSWriter<OptionMap, options_map>;
+    using WriterT = RTPSWriter<WriterOptions>;
   public:
 
     // Consider taking a Context for this thread in the constructor.
-    DataWriter(Participant & p) : rtps_writer(p), EndpointBase(rtps_writer.guid) {
+    DataWriter(Participant & p) :
+      rtps_writer(p), EndpointBase(rtps_writer.guid) {
     }
 
     InstanceHandle_t register_instance(TopicT & data) {
-      // TODO
+      // TODO we just plain ignoring InstanceHandle right now
+      // I think that could make the discovery writer a lot more efficient though
       return instance_handle;
     }
 
     template<typename Context>
-    StatusCode write(TopicT && data, InstanceHandle_t & handle, Context & context) {
-      // How to check instance handle against existing data?
-      if (handle == handle_nil) {
-        // TODO
-      }
-
+    StatusCode write(TopicT && data, Context & context) {
       SerializedData packet;
       packet.reserve(get_packet_size(data));
       serialize(data, packet);
-      // Need to wrap data in a message type
-      rtps_writer.add_change(ChangeKind_t::alive, std::move(packet), handle);
+      // Need to wrap data in a message type in can_send event
+      InstanceHandle_t tmp{0};
+      rtps_writer.add_change(ChangeKind_t::alive, std::move(packet), tmp);
 
       // Consider doing this in a different thread as indicated by sequence chart in spec?
-      // Need context here, hmmm
       can_send<WriterT, Context> e{rtps_writer, context};
       state_machine.process_event(e);
       return StatusCode::ok;
@@ -75,7 +72,7 @@ namespace dds {
       executor.add_timed_task(
         rtps_writer.nack_response_delay.to_ns(), false, nack_response_delay_event);
 
-      hana::eval_if(WriterT::reliability_level == ReliabilityKind_t::reliable,
+      hana::eval_if(WriterT::reliability == ReliabilityKind_t::reliable,
         [this, &executor, &thread_context]() {
           executor.add_timed_task(
             rtps_writer.heartbeat_period.to_ns(), false,
@@ -122,7 +119,7 @@ namespace dds {
               state_machine.process_event(e);
               reader.can_send = false;
             }
-            conditionally_execute<WriterT::reliability_level == ReliabilityKind_t::reliable>::
+            conditionally_execute<WriterT::reliability == ReliabilityKind_t::reliable>::
               call([this, &reader]() {
                 if (reader.requested_changes_not_empty) {
                   requested_changes e;
@@ -136,7 +133,7 @@ namespace dds {
               }
             );
 
-            conditionally_execute<WriterT::reliability_level == ReliabilityKind_t::reliable
+            conditionally_execute<WriterT::reliability == ReliabilityKind_t::reliable
               && WriterT::stateful>::call(
               [this](auto & reader) {
                 if (reader.unacked_changes_not_empty) {

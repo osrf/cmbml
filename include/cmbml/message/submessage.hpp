@@ -37,7 +37,7 @@ namespace cmbml {
   template<uint32_t size>
   using SerializedDataFragment = std::array<Octet, size>;
   */
-  using SerializedData = std::vector<Octet>;  // hmmmm
+  using SerializedData = std::vector<Octet>;  // TODO Static dispatch
 
   using SerializedDataFragment = std::vector<Octet>;
 
