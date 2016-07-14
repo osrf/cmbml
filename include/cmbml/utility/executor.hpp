@@ -161,7 +161,7 @@ namespace cmbml {
         }
 
         // TODO Calculating this timeslice
-        std::chrono::nanoseconds timeslice = timeout / task_list.size();
+        std::chrono::nanoseconds timeslice = min_timeout / task_list.size();
 
         // TODO: I think we could get some savings if we don't make a new future every time
         // In fact this might be logically incorrect
@@ -199,7 +199,7 @@ namespace cmbml {
     List<Task> task_list;
     // TODO Infer a good timeout value from the minimum wakeup period of tasks
     //
-    std::chrono::nanoseconds min_timeout;
+    std::chrono::nanoseconds min_timeout{5000000};
     std::atomic<bool> running;
   };
 

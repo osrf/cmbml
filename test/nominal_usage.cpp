@@ -47,7 +47,10 @@ int main(int argc, char ** argv) {
 
   CMBML__MAKE_READER_OPTIONS(ReaderOptions, reader_options_map);
 
+  // domain or participant call could make a factory for this.
+  // there are some ownership/scoping issues to be addressed by api refinement.
   DataReader<Int32, ReaderOptions> reader(participant);
+  reader.add_tasks(context, executor);
 
   {
     auto error_code = writer.write(Int32{42}, context);

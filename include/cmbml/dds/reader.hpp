@@ -120,7 +120,9 @@ namespace dds {
     }
 
     ReadCondition<DataReader> & create_read_condition() {
-      read_condition = std::make_unique<ReadCondition<DataReader>>(*this);
+      if (!read_condition) {
+        read_condition = std::make_unique<ReadCondition<DataReader>>(*this);
+      }
       return *read_condition;
     }
 

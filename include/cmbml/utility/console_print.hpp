@@ -5,6 +5,10 @@
 #define CMBML__ALLOW_CONSOLE_OUTPUT 1
 #endif  // CMBML__ALLOW_CONSOLE_OUTPUT
 
+#ifndef CMBML__ALLOW_DEBUG_OUTPUT
+#define CMBML__ALLOW_DEBUG_OUTPUT 1
+#endif  // CMBML__ALLOW_DEBUG_OUTPUT
+
 #ifdef CMBML__ALLOW_CONSOLE_OUTPUT
 #include <cstdio>
 #endif
@@ -19,5 +23,18 @@ void CMBML__PRINT(const char * message, ...) {
 #endif  // CMBML__ALLOW_CONSOLE_OUTPUT
 }
 
+// it takes 2 switches to enable debug print output.
+template<typename ...Args>
+void CMBML__DEBUG(const char * message, ...) {
+#ifdef CMBML__ALLOW_CONSOLE_OUTPUT
+#ifdef CMBML__ALLOW_DEBUG_OUTPUT
+  va_list argptr;
+  va_start(argptr, message);
+  vfprintf(stderr, message, argptr);
+  va_end(argptr);
+#endif  // CMBML__ALLOW_DEBUG_OUTPUT
+#endif  // CMBML__ALLOW_CONSOLE_OUTPUT
+
+}
 
 #endif  // CONSOLE_PRINT_HPP_

@@ -1,47 +1,61 @@
 #ifndef CMBML__SEDP___HPP_
 #define CMBML__SEDP___HPP_
 
+#include <cmbml/dds/reader.hpp>
+#include <cmbml/dds/writer.hpp>
+
 namespace cmbml {
 
   // TODO Set defaults based on spec plug 'n play parameters
-  // Initialize default locators
-  // Template on the PSM type?
-  template<typename resendDataPeriod, typename WriterParams>
-  struct SedpPubWriter :
-    StatefulWriter<resendDataPeriod, WriterParams, ReliabilityKind_t::reliable,
-    TopicKind_t::with_key>
+
+  // TODO Set resend_data_period in option map?
+  constexpr auto sedp_writer_options = hana::make_map(
+    hana::make_pair(EndpointOptions::stateful, true),
+    hana::make_pair(EndpointOptions::reliability, ReliablityKind_t::reliable),
+    hana::make_pair(EndpointOptions::topic_kind, ReliablityKind_t::with_key),
+    hana::make_pair(EndpointOptions::push_mode, true),
+  );
+
+  CMBML__MAKE_WRITER_OPTIONS(SEDPWriterOptions, sedp_writer_options);
+
+  constexpr auto sedp_reader_options = hana::make_map(
+    hana::make_pair(EndpointOptions::stateful, true),
+    hana::make_pair(EndpointOptions::reliability, ReliablityKind_t::reliable),
+    hana::make_pair(EndpointOptions::topic_kind, ReliablityKind_t::with_key),
+    hana::make_pair(EndpointOptions::expects_inline_qos, false)
+  );
+
+  CMBML__MAKE_READER_OPTIONS(SEDPReaderOptions, sedp_reader_options);
+
+  // TODO
+
+  class SedpPubWriter :
+    public dds::DataWriter<PublicationBuiltinTopicData, SEDPWriterOptions>
   {
   };
 
-  template<typename ReaderParams>
-  struct SedpPubReader :
-    StatefulReader<ReaderParams, ReliablityKind_t::reliable, TopicKind_t::with_key>
+  class SedpPubReader :
+    public dds::DataReader<PublicationBuiltinTopicData, SEDPReaderOptions>
   {
   };
 
-  template<typename resendDataPeriod, typename WriterParams>
-  struct SedpSubWriter :
-    StatefulWriter<resendDataPeriod, WriterParams, ReliabilityKind_t::reliable,
-    TopicKind_t::with_key>
+  class SedpSubWriter :
+    public dds::DataWriter<SubscriptionBuiltinTopicData, SEDPWriterOptions>
   {
   };
 
-  template<typename ReaderParams>
-  struct SedpSubReader :
-    StatefulReader<ReaderParams, ReliablityKind_t::reliable, TopicKind_t::with_key>
+  class SedpSubReader :
+    public dds::DataReader<SubscriptionBuiltinTopicData, SEDPReaderOptions>
   {
   };
 
-  template<typename resendDataPeriod, typename WriterParams>
-  struct SedpTopicsWriter :
-    StatefulWriter<resendDataPeriod, WriterParams, ReliabilityKind_t::reliable,
-    TopicKind_t::with_key>
+  class SedpTopicsWriter :
+    public dds::DataWriter<TopicBuiltinTopicData, SEDPWriterOptions>
   {
   };
 
-  template<typename ReaderParams>
-  struct SedpTopicsReader :
-    StatefulReader<ReaderParams, ReliablityKind_t::reliable, TopicKind_t::with_key>
+  class SedpTopicsReader :
+    public dds::DataReader<TopicBuiltinTopicData, SEDPReaderOptions>
   {
   };
 

@@ -4,6 +4,9 @@
 #include <cmbml/types.hpp>
 
 #include <cmbml/discovery/participant/spdp.hpp>
+#include <cmbml/dds/waitset.hpp>
+
+#include <cmbml/utility/console_print.hpp>
 
 namespace cmbml {
 
@@ -72,15 +75,22 @@ public:
     SpdpParticipantDataReader & spdp_builtin_reader = known_spdp_readers.back();
     Executor & executor = Executor::get_instance();
     // Time for guard conditions and read conditions
-    /*
     executor.add_task(
-      [](&spdp_builtin_reader) {
+      [this, &spdp_builtin_reader](const auto & timeout) {
         // TODO Block until take is ready
-        List<SpdpDiscoData> disco_data;
-        spdp_builtin_reader.take(disco_data);
+        SpdpDiscoData disco_data;
+        auto & read_condition = spdp_builtin_reader.create_read_condition();
+        read_condition.wait_until_trigger(timeout);
+        auto status = spdp_builtin_reader.take(disco_data);
+        if (status != StatusCode::ok) {
+          return status;
+        }
+        on_new_participant(std::move(disco_data));
+        // TODO Do some stuff with this data
+        // when does the read trigger value reset??
+        return StatusCode::ok;
       }
     );
-    */
 
     // Callback configuration?
 
@@ -108,6 +118,7 @@ public:
         return;
       }
     }
+    CMBML__DEBUG("We discovered a new participant!! Sweet.\n");
     known_participants.emplace_back(data);
   }
 
