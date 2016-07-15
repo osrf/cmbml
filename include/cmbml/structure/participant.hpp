@@ -12,54 +12,54 @@
 
 namespace cmbml {
 
-  static constexpr EntityId_t participant_id = {0x0, 0x0, 0x1, EntityKind::participant};
+  static constexpr EntityId_t participant_id = {{{0x0, 0x0, 0x1}}, EntityKind::participant};
 
   static constexpr EntityId_t sedp_topic_writer_id =
-    {0x0, 0x0, 0x2, EntityKind::builtin_writer_with_key};
+    {{{0x0, 0x0, 0x2}}, EntityKind::builtin_writer_with_key};
 
   static constexpr EntityId_t sedp_topic_reader_id =
-    {0x0, 0x0, 0x2, EntityKind::builtin_reader_with_key};
+    {{{0x0, 0x0, 0x2}}, EntityKind::builtin_reader_with_key};
 
   static constexpr EntityId_t sedp_pub_writer_id =
-    {0x0, 0x0, 0x3, EntityKind::builtin_writer_with_key};
+    {{{0x0, 0x0, 0x3}}, EntityKind::builtin_writer_with_key};
 
   static constexpr EntityId_t sedp_pub_reader_id =
-    {0x0, 0x0, 0x3, EntityKind::builtin_reader_with_key};
+    {{{0x0, 0x0, 0x3}}, EntityKind::builtin_reader_with_key};
 
   static constexpr EntityId_t sedp_sub_writer_id =
-    {0x0, 0x0, 0x4, EntityKind::builtin_writer_with_key};
+    {{{0x0, 0x0, 0x4}}, EntityKind::builtin_writer_with_key};
 
   static constexpr EntityId_t sedp_sub_reader_id =
-    {0x0, 0x0, 0x4, EntityKind::builtin_reader_with_key};
+    {{{0x0, 0x0, 0x4}}, EntityKind::builtin_reader_with_key};
 
   static constexpr EntityId_t spdp_writer_id =
-    {0x0, 0x1, 0x0, EntityKind::builtin_writer_with_key};
+    {{{0x0, 0x1, 0x0}}, EntityKind::builtin_writer_with_key};
 
   static constexpr EntityId_t spdp_reader_id =
-    {0x0, 0x1, 0x0, EntityKind::builtin_reader_with_key};
+    {{{0x0, 0x1, 0x0}}, EntityKind::builtin_reader_with_key};
 
   static constexpr EntityId_t participant_writer_id =
-    {0x0, 0x2, 0x0, EntityKind::builtin_writer_with_key};
+    {{{0x0, 0x2, 0x0}}, EntityKind::builtin_writer_with_key};
 
   static constexpr EntityId_t participant_reader_id =
-    {0x0, 0x2, 0x0, EntityKind::builtin_reader_with_key};
+    {{{0x0, 0x2, 0x0}}, EntityKind::builtin_reader_with_key};
 
 
   struct Participant : Entity {
     Participant(SpdpDiscoData & data) :
-      protocol_version(data.protocol_version),
-      vendor_id(data.vendor_id),
+      Entity({data.guid_prefix, participant_id}),
       default_unicast_locator_list(data.default_unicast_locator_list),
       default_multicast_locator_list(data.default_multicast_locator_list),
-      Entity({data.guid_prefix, participant_id})
+      protocol_version(data.protocol_version),
+      vendor_id(data.vendor_id)
     {
     }
 
     Participant(GuidPrefix_t && prefix, List<Locator_t> && multicast_list) :
+      Entity({prefix, participant_id}),
       default_multicast_locator_list(multicast_list),
       protocol_version(rtps_protocol_version),
-      vendor_id(cmbml_vendor_id),
-      Entity({prefix, participant_id})
+      vendor_id(cmbml_vendor_id)
     {
     }
 

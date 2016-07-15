@@ -23,7 +23,7 @@ namespace dds {
 
     // Consider taking a Context for this thread in the constructor.
     DataWriter(Participant & p) :
-      rtps_writer(p), EndpointBase(rtps_writer.guid) {
+      EndpointBase(rtps_writer.guid), rtps_writer(p) {
     }
 
     InstanceHandle_t register_instance(TopicT & data) {
@@ -38,7 +38,7 @@ namespace dds {
       packet.reserve(get_packet_size(data));
       serialize(data, packet);
       // Need to wrap data in a message type in can_send event
-      InstanceHandle_t tmp{0};
+      InstanceHandle_t tmp{{0}};
       rtps_writer.add_change(ChangeKind_t::alive, std::move(packet), tmp);
 
       // Consider doing this in a different thread as indicated by sequence chart in spec?

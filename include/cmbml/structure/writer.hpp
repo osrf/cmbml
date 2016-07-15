@@ -59,9 +59,9 @@ namespace cmbml {
       expects_inline_qos(inline_qos) {}
 
     ReaderLocator(Locator_t && loc, bool inline_qos, HistoryCache * cache) :
-      locator(loc),
       ReaderCacheAccessor(cache),
-      expects_inline_qos(inline_qos) {}
+      expects_inline_qos(inline_qos),
+      locator(loc) {}
 
     bool operator==(const ReaderLocator & loc);
     bool key_matches(const Locator_t & loc);
@@ -82,13 +82,15 @@ namespace cmbml {
 
   struct ReaderProxy : ReaderCacheAccessor {
     // move these structs in
-    ReaderProxy(GUID_t & remoteReaderGuid,
-        bool expectsInlineQos,
+    ReaderProxy(GUID_t & guid,
+        bool inline_qos,
         List<Locator_t> && unicastLocatorList,
         List<Locator_t> && multicastLocatorList, HistoryCache * cache) :
-      remote_reader_guid(remoteReaderGuid), expects_inline_qos(expectsInlineQos),
+      ReaderCacheAccessor(cache),
+      remote_reader_guid(guid),
       unicast_locator_list(unicastLocatorList), multicast_locator_list(multicastLocatorList),
-      writer_cache(cache), ReaderCacheAccessor(cache)
+      expects_inline_qos(inline_qos),
+      writer_cache(cache)
     {
     }
 
@@ -114,7 +116,7 @@ namespace cmbml {
     SequenceNumber_t highest_acked_seq_num;
     HistoryCache * writer_cache;
 
-    bool is_active = false;  // hmm
+    // bool is_active = false;  // hmm
 
     uint32_t num_unacked_changes = 0;
   };

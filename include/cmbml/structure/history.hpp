@@ -11,7 +11,7 @@ namespace cmbml {
     alive, not_alive_disposed, not_alive_unregistered
   };
   using InstanceHandle_t = std::array<Octet, 16>;
-  const InstanceHandle_t handle_nil = {0};
+  const InstanceHandle_t handle_nil = {{0}};
 
   struct Data;
   struct CacheChange {
@@ -33,13 +33,6 @@ namespace cmbml {
 
     SerializedData serialized_data;
   };
-
-  static bool compare_cache_change_seq(
-      const std::pair<uint64_t, CacheChange> & a,
-      const std::pair<uint64_t, CacheChange> & b)
-  {
-    return a.first < b.first;
-  }
 
   struct HistoryCache {
     // addChange should move the input cache change
@@ -70,6 +63,10 @@ namespace cmbml {
     const SequenceNumber_t & get_min_sequence_number() const;
     const SequenceNumber_t & get_max_sequence_number() const;
     size_t size_of_cache() const;
+
+    static bool compare_cache_change_seq(
+        const std::pair<uint64_t, CacheChange> & a,
+        const std::pair<uint64_t, CacheChange> & b);
   private:
     // writer is required to send in order of addition to cache
     // queue instead

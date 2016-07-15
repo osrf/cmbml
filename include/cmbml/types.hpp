@@ -28,13 +28,13 @@ namespace cmbml {
   using Octet = uint8_t;
   // 12 octets
   using GuidPrefix_t = std::array<Octet, 12>;
-  static const GuidPrefix_t guid_prefix_unknown = {0};
+  static const GuidPrefix_t guid_prefix_unknown = {{0}};
   using VendorId_t = std::array<Octet, 2>;
-  static const VendorId_t cmbml_vendor_id = {0xf0, 0x9f};
-  static const VendorId_t vendor_id_unknown = {0x0, 0x0};
+  static const VendorId_t cmbml_vendor_id = {{0xf0, 0x9f}};
+  static const VendorId_t vendor_id_unknown = {{0x0, 0x0}};
 
   using ProtocolId_t = std::array<char, 4>;
-  static const ProtocolId_t rtps_protocol_id = {'R', 'T', 'P', 'S'};
+  static const ProtocolId_t rtps_protocol_id = {{'R', 'T', 'P', 'S'}};
 
   // TODO: Figure out a better embedded-friendly sequence implementation.
   // are we going to pass around an allocator std vector?
@@ -190,7 +190,7 @@ namespace cmbml {
     }
   };
 
-  static const EntityId_t entity_id_unknown = {0x00, 0x00, 0x00, EntityKind::unknown};
+  static const EntityId_t entity_id_unknown = {{{0x00, 0x00, 0x00}}, EntityKind::unknown};
 
   // 16-byte (128 bit) GUID
   struct GUID_t {

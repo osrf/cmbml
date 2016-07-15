@@ -139,7 +139,8 @@ private:
   // I guess DDS Reader and Writer should inherit from a common base
   // List<Endpoint> known_endpoints;
 
-  uint32_t domain_id = cmbml_test_domain_id;
+  // TODO Use this somewhere
+  // uint32_t domain_id = cmbml_test_domain_id;
 };
 
 }

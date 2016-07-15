@@ -34,7 +34,7 @@ namespace dds {
   class DataReader : public EndpointBase {
     using ReaderT = RTPSReader<ReaderOptions>;
   public:
-    DataReader(Participant & p) : rtps_reader(p), EndpointBase(rtps_reader.guid) {
+    DataReader(Participant & p) : EndpointBase(rtps_reader.guid), rtps_reader(p) {
 
     }
 
@@ -77,6 +77,7 @@ namespace dds {
           continue;
         }
         // Convert the CacheChange to a TopicT
+        // TODO Check for serialization type.
         if (deserialize(data_values[i], change.serialized_data) != StatusCode::ok) {
           return StatusCode::deserialize_failed;
         }
@@ -128,6 +129,7 @@ namespace dds {
 
   protected:
     // TODO duplicated in writer
+    // TODO More messagereceiver rules.
     template<typename SrcT, typename NetworkContext = udp::Context>
     void deserialize_message(const SrcT & src, NetworkContext & context) {
       size_t index = 0;
@@ -137,7 +139,8 @@ namespace dds {
         // return StatusCode::packet_invalid;
         return;
       }
-      MessageReceiver receiver(header.guid_prefix, NetworkContext::kind, context.address_as_array());
+      MessageReceiver receiver(
+          header.guid_prefix, NetworkContext::kind, context.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
 

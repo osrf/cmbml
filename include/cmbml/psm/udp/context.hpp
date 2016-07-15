@@ -43,8 +43,8 @@ struct LocatorUDPv4_t {
   constexpr LocatorUDPv4_t(uint64_t addr, uint64_t p) : address(addr), port(p) { }
 
   LocatorUDPv4_t(const Locator_t & locator) : port(locator.port) {
-    const std::array<Octet, 4> addr = {locator.address[0], locator.address[1],
-                                       locator.address[2], locator.address[3]};
+    const std::array<Octet, 4> addr = {{locator.address[0], locator.address[1],
+                                       locator.address[2], locator.address[3]}};
     address = address_from_dot_notation(addr);
   }
 
@@ -67,7 +67,7 @@ struct LocatorUDPv4_t {
     return array_address;
   }
   constexpr static IPAddress get_array_from_address(const std::array<Octet, 4> & adr) {
-    return {0, 0, 0, 0, 0, 0, 0, 0, adr[0], adr[1], adr[2], adr[3]};
+    return {{0, 0, 0, 0, 0, 0, 0, 0, adr[0], adr[1], adr[2], adr[3]}};
   }
 };
 
@@ -82,7 +82,7 @@ public:
     return {
       LOCATOR_KIND_UDPv4,
       udp::default_spdp_multicast_port(cmbml_test_domain_id),
-      udp::LocatorUDPv4_t::get_array_from_address({239, 255, 0, 1})
+      udp::LocatorUDPv4_t::get_array_from_address({{239, 255, 0, 1}})
     };
   }
   constexpr static LocatorUDPv4_t invalid_locator = {0, 0};
@@ -117,6 +117,7 @@ public:
 
     // TODO Apply timeout!
     int num_fds = select(max_socket + 1, &socket_set, NULL, NULL, NULL);
+    (void) num_fds;
     for (const auto & port_socket_pair : port_socket_map) {
       Packet<> packet(packet_size);
       int recv_socket = port_socket_pair.second;

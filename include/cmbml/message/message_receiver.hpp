@@ -21,7 +21,7 @@ struct MessageReceiver {
   {
     Locator_t loc{transport_kind, 0, address};
     unicast_reply_locator_list.push_back(std::move(loc));
-    Locator_t multicast_loc{transport_kind, 0, 0};
+    Locator_t multicast_loc{transport_kind, 0, {{0}}};
     multicast_reply_locator_list.push_back(std::move(multicast_loc));
   }
 };

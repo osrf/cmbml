@@ -26,8 +26,8 @@ namespace cmbml {
       bool oneshot,
       const std::chrono::nanoseconds & period_,
       const std::chrono::steady_clock::time_point & start_time) :
-        oneshot(oneshot),
         callback(std::forward<std::function<void()>>(callback)),
+        oneshot(oneshot),
         period(period_), last_called_time(start_time)
     {
     }

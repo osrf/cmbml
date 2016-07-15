@@ -7,13 +7,13 @@
 using namespace cmbml;
 
 CacheChange::CacheChange(ChangeKind_t k, InstanceHandle_t & h, const GUID_t & g) :
-  kind(k), instance_handle(h), writer_guid(g)
+  kind(k), writer_guid(g), instance_handle(h)
 {
 }
 
 // TODO Store data and data info
 CacheChange::CacheChange(ChangeKind_t k, SerializedData && data, InstanceHandle_t & h, const GUID_t & g) :
-  kind(k), instance_handle(h), writer_guid(g), serialized_data(data)
+  kind(k), writer_guid(g), instance_handle(h), serialized_data(data)
 {
 }
 
@@ -33,11 +33,13 @@ CacheChange HistoryCache::remove_change(const uint64_t seq) {
   if (seq == min_seq.value()) {
     // recompute min_seq
     min_seq = std::min_element(
-        changes.begin(), changes.end(), compare_cache_change_seq)->second.sequence_number;
+        changes.begin(), changes.end(),
+        HistoryCache::compare_cache_change_seq)->second.sequence_number;
   }
   if (seq == max_seq.value()) {
     max_seq = std::max_element(
-        changes.begin(), changes.end(), compare_cache_change_seq)->second.sequence_number;
+        changes.begin(), changes.end(),
+        HistoryCache::compare_cache_change_seq)->second.sequence_number;
   }
   auto ret = std::move(changes.at(seq));
   changes.erase(seq);
@@ -80,4 +82,11 @@ const SequenceNumber_t & HistoryCache::get_max_sequence_number() const {
 
 size_t HistoryCache::size_of_cache() const {
   return changes.size();
+}
+
+bool HistoryCache::compare_cache_change_seq(
+  const std::pair<uint64_t, CacheChange> & a,
+  const std::pair<uint64_t, CacheChange> & b)
+{
+  return a.first < b.first;
 }
