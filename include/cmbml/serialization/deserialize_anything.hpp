@@ -60,6 +60,37 @@ StatusCode deserialize(std::bitset<8> & dst, const SrcT & src, size_t & index)
   return status;
 }
 
+// Specialization for ParameterList
+template<typename SrcT>
+StatusCode deserialize(List<Parameter> & dst, const SrcT & src, size_t index)
+{
+  // TODO alignment
+  size_t i = 0;
+  StatusCode status = StatusCode::ok;
+  while (status == StatusCode::ok) {
+    ParameterId_t id;
+    status = deserialize(id, src, index);
+    if (id == ParameterId_t::sentinel || status != StatusCode::ok) {
+      break;
+    }
+    uint16_t length = 0;
+    status = deserialize(length, src, index);
+    // Check if dst is big enough
+    if (dst.size() <= i) {
+      dst.reserve(i + 1);
+    }
+    dst[i].id = id;
+    dst[i].length = length;
+    dst[i].value.reserve(length);
+    for (auto entry : dst[i].value) {
+      status = deserialize(entry, src, index);
+    }
+  };
+  uint16_t tmp;
+  // expect to have 16bits of padding here, and that index is on a 32-bit boundary
+  return deserialize(tmp, src, index);
+}
+
 // We always expect callback to take a single argument of the type 
 // We currently expect dst to be preallocated (if dynamically sized)
 template<typename T, typename SrcT, class = typename T::iterator>

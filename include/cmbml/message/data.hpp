@@ -10,6 +10,7 @@
 #include <cmbml/structure/locator.hpp>
 #include <cmbml/types.hpp>
 
+#include <cmbml/message/parameter.hpp>
 #include <cmbml/message/submessage.hpp>
 
 namespace cmbml {

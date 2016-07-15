@@ -20,7 +20,7 @@
 #include <cmbml/cdr/place_integral_type.hpp>
 #include <cmbml/types.hpp>  // Provides "List" type
 
-#include <cmbml/message/header.hpp>
+#include <cmbml/message/parameter.hpp>
 
 // What if we used bitsets instead?
 // What is their performance like?
@@ -107,6 +107,24 @@ void traverse(const std::bitset<8> & src, CallbackT & callback, size_t & index)
   traverse(converted_bitset, callback, index);
 }
 
+// Specialization for ParameterList
+template<typename CallbackT>
+void traverse(const List<Parameter> & src, CallbackT & callback, size_t & index)
+{
+  for (const auto & parameter : src) {
+    // this might be too brittle; consider instead just cutting off serialization at the end of length
+    // assert(parameter.length == parameter.value.size());
+    // TODO Ensure that this is aligned at the start of a word
+    // ugh, the list is not going to be serialized properly
+    traverse(parameter.id, callback, index);
+    traverse(parameter.length, callback, index);
+    for (const auto & entry : parameter.value) {
+      traverse(entry, callback, index);
+    }
+  }
+  traverse(ParameterId_t::sentinel, callback, index);
+}
+
 // TODO sometimes we serialize the length of variable-length lists and sometimes we don't;
 // clarify when this happens.
 // this is for std::vector and std::array of non-primitive types
@@ -134,6 +152,8 @@ void traverse(
   });
 }
 
+// If we're in pl-mode, this specialization should prepend the type of the elements in the
+// for-each and serialize a type-id
 template<
   typename T, typename CallbackT,
   typename std::enable_if<hana::Foldable<T>::value>::type * = nullptr>

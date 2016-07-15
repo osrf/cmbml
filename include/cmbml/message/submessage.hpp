@@ -12,11 +12,9 @@
 
 namespace cmbml {
 
-
   using Count_t = uint32_t;
   using FragmentNumber_t = uint32_t;
   using SubmessageFlag = bool;
-  using ParameterId_t = uint16_t;
   using Timestamp = Time_t;
 
   using Endianness = SubmessageFlag;
@@ -28,7 +26,6 @@ namespace cmbml {
   using MulticastFlag = SubmessageFlag;
   using InvalidateFlag = SubmessageFlag;
 
-
   // TODO dynamically sized?
   /*
   template<uint32_t size>
@@ -37,7 +34,7 @@ namespace cmbml {
   template<uint32_t size>
   using SerializedDataFragment = std::array<Octet, size>;
   */
-  using SerializedData = std::vector<Octet>;  // TODO Static dispatch
+  using SerializedData = std::vector<Octet>;  // TODO Static dispatch and allocator type
 
   using SerializedDataFragment = std::vector<Octet>;
 
@@ -93,12 +90,6 @@ namespace cmbml {
 
   using SequenceNumberSet = IntegralSet<SequenceNumber_t>;
   using FragmentNumberSet = IntegralSet<FragmentNumber_t>;
-
-  struct Parameter {
-    BOOST_HANA_DEFINE_STRUCT(Parameter,
-    (ParameterId_t, id),
-    (List<Octet>, value));
-  };
 
   template<typename SubmessageElement>
   struct Submessage {
