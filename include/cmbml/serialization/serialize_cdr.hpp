@@ -16,8 +16,8 @@
 #include <climits>
 #include <functional>
 
-#include <cmbml/cdr/common.hpp>
-#include <cmbml/cdr/place_integral_type.hpp>
+#include <cmbml/common.hpp>
+#include <cmbml/serialization/place_integral_type.hpp>
 #include <cmbml/types.hpp>  // Provides "List" type
 
 #include <cmbml/message/parameter.hpp>

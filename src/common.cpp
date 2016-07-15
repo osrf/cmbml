@@ -1,4 +1,4 @@
-#include <cmbml/cdr/common.hpp>
+#include <cmbml/common.hpp>
 
 namespace cmbml {
 

@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <cmbml/structure/endpoint.hpp>
-#include <cmbml/cdr/serialize_anything.hpp>
+#include <cmbml/serialization/serialize_cdr.hpp>
 #include <cmbml/message/data.hpp>
 #include <cmbml/psm/udp/context.hpp>
 #include <cmbml/structure/history.hpp>

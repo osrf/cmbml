@@ -4,8 +4,8 @@
 
 #include <boost/hana/for_each.hpp>
 
-#include <cmbml/cdr/common.hpp>
-#include <cmbml/cdr/place_integral_type.hpp>
+#include <cmbml/common.hpp>
+#include <cmbml/serialization/place_integral_type.hpp>
 
 #include <cmbml/message/message.hpp>
 

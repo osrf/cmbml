@@ -4,7 +4,7 @@
 #include <cmbml/discovery/participant/spdp_disco_data.hpp>
 #include <cmbml/message/header.hpp>
 #include <cmbml/message/submessage.hpp>
-#include <cmbml/cdr/serialize_anything.hpp>
+#include <cmbml/serialization/serialize_cdr.hpp>
 #include <cmbml/structure/locator.hpp>
 #include <cmbml/types.hpp>
 

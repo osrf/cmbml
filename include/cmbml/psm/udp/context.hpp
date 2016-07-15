@@ -1,7 +1,7 @@
 #ifndef CMBML__PSM__UDP__CONTEXT_HPP_
 #define CMBML__PSM__UDP__CONTEXT_HPP_
 
-#include <cmbml/cdr/common.hpp>
+#include <cmbml/common.hpp>
 #include <cmbml/psm/udp/constants.hpp>
 #include <cmbml/psm/udp/ports.hpp>
 #include <cmbml/message/submessage.hpp>

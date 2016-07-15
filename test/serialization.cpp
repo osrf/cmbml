@@ -10,8 +10,8 @@
 #include <boost/hana/pair.hpp>
 #include <boost/hana/type.hpp>
 
-#include <cmbml/cdr/serialize_anything.hpp>
-#include <cmbml/cdr/deserialize_anything.hpp>
+#include <cmbml/serialization/serialize_cdr.hpp>
+#include <cmbml/serialization/deserialize_cdr.hpp>
 
 #include <cmbml/message/data.hpp>
 #include <cmbml/message/submessage.hpp>

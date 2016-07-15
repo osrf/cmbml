@@ -5,7 +5,7 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <cmbml/cdr/common.hpp>
+#include <cmbml/common.hpp>
 
 namespace cmbml {
 namespace dds {

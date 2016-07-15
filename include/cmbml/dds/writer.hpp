@@ -2,8 +2,8 @@
 #define CMBML__DDS__WRITER_HPP_
 
 #include <cmbml/behavior/writer_state_machine.hpp>
-#include <cmbml/cdr/serialize_anything.hpp>
-#include <cmbml/cdr/deserialize_anything.hpp>
+#include <cmbml/serialization/serialize_cdr.hpp>
+#include <cmbml/serialization/deserialize_cdr.hpp>
 #include <cmbml/dds/endpoint.hpp>
 #include <cmbml/structure/writer.hpp>
 
