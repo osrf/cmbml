@@ -34,7 +34,9 @@ CacheChange ReaderCacheAccessor::pop_next_unsent_change() {
 
 // request_seq_numbers must be sorted in ascending order
 // Should this clear the set of requested changes first?
-void ReaderCacheAccessor::set_requested_changes(const List<SequenceNumber_t> & request_seq_numbers) {
+void ReaderCacheAccessor::set_requested_changes(
+    const List<SequenceNumber_t> & request_seq_numbers)
+{
   if (num_requested_changes == 0 && request_seq_numbers.size() > 0) {
     requested_changes_not_empty = true;
   }
@@ -78,7 +80,7 @@ ChangeForReader ReaderProxy::pop_next_unsent_change() {
 
 void ReaderProxy::set_requested_changes(List<SequenceNumber_t> & request_seq_numbers) {
   num_requested_changes = request_seq_numbers.size();
-  set_requested_changes(request_seq_numbers);
+  ReaderCacheAccessor::set_requested_changes(request_seq_numbers);
 }
 
 void ReaderProxy::set_acked_changes(const SequenceNumber_t & seq_num) {

@@ -100,8 +100,10 @@ public:
   }
 
   // Storage
+  /*
   SedpPubWriter &
   create_sedp_pub_
+  */
 
   // in the future, we could probably add some short-circuiting logic for endpoints
   // in the same participant!
