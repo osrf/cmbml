@@ -6,6 +6,7 @@
 #include <cmbml/behavior/reader_state_machine.hpp>
 #include <cmbml/dds/endpoint.hpp>
 #include <cmbml/dds/sample_info.hpp>
+#include <cmbml/serialization/serialization.hpp>
 #include <cmbml/utility/metafunctions.hpp>
 
 namespace cmbml {
@@ -41,20 +42,10 @@ namespace dds {
     // Single-message with no sample info
     StatusCode take(TopicT & data)
     {
-      if (rtps_reader.reader_cache.size_of_cache() == 0) {
-        return StatusCode::no_data;
-      }
-      CacheChange change = rtps_reader.reader_cache.remove_change(
-          rtps_reader.reader_cache.get_min_sequence_number());
-      // Skip deserialization in this case.
-      if (change.serialized_data.size() == 0) {
-        return StatusCode::ok;
-      }
-      // Convert the CacheChange to a TopicT
-      if (deserialize(data, change.serialized_data) != StatusCode::ok) {
-        return StatusCode::deserialize_failed;
-      }
-      return StatusCode::ok;
+      StatusCode status;
+      take_helper(data, status);
+
+      return status;
     }
 
     // Simplification:
@@ -69,17 +60,10 @@ namespace dds {
       size_t sample_length = std::min(max_samples, rtps_reader.reader_cache.size_of_cache());
       data_values.reserve(sample_length);
       for (size_t i = 0; i < sample_length; ++i) {
-      // for (auto & data_value : data_values) {
-        CacheChange change = rtps_reader.reader_cache.remove_change(
-            rtps_reader.reader_cache.get_min_sequence_number());
-        if (change.serialized_data.size() == 0) {
-          // Should we not increment i in this case?
-          continue;
-        }
-        // Convert the CacheChange to a TopicT
-        // TODO Check for serialization type.
-        if (deserialize(data_values[i], change.serialized_data) != StatusCode::ok) {
-          return StatusCode::deserialize_failed;
+        StatusCode status;
+        take_helper(data_values[i], status);
+        if (status != StatusCode::ok) {
+          return status;
         }
       }
       // TODO SampleInfos
@@ -126,6 +110,7 @@ namespace dds {
       }
       return *read_condition;
     }
+
 
   protected:
     // TODO duplicated in writer
@@ -249,6 +234,29 @@ namespace dds {
       return StatusCode::ok;
     }
 
+
+    // Take and deserialize one message.
+    // Return true if the message was deserialized
+    bool take_helper(TopicT & data, StatusCode & status) {
+      if (rtps_reader.reader_cache.size_of_cache() == 0) {
+        status = StatusCode::no_data;
+        return false;
+      }
+      CacheChange change = rtps_reader.reader_cache.remove_change(
+          rtps_reader.reader_cache.get_min_sequence_number());
+      // Skip deserialization in this case.
+      if (change.serialized_data.size() == 0) {
+        status = StatusCode::precondition_violated;
+        return false;
+      }
+      // Convert the CacheChange to a TopicT
+      if (deserialize_payload(data, change.serialized_data) != StatusCode::ok) {
+        status =  StatusCode::deserialize_failed;
+        return false;
+      }
+      status = StatusCode::ok;
+      return true;
+    }
 
     // TODO should be a lambda that the user passes in. Does it act directly on CacheChange?
     bool dds_filter(const CacheChange & change) {

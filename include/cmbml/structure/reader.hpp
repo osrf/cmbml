@@ -20,14 +20,35 @@ namespace cmbml {
   template<typename ReaderOptions>
   struct SelectReaderStateMachineType;
 
+  struct WriterProxyPOD {
+    BOOST_HANA_DEFINE_STRUCT(WriterProxyPOD,
+      (GUID_t, remote_writer_guid),
+      (List<Locator_t>, unicast_locator_list),
+      (List<Locator_t>, multicast_locator_list)
+    );
+
+    /*
+    constexpr auto get_parameter_map() {
+    }
+
+    CMBML__DEFINE_PARAMETER_ID_MAP(WriterProxyPOD,
+      // remote_reader_guid can be omitted from the parametermap? there's no obvious id
+      (unicast_locator_list, unicast_locator),
+      (multicast_locator_list, multicast_locator)
+    )
+    */
+  };
+
   struct WriterProxy {
     WriterProxy(
         GUID_t guid,
         List<Locator_t> & unicast_locators,
         List<Locator_t> & multicast_locators) :
-      remote_writer_guid(guid),
-      unicast_locator_list(unicast_locators),
-      multicast_locator_list(multicast_locators) {}
+      fields{guid, unicast_locators, multicast_locators}
+    {}
+
+    WriterProxy(WriterProxyPOD && pod) : fields(pod)
+    {}
 
     SequenceNumber_t max_available_changes();
     void set_irrelevant_change(const SequenceNumber_t & seq_num);
@@ -61,19 +82,18 @@ namespace cmbml {
       Packet<> packet = p.serialize_with_header(acknack);
       // needs to know which destination to send to (pass a Locator?)
       // XXX This is dubious.
-      for (const auto & locator : unicast_locator_list) {
+      for (const auto & locator : fields.unicast_locator_list) {
         context.unicast_send(locator, packet.data(), packet.size());
       }
-      for (const auto & locator : multicast_locator_list) {
+      for (const auto & locator : fields.multicast_locator_list) {
         context.multicast_send(locator, packet.data(), packet.size());
       }
     }
 
 
   private:
-    GUID_t remote_writer_guid;
-    List<Locator_t> unicast_locator_list;
-    List<Locator_t> multicast_locator_list;
+    WriterProxyPOD fields;
+
     std::map<uint64_t, ChangeFromWriter> changes_from_writer;
     uint32_t acknack_count = 0;
 

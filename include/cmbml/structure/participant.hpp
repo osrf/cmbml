@@ -65,6 +65,7 @@ namespace cmbml {
 
     // a participant "contains" Endpoints
     // Lists of endpoints. 
+    // Consider using the same pattern as the Proxy classes wrapping a serializable POD type
     List<Locator_t> default_unicast_locator_list;
     List<Locator_t> default_multicast_locator_list;
     ProtocolVersion_t protocol_version = rtps_protocol_version;

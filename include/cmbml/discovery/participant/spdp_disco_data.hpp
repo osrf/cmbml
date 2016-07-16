@@ -9,18 +9,23 @@
 #include <cmbml/types.hpp>
 
 namespace cmbml {
-using BuiltinEndpointSet_t = std::bitset<8>;
+using BuiltinEndpointSet_t = std::bitset<32>;
 
-enum class BuiltinEndpointKind : uint8_t {
-  publications_reader,
-  publications_writer,
-  subscriptions_reader,
-  subscriptions_writer,
-  topic_reader,
-  topic_writer
+// These definitions indicate which index gets set in the bitfield when the option is turned on
+// it could be quite efficient to set Spdp configuration options at compile time,
+// is there a use case for changing them dynamically?
+// The first two indices should always be set, otherwise participants are not discoverable.
+enum class BuiltinEndpointKind : uint32_t {
+  participant_writer   = 0,
+  participant_reader   = 1,
+  publications_writer  = 2,
+  publications_reader  = 3,
+  subscriptions_writer = 4,
+  subscriptions_reader = 5,
 };
 
 // "ParticipantBuiltinTopicData", "ParticipantProxy", and "SpdpDiscoveredParticipantData"
+// Should this be put into structs?
 struct SpdpDiscoData {
   BOOST_HANA_DEFINE_STRUCT(SpdpDiscoData,
     // (BuiltinTopicKey_t, key),

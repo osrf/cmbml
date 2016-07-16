@@ -129,7 +129,6 @@ int main(int argc, char** argv) {
 
   hana::for_each(types, [&serialized_data](const auto & x) {
     cmbml::serialize(x, serialized_data);
-    using MsgT = std::decay<decltype(x)>;
     size_t index = 0;
     cmbml::deserialize(x, serialized_data, index);
   });

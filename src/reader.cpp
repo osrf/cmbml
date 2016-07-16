@@ -92,5 +92,5 @@ void WriterProxy::set_received_change(const SequenceNumber_t & seq_num) {
 }
 
 const GUID_t & WriterProxy::get_guid() {
-  return remote_writer_guid;
+  return fields.remote_writer_guid;
 }

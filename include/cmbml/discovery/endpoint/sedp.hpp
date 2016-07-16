@@ -6,6 +6,7 @@
 
 namespace cmbml {
 
+
   // TODO Set defaults based on spec plug 'n play parameters
 
   // TODO Set resend_data_period in option map?
@@ -30,22 +31,22 @@ namespace cmbml {
   // TODO
 
   class SedpPubWriter :
-    public dds::DataWriter<PublicationBuiltinTopicData, SEDPWriterOptions>
+    public dds::DataWriter<DiscoWriterData, SEDPWriterOptions>
   {
   };
 
   class SedpPubReader :
-    public dds::DataReader<PublicationBuiltinTopicData, SEDPReaderOptions>
+    public dds::DataReader<PDiscoWriterData, SEDPReaderOptions>
   {
   };
 
   class SedpSubWriter :
-    public dds::DataWriter<SubscriptionBuiltinTopicData, SEDPWriterOptions>
+    public dds::DataWriter<DiscoReaderData, SEDPWriterOptions>
   {
   };
 
   class SedpSubReader :
-    public dds::DataReader<SubscriptionBuiltinTopicData, SEDPReaderOptions>
+    public dds::DataReader<DiscoReaderData, SEDPReaderOptions>
   {
   };
 

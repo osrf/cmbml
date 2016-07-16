@@ -12,7 +12,9 @@ namespace cmbml {
 
 struct DiscoveredParticipant {
   Participant p;
-  // TODO
+  // TODO rethink
+  // representations of Local participants, the serializable Participant POD,
+  // and Discovered participants
 };
 
 class Domain {
@@ -97,40 +99,127 @@ public:
     return spdp_builtin_reader;
   }
 
+  // Storage
+  SedpPubWriter &
+  create_sedp_pub_
+
+  // in the future, we could probably add some short-circuiting logic for endpoints
+  // in the same participant!
   template<typename Executor, typename Context>
   Participant & create_new_participant(Context & transport_context) {
     List<Locator_t> multicast_locator_list = {transport_context.get_default_multicast_locator()};
-    known_participants.emplace_back(
+    local_participants.emplace_back(
       get_next_guid_prefix(transport_context), std::move(multicast_locator_list));
-    // Add builtin endpoints to container
-    create_spdp_writer<Executor>(
-      known_participants.back(), transport_context);
-    create_spdp_reader<Executor>(known_participants.back());
+    // TODO Assert that the guid we produced is not currently in local participants OR
+    // discovered participants
+    // Add builtin spdp endpoints to container
+    create_spdp_writer<Executor>(local_participants.back(), transport_context);
+    create_spdp_reader<Executor>(local_participants.back());
 
-    // add builtin sedp endpoints
-    return known_participants.back();
+    // TODO add builtin sedp endpoints if they are enabled.
+
+    /*
+    create_sedp_pub_writer();
+    create_sedp_pub_reader();
+    create_sedp_sub_writer();
+    create_sedp_sub_reader();
+    create_sedp_topic_writer();
+    create_sedp_topic_reader();
+    */
+
+    return local_participants.back();
   }
 
   // When a remote participant is discovered
   void on_new_participant(SpdpDiscoData && data) {
-    for (const auto & p : known_participants) {
+    for (const auto & p : discovered_participants) {
       if (p.guid.prefix == data.guid_prefix) {
         return;
       }
     }
-    CMBML__DEBUG("We discovered a new participant!! Sweet.\n");
-    known_participants.emplace_back(data);
+    CMBML__DEBUG("We discovered a new participant!! Woohoo.\n");
+
+    // for each local participant, add some stuff
+    // TODO
+    for (auto & local_participant : local_participants) {
+      // Discover the new participant's builtin sedp publication reader
+      if (data.available_builtin_endpoints[publications_reader]) {
+        // Match the local participant's builtin sedp publication writer.
+        // 
+      }
+      // How interesting, this pattern repeats
+      if (data.available_builtin_endpoints[subscriptions_reader]) {
+        // Match the local participant's builtin sedp subscription writer.
+        // 
+      }
+    }
+
+    discovered_participants.emplace_back(data);
   }
 
+  // These would be helpful functions for combining constructing the object,
+  // adding tasks to an Executor, and announcing it on the discovery protocol.
+  /*
+  template<typename TopicT, typename ReaderOptions>
+  auto create_data_reader() {
+  }
+
+  template<typename TopicT, typename ReaderOptions>
+  auto create_data_writer() {
+  }
+  */
+
+  // TODO Disable if the BuiltinEndpointSet doesn't have a subscriptions_writer
+  template<typename ReaderT>
+  void announce_reader(Participant & participant, ReaderT & reader) {
+    // Convert the Reader to DiscoReaderData
+    // Publish on the local sedp_sub_writer associated with this participant
+  }
+
+  template<typename WriterT>
+  void announce_writer(Participant & participant, WriterT & reader) {
+    // Convert the Writer to DiscoWriterData
+    // Publish on the local sedp_pub_writer
+  }
+
+  // TODO How/when to announce Topics?
+
+  // When a new reader is discovered over SEDP, match it to the corresponding writer
+  void on_new_reader(DiscoReaderData && reader) {
+  }
+
+  void on_new_writer(DiscoWriterData && writer) {
+  }
+
+  void on_topic_data(TopicBuiltinTopicData && writer) {
+  }
 
 private:
   Domain() {};
   Domain(const Domain &) = delete;
   Domain(Domain &&) = delete;
 
-  List<Participant> known_participants;
-  List<SpdpParticipantDataWriter> known_spdp_writers;
-  List<SpdpParticipantDataReader> known_spdp_readers;
+  // Process-local participants.
+  List<Participant> local_participants;
+  List<Participant> discovered_participants;
+
+  // These represent local builtin endpoints.
+  List<SpdpParticipantDataWriter> spdp_writers;
+  List<SpdpParticipantDataReader> spdp_readers;
+
+  // TODO fast lookup keyed on participant?
+  List<SedpPubWriter> sedp_pub_writers;
+  List<SedpPubReader> sedp_pub_readers;
+
+  List<SedpSubWriter> sedp_sub_writers;
+  List<SedpSubReader> sedp_sub_readers;
+
+  List<SedpTopicWriter> sedp_topic_writers;
+  List<SedpTopicReader> sedp_topic_readers;
+
+  // Endpoints whose types are unknown to us.
+  // I believe the domain needs a handle for even the locally created endpoints
+  // so that it can signal the endpoints on discovery.
   List<dds::EndpointBase *> known_endpoints;
 
   // Come up with casting scheme based on the EntityKind

@@ -91,11 +91,11 @@ void ReaderProxy::set_acked_changes(const SequenceNumber_t & seq_num) {
 }
 
 bool ReaderProxy::operator==(const ReaderProxy & proxy) {
-  return remote_reader_guid == proxy.remote_reader_guid;
+  return fields.remote_reader_guid == proxy.fields.remote_reader_guid;
 }
 
 bool ReaderProxy::key_matches(const GUID_t & guid) {
-  return remote_reader_guid == guid;
+  return fields.remote_reader_guid == guid;
 }
 
 void ReaderProxy::add_change_for_reader(ChangeForReader && change) {

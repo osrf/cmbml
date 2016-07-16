@@ -5,7 +5,7 @@
 
 namespace cmbml {
 
-  // TODO Type map? need sketch of ParameterID Serialization.
+  // TODO Type map? need sketch of ParameterID Serialization/deserialization
   enum struct ParameterId_t : uint16_t {
     sentinel = 0x1,
     user_data = 0x2c,
@@ -57,7 +57,9 @@ namespace cmbml {
     type_max_size_serialized = 0x60,
     entity_name = 0x62,
     key_hash = 0x70,
-    status_info = 0x71
+    status_info = 0x71,
+
+    unknown = UINT16_MAX
   };
 
   struct Parameter {
@@ -66,6 +68,8 @@ namespace cmbml {
     (uint16_t, length),
     (List<Octet>, value));
   };
+
+  // Define a mapping from struct 
 
 }
 

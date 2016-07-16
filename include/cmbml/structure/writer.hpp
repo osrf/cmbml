@@ -79,24 +79,39 @@ namespace cmbml {
     Locator_t locator;
   };
 
+  // Serializable POD
+  struct ReaderProxyPOD {
+    BOOST_HANA_DEFINE_STRUCT(ReaderProxyPOD,
+      (GUID_t, remote_reader_guid),
+      (bool, expects_inline_qos),
+      (List<Locator_t>, unicast_locator_list),
+      (List<Locator_t>, multicast_locator_list)
+    );
+
+    /*
+    CMBML__DEFINE_PARAMETER_ID_MAP(ReaderProxyPOD,
+      // remote_reader_guid can be omitted from the parametermap? there's no obvious id
+      (expects_inline_qos, ParameterId_t::expects_inline_qos),
+      (unicast_locator_list, unicast_locator),
+      (multicast_locator_list, multicast_locator)
+    );
+    */
+  };
 
   struct ReaderProxy : ReaderCacheAccessor {
     // move these structs in
     ReaderProxy(GUID_t & guid,
         bool inline_qos,
-        List<Locator_t> && unicastLocatorList,
-        List<Locator_t> && multicastLocatorList, HistoryCache * cache) :
+        List<Locator_t> && unicast_locator_list,
+        List<Locator_t> && multicast_locator_list, HistoryCache * cache) :
       ReaderCacheAccessor(cache),
-      remote_reader_guid(guid),
-      unicast_locator_list(unicastLocatorList), multicast_locator_list(multicastLocatorList),
-      expects_inline_qos(inline_qos),
+      fields{guid, inline_qos, unicast_locator_list, multicast_locator_list},
       writer_cache(cache)
     {
     }
 
-    GUID_t remote_reader_guid;
-    List<Locator_t> unicast_locator_list;
-    List<Locator_t> multicast_locator_list;
+    ReaderProxyPOD fields;
+    // TODO replace with POD
 
     ChangeForReader pop_next_requested_change();
     ChangeForReader pop_next_unsent_change();
@@ -107,7 +122,6 @@ namespace cmbml {
     bool operator==(const ReaderProxy & proxy);
     bool key_matches(const GUID_t & guid);
 
-    const bool expects_inline_qos;
 
     bool unacked_changes_not_empty = false;
     bool unacked_changes_empty = true;
