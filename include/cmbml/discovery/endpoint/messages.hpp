@@ -5,6 +5,8 @@
 
 #include <cmbml/discovery/common.hpp>
 #include <cmbml/dds/qos.hpp>
+#include <cmbml/structure/writer_proxy.hpp>
+#include <cmbml/structure/reader_proxy.hpp>
 
 namespace cmbml {
   struct ContentFilterProperty_t {

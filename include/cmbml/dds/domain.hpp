@@ -71,40 +71,62 @@ public:
     return spdp_builtin_writer;
   }
 
-  template<typename Executor>
-  SpdpParticipantDataReader &
-  create_spdp_reader(Participant & p) {
-    spdp_readers.emplace_back(p);
-    SpdpParticipantDataReader & spdp_builtin_reader = spdp_readers.back();
+  template<typename Executor, typename BuiltinReader>
+  void
+  configure_builtin_reader(BuiltinReader & builtin_reader) {
     Executor & executor = Executor::get_instance();
     // Time for guard conditions and read conditions
     executor.add_task(
-      [this, &spdp_builtin_reader](const auto & timeout) {
-        // TODO Block until take is ready
-        SpdpDiscoData disco_data;
-        auto & read_condition = spdp_builtin_reader.create_read_condition();
+      [this, &builtin_reader](const auto & timeout) {
+        typename BuiltinReader::Topic message;
+        auto & read_condition = builtin_reader.create_read_condition();
         read_condition.wait_until_trigger(timeout);
-        auto status = spdp_builtin_reader.take(disco_data);
+        auto status = builtin_reader.take(message);
         if (status != StatusCode::ok) {
           return status;
         }
-        on_new_participant(std::move(disco_data));
+        on_builtin_data(std::move(message));
         // TODO Do some stuff with this data
         // when does the read trigger value reset??
         return StatusCode::ok;
       }
     );
-
-    // Callback configuration?
-
-    return spdp_builtin_reader;
   }
 
-  // Storage
-  /*
-  SedpPubWriter &
-  create_sedp_pub_
-  */
+  template<typename Executor>
+  SpdpParticipantDataReader & create_spdp_reader(Participant & p) {
+    spdp_readers.emplace_back(p);
+    SpdpParticipantDataReader & spdp_reader = spdp_readers.back();
+    configure_builtin_reader<Executor>(spdp_reader);
+    return spdp_reader;
+  }
+
+  template<typename Executor>
+  SedpPubReader &
+  create_sedp_pub_reader(Participant & p) {
+    sedp_pub_readers.emplace_back(p);
+    SedpPubReader & builtin_reader = sedp_pub_readers.back();
+    configure_builtin_reader<Executor>(builtin_reader);
+    return builtin_reader;
+  }
+
+  template<typename Executor>
+  SedpSubReader &
+  create_sedp_sub_reader(Participant & p) {
+    sedp_sub_readers.emplace_back(p);
+    SedpSubReader & builtin_reader = sedp_sub_readers.back();
+    configure_builtin_reader<Executor>(builtin_reader);
+    return builtin_reader;
+  }
+
+  template<typename Executor>
+  SedpTopicsReader &
+  create_sedp_topic_reader(Participant & p) {
+    sedp_topic_readers.emplace_back(p);
+    SedpTopicsReader & builtin_reader = sedp_topic_readers.back();
+    configure_builtin_reader<Executor>(builtin_reader);
+    return builtin_reader;
+  }
 
   // in the future, we could probably add some short-circuiting logic for endpoints
   // in the same participant!
@@ -116,25 +138,44 @@ public:
     // TODO Assert that the guid we produced is not currently in local participants OR
     // discovered participants
     // Add builtin spdp endpoints to container
-    create_spdp_writer<Executor>(local_participants.back(), transport_context);
-    create_spdp_reader<Executor>(local_participants.back());
+    Participant & p = local_participants.back();
+    create_spdp_writer<Executor>(p, transport_context);
+    create_spdp_reader<Executor>(p);
 
-    // TODO add builtin sedp endpoints if they are enabled.
+    // TODO Disable certain endpoints according to set options.
+    sedp_pub_writers.emplace_back(p);
+    sedp_sub_writers.emplace_back(p);
+    sedp_topic_writers.emplace_back(p);
 
-    /*
-    create_sedp_pub_writer();
-    create_sedp_pub_reader();
-    create_sedp_sub_writer();
-    create_sedp_sub_reader();
-    create_sedp_topic_writer();
-    create_sedp_topic_reader();
-    */
+    // Readers
+    create_sedp_pub_reader<Executor>(p);
+    create_sedp_sub_reader<Executor>(p);
+    create_sedp_topic_reader<Executor>(p);
 
-    return local_participants.back();
+    return p;
+  }
+
+  template<typename T>
+  void on_builtin_data(T && data);
+
+  template<typename EndpointT>
+  void
+  match_builtin_endpoint(
+    GuidPrefix_t guid_prefix, SpdpDiscoData & data, List<EndpointT> & endpoints)
+  {
+    if (data.available_builtin_endpoints[static_cast<size_t>(EndpointT::kind)]) {
+      // Find the endpoint that matches
+      for (auto & endpoint : endpoints) {
+        if (endpoint.get_guid().prefix == guid_prefix) {
+          endpoint.match_proxy({data.guid_prefix, EndpointT::get_id()}, data);
+          break;
+        }
+      }
+    }
   }
 
   // When a remote participant is discovered
-  void on_new_participant(SpdpDiscoData && data) {
+  void on_builtin_data(SpdpDiscoData && data) {
     for (const auto & p : discovered_participants) {
       if (p.guid.prefix == data.guid_prefix) {
         return;
@@ -142,63 +183,110 @@ public:
     }
     CMBML__DEBUG("We discovered a new participant!! Woohoo.\n");
 
-    // for each local participant, add some stuff
-    // TODO
     for (auto & local_participant : local_participants) {
       // Discover the new participant's builtin sedp publication reader
-      if (data.available_builtin_endpoints[
-          static_cast<size_t>(BuiltinEndpointKind::publications_reader)])
-        {
-        // Match the local participant's builtin sedp publication writer.
-        // 
-      }
-      if (data.available_builtin_endpoints[
-          static_cast<size_t>(BuiltinEndpointKind::subscriptions_reader)])
-      {
-        // Match the local participant's builtin sedp subscription writer.
-        // 
-      }
+      // TODO metatraffic_*cast_locator_list!!!
+      match_builtin_endpoint(local_participant.guid.prefix, data, sedp_pub_readers);
+      match_builtin_endpoint(local_participant.guid.prefix, data, sedp_pub_writers);
+
+      match_builtin_endpoint(local_participant.guid.prefix, data, sedp_sub_readers);
+      match_builtin_endpoint(local_participant.guid.prefix, data, sedp_sub_writers);
+
+      match_builtin_endpoint(local_participant.guid.prefix, data, sedp_topic_readers);
+      match_builtin_endpoint(local_participant.guid.prefix, data, sedp_topic_writers);
     }
 
     discovered_participants.emplace_back(data);
   }
-
-  // These would be helpful functions for combining constructing the object,
-  // adding tasks to an Executor, and announcing it on the discovery protocol.
-  /*
-  template<typename TopicT, typename ReaderOptions>
-  auto create_data_reader() {
-  }
-
-  template<typename TopicT, typename ReaderOptions>
-  auto create_data_writer() {
-  }
-  */
-
-  // TODO Disable if the BuiltinEndpointSet doesn't have a subscriptions_writer
-  template<typename ReaderT>
-  void announce_reader(Participant & participant, ReaderT & reader) {
-    // Convert the Reader to DiscoReaderData
-    // Publish on the local sedp_sub_writer associated with this participant
-  }
-
-  template<typename WriterT>
-  void announce_writer(Participant & participant, WriterT & reader) {
-    // Convert the Writer to DiscoWriterData
-    // Publish on the local sedp_pub_writer
-  }
-
   // TODO How/when to announce Topics?
 
   // When a new reader is discovered over SEDP, match it to the corresponding writer
-  void on_new_reader(DiscoReaderData && reader) {
+  // This is where we need ownership of the participant's known endpoints.
+  void on_builtin_data(DiscoReaderData && reader) {
+    CMBML__DEBUG("We discovered a new reader!! Woohoo.\n");
+    // find the writer in the type-erased known endpoints and cast based on type info?
+    // match a writer to this reader
+    for (auto writer : writers) {
+      assert(writer);
+      // TODO be more responsible and check more metadata before matching
+      if (writer->get_topic_name() == reader.subscription_data.topic_name) {
+        writer->match_proxy(std::move(reader.reader_proxy));
+        CMBML__DEBUG("We matched a new reader with a writer!! Woohoo.\n");
+        // We could match multiple writers on the same topic, so don't break
+      }
+    }
   }
 
-  void on_new_writer(DiscoWriterData && writer) {
+  void on_builtin_data(DiscoWriterData && writer) {
+    CMBML__DEBUG("We discovered a new writer!! Woohoo.\n");
+    for (auto reader : readers) {
+      assert(reader);
+      // TODO be more responsible and check more metadata before matching
+      if (reader->get_topic_name() == writer.publication_data.topic_name) {
+        reader->match_proxy(std::move(writer.writer_proxy));
+        CMBML__DEBUG("We matched a new writer with a reader!! Woohoo.\n");
+        // We could match multiple readers on the same topic, so don't break
+      }
+    }
   }
 
-  void on_topic_data(TopicBuiltinTopicData && writer) {
+  void on_builtin_data(TopicBuiltinTopicData && writer) {
+    // TODO
   }
+
+  // These would be helpful functions for combining constructing the object,
+  // adding tasks to an Executor, and announcing it on the discovery protocol.
+  // hurrggh
+  template<typename TopicT, typename ReaderOptions, typename Executor, typename Context>
+  auto create_data_reader(const String & topic_name, Participant & p, Context & context) {
+    using ReaderT = dds::DataReader<TopicT, ReaderOptions>;
+    ReaderT reader = ReaderT(topic_name, p);
+    Executor & executor = Executor::get_instance();
+    reader.add_tasks(context, executor);
+    // TODO clean up our entry in this vector in destructor
+    readers.push_back(&reader);
+    announce_reader(reader, p, context);
+    return reader;
+  }
+
+  template<typename TopicT, typename WriterOptions, typename Executor, typename Context>
+  auto create_data_writer(const String & topic_name, Participant & p, Context & context) {
+    using WriterT = dds::DataWriter<TopicT, WriterOptions>;
+    WriterT writer = WriterT(topic_name, p);
+    Executor & executor = Executor::get_instance();
+    writer.add_tasks(context, executor);
+    // TODO clean up our entry in this vector in destructor
+    writers.push_back(&writer);
+    announce_writer(writer, p, context);
+    return writer;
+  }
+
+  template<typename ReaderT, typename Context>
+  void announce_reader(ReaderT & reader, Participant & participant, Context & context) {
+    // Convert the Reader to DiscoReaderData
+    // Publish on the local sedp_sub_writer associated with this participant
+    for (auto & builtin_writer : sedp_sub_writers) {
+      if (builtin_writer.get_guid().prefix == participant.guid.prefix) {
+        builtin_writer.write(reader.convert_to_reader_data(), context);
+        CMBML__DEBUG("Announcing created reader\n");
+        break;
+      }
+    }
+  }
+
+  template<typename WriterT, typename Context>
+  void announce_writer(WriterT & writer, Participant & participant, Context & context) {
+    // Convert the Writer to DiscoWriterData
+    // Publish on the local sedp_pub_writer
+    for (auto & builtin_writer : sedp_pub_writers) {
+      if (builtin_writer.get_guid().prefix == participant.guid.prefix) {
+        builtin_writer.write(writer.convert_to_writer_data(), context);
+        CMBML__DEBUG("Announcing created writer\n");
+        break;
+      }
+    }
+  }
+
 
 private:
   Domain() {};
@@ -223,16 +311,8 @@ private:
   List<SedpTopicsWriter> sedp_topic_writers;
   List<SedpTopicsReader> sedp_topic_readers;
 
-  // Endpoints whose types are unknown to us.
-  // I believe the domain needs a handle for even the locally created endpoints
-  // so that it can signal the endpoints on discovery.
-  List<dds::EndpointBase *> known_endpoints;
-
-  // Come up with casting scheme based on the EntityKind
-  // template parameters though...
-  // Can't do this with the DDS types because they compose instead of inheriting
-  // I guess DDS Reader and Writer should inherit from a common base
-  // List<Endpoint> known_endpoints;
+  List<dds::ReaderBase *> readers;
+  List<dds::WriterBase *> writers;
 
   // TODO Use this somewhere
   // uint32_t domain_id = cmbml_test_domain_id;

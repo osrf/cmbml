@@ -16,13 +16,14 @@ namespace cmbml {
 
   CMBML__MAKE_WRITER_OPTIONS(SPDPWriterOptions, spdp_writer_options_map);
 
+  // The builtin endpoints have an empty topic name.
   class SpdpParticipantDataWriter :
     public dds::DataWriter<SpdpDiscoData, SPDPWriterOptions>
   {
   public:
     using ParentType = dds::DataWriter<SpdpDiscoData, SPDPWriterOptions>;
 
-    SpdpParticipantDataWriter(Participant & p) : ParentType(p) {
+    SpdpParticipantDataWriter(Participant & p) : ParentType("", p) {
       message = p.create_discovery_data();
       rtps_writer.guid.entity_id = spdp_writer_id;
     };
@@ -56,7 +57,7 @@ namespace cmbml {
   public:
     using ParentType = dds::DataReader<SpdpDiscoData, SpdpReaderOptions>;
 
-    SpdpParticipantDataReader(Participant & p) : ParentType(p) {
+    SpdpParticipantDataReader(Participant & p) : ParentType("", p) {
       rtps_reader.guid.entity_id = spdp_reader_id;
     }
 

@@ -22,6 +22,9 @@ enum class BuiltinEndpointKind : uint32_t {
   publications_reader  = 3,
   subscriptions_writer = 4,
   subscriptions_reader = 5,
+  // ?????
+  topics_reader = 10,
+  topics_writer = 11,
 };
 
 // "ParticipantBuiltinTopicData", "ParticipantProxy", and "SpdpDiscoveredParticipantData"

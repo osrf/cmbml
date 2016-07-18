@@ -5,7 +5,9 @@
 #include <cmbml/serialization/serialize_cdr.hpp>
 #include <cmbml/serialization/deserialize_cdr.hpp>
 #include <cmbml/dds/endpoint.hpp>
+#include <cmbml/discovery/endpoint/messages.hpp>
 #include <cmbml/structure/writer.hpp>
+#include <cmbml/structure/writer_proxy.hpp>
 
 #include <cmbml/psm/udp/context.hpp>
 
@@ -14,16 +16,33 @@
 namespace cmbml {
 namespace dds {
 
+  class WriterBase {
+  public:
+    WriterBase(const String & topic) : topic_name(topic)
+    {
+    }
+
+    virtual void match_proxy(ReaderProxyPOD && reader) = 0;
+
+    virtual const GUID_t & get_guid() const = 0;
+
+    const String & get_topic_name() const {
+      return topic_name;
+    }
+  protected:
+    String topic_name;
+  };
+
   // Combines serialize/deserialize, state machine, etc.
   // template<typename TopicT, typename RTPSWriter>
   template<typename TopicT, typename WriterOptions>
-  class DataWriter : public EndpointBase {
+  class DataWriter : public WriterBase {
     using WriterT = RTPSWriter<WriterOptions>;
   public:
 
     // Consider taking a Context for this thread in the constructor.
-    DataWriter(Participant & p) :
-      EndpointBase(rtps_writer.guid), rtps_writer(p) {
+    DataWriter(const String & topic_name, Participant & p) :
+      WriterBase(topic_name), rtps_writer(p) {
     }
 
     InstanceHandle_t register_instance(TopicT & data) {
@@ -85,6 +104,28 @@ namespace dds {
         },
         [](){}
       );
+    }
+
+    void match_proxy(GUID_t && guid, SpdpDiscoData & data) {
+      match_proxy({guid, data.expects_inline_qos, data.metatraffic_unicast_locator_list,
+          data.metatraffic_multicast_locator_list});
+    }
+    void match_proxy(ReaderProxyPOD && reader) {
+      configured_reader<WriterT> e{rtps_writer, std::move(reader)};
+      state_machine.process_event(e);
+    }
+    const GUID_t & get_guid() const {
+      return rtps_writer.guid;
+    }
+
+    DiscoWriterData convert_to_writer_data() const {
+      // TODO other fields in this struct are not used right now.
+      // This will prevent compatibility with other impls
+      PublicationBuiltinTopicData publication_data;
+      publication_data.topic_name = get_topic_name();
+      WriterProxyPOD proxy = {
+        get_guid(), rtps_writer.unicast_locator_list, rtps_writer.multicast_locator_list};
+      return {publication_data, proxy};
     }
 
   protected:

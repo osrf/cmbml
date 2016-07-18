@@ -6,6 +6,7 @@
 #include <cmbml/behavior/reader_state_machine.hpp>
 #include <cmbml/dds/endpoint.hpp>
 #include <cmbml/dds/sample_info.hpp>
+#include <cmbml/discovery/endpoint/messages.hpp>
 #include <cmbml/serialization/serialization.hpp>
 #include <cmbml/utility/metafunctions.hpp>
 
@@ -29,15 +30,46 @@ namespace dds {
     );
   };
 
+  // For template erasure.
+  class ReaderBase {
+  public:
+    ReaderBase(const String & topic) : topic_name(topic)
+    {
+    }
+
+    virtual void match_proxy(WriterProxyPOD && writer) = 0;
+
+    virtual const GUID_t & get_guid() const = 0;
+
+    virtual const String & get_topic_name() const {
+      return topic_name;
+    }
+  protected:
+    String topic_name;
+  };
+
   // Combines serialize/deserialize, state machine, etc.
   // DataReader and DataWriter take an Executor, which abstracts the threading model.
   template<typename TopicT, typename ReaderOptions>
-  class DataReader : public EndpointBase {
+  class DataReader : public ReaderBase {
     using ReaderT = RTPSReader<ReaderOptions>;
   public:
-    DataReader(Participant & p) : EndpointBase(rtps_reader.guid), rtps_reader(p) {
+    using Topic = TopicT;
 
+    // TODO Disable copy constructor.
+    DataReader(const String & topic_name, Participant & p) : ReaderBase(topic_name), rtps_reader(p)
+    {
     }
+
+    /*
+    ~DataReader()
+    {
+      // hmmmmmm
+      Domain & domain = Domain::get_instance();
+      for (auto endpoint : domain.readers) {
+      }
+    }
+    */
 
     // Single-message with no sample info
     StatusCode take(TopicT & data)
@@ -111,6 +143,26 @@ namespace dds {
       return *read_condition;
     }
 
+    virtual void match_proxy(GUID_t && guid, SpdpDiscoData & data) {
+      match_proxy({guid, data.metatraffic_unicast_locator_list,
+          data.metatraffic_multicast_locator_list});
+    }
+
+    void match_proxy(WriterProxyPOD && writer) {
+      reader_events::reader_created<ReaderT> e{rtps_reader, std::move(writer)};
+      state_machine.process_event(e);
+    }
+
+    const GUID_t & get_guid() const {
+      return rtps_reader.guid;
+    }
+
+    DiscoReaderData convert_to_reader_data() const {
+      SubscriptionBuiltinTopicData subscription_data;
+      ReaderProxyPOD proxy = {get_guid(), rtps_reader.expects_inline_qos,
+        rtps_reader.unicast_locator_list, rtps_reader.multicast_locator_list};
+      return {ContentFilterProperty_t(), subscription_data, proxy};
+    }
 
   protected:
     // TODO duplicated in writer

@@ -52,6 +52,8 @@ namespace cmbml {
     );
 
     constexpr Duration_t(uint32_t s, uint32_t ns) : sec(s), nsec(ns) {}
+    constexpr Duration_t() : sec(0), nsec(0) {}
+
     std::chrono::nanoseconds to_ns() const {
       return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(sec)) +
         std::chrono::nanoseconds(nsec);

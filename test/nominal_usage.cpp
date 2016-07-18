@@ -17,12 +17,12 @@ struct Int32 {
 int main(int argc, char ** argv) {
   Domain & domain = Domain::get_instance();
   udp::Context context;
-  SyncExecutor & executor = SyncExecutor::get_instance();
+  // SyncExecutor & executor = SyncExecutor::get_instance();
   Participant & participant = domain.create_new_participant<SyncExecutor>(context);
   // TODO Block until discovery is over?
 
   // TODO Pass allocator to history cache through these maps
-  // Could also make it a handle for Executor and Context singletons.
+  // Could also make it a handle for Executor and Context types.
   constexpr auto writer_options_map = make_option_map(
     hana::make_pair(EndpointOptions::stateful, false),
     hana::make_pair(EndpointOptions::reliability, ReliabilityKind_t::best_effort),
@@ -35,8 +35,8 @@ int main(int argc, char ** argv) {
   CMBML__MAKE_WRITER_OPTIONS(WriterOptions, writer_options_map);
 
   // TODO Finish these interfaces and functions
-  DataWriter<Int32, WriterOptions> writer(participant);
-  writer.add_tasks(context, executor);
+  auto writer = domain.create_data_writer<Int32, WriterOptions, SyncExecutor>(
+    "chatter", participant, context);
 
   constexpr auto reader_options_map = make_option_map(
     hana::make_pair(EndpointOptions::stateful, false),
@@ -48,10 +48,8 @@ int main(int argc, char ** argv) {
 
   CMBML__MAKE_READER_OPTIONS(ReaderOptions, reader_options_map);
 
-  // domain or participant call could make a factory for this.
-  // there are some ownership/scoping issues to be addressed by api refinement.
-  DataReader<Int32, ReaderOptions> reader(participant);
-  reader.add_tasks(context, executor);
+  auto reader = domain.create_data_reader<Int32, ReaderOptions, SyncExecutor>(
+    "chatter", participant, context);
 
   {
     auto error_code = writer.write(Int32{42}, context);
@@ -63,7 +61,7 @@ int main(int argc, char ** argv) {
   }
 
   Waitset<SyncExecutor> waitset;
-  ReadCondition<decltype(reader)> & read_condition = reader.create_read_condition();
+  auto & read_condition = reader.create_read_condition();
   waitset.attach_condition(read_condition);
   waitset.wait();
   if (!read_condition.get_trigger_value()) {

@@ -8,12 +8,6 @@
 
 namespace cmbml {
 
-  template<typename StatelessWriterT>
-  struct configured_locator {
-    StatelessWriterT & writer;
-    Locator_t && locator;
-    bool inline_qos;
-  };
   struct unsent_changes {};
   struct unsent_changes_empty {};
 
@@ -50,10 +44,7 @@ namespace cmbml {
   template<typename StatefulWriterT>
   struct configured_reader {
     StatefulWriterT & writer;
-    GUID_t & reader_guid;
-    bool expects_inline_qos;
-    List<Locator_t> & unicast_locator_list;
-    List<Locator_t> & multicast_locator_list;
+    ReaderProxyPOD && fields;
   };
 
   template<typename StatefulWriterT>

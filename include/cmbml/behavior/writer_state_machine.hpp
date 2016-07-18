@@ -27,7 +27,7 @@ namespace cmbml {
       state<class final_> final_s;
 
       return boost::msm::lite::make_transition_table(
-        *initial_s + event<configured_locator<WriterT>> / on_configured_locator = idle_s,
+        *initial_s + event<configured_reader<WriterT>> / on_configured_locator = idle_s,
         idle_s     + event<unsent_changes>                                      = pushing_s,
         pushing_s  + event<unsent_changes_empty>                                = idle_s,
         pushing_s  + event<can_send<WriterT>>           / on_can_send           = pushing_s,
@@ -57,7 +57,7 @@ namespace cmbml {
       state<class final_> final_s;
 
       return boost::msm::lite::make_transition_table(
-        *initial_s   + event<configured_locator<WriterT>> / on_configured_locator = announcing_s,
+        *initial_s   + event<configured_reader<WriterT>> / on_configured_locator = announcing_s,
         announcing_s + event<unsent_changes>                                      = pushing_s,
         pushing_s    + event<unsent_changes_empty>                                = announcing_s,
         pushing_s    + event<can_send<WriterT>>           / on_can_send           = pushing_s,

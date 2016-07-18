@@ -1,7 +1,7 @@
 
 
 - Message Module
-  - [ ] Generic serialization ("meta-cdr")
+  - [x] Generic serialization ("meta-cdr")
   - [x] Deserialization: implement std::forward(callback) in deserialize as suggested by Arthur
     - benchmark if this is actually useful
   - [ ] Fix wrapping of messages in send (I'm still not sure about message "glomming")
@@ -23,6 +23,9 @@
     - DCPSTopic
   - [ ] flesh out custom messages interface
   - [x] How to assign GuidPrefix for new participants?
+  - the biggest problem right now is how locators get set.
+  - metatraffic locators?
+  - how do endpoints set their own locators?
 
 - [ ] PIM: Implement UDP/IP (links to generic serialization goal)
 

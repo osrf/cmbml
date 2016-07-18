@@ -4,11 +4,12 @@
 namespace cmbml {
 namespace dds {
 
-  // A DDS endpoint is move constructible but not copy constructible.
+  // A DDS endpoint should be move constructible but not copy constructible.
+  // redundancies, ugh!
   class EndpointBase {
   public:
     explicit EndpointBase(GUID_t & g) : guid(g) {}
-    GUID_t & guid;
+    GUID_t guid;
   protected:
     // EndpointBase(const EndpointBase &) = delete;
   };

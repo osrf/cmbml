@@ -14,9 +14,12 @@ namespace reader_events {
   template<typename ReaderT>
   struct reader_created {
     ReaderT & reader;
+    WriterProxyPOD && pod;
+    /*
     GUID_t & remote_writer_guid;
     List<Locator_t> & unicast_locators;
     List<Locator_t> & multicast_locators;
+    */
   };
 
   // TODO May need to make another event to avoid providing an unnecessary ref to receiver

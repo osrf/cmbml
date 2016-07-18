@@ -10,9 +10,10 @@ namespace cmbml {
 
   auto on_reader_created = [](auto & e) {
     // e.reader.add_matched_writer(WriterProxy(e.remote_writer_guid, e.unicast_locators, e.multicast_locators));
-    e.reader.emplace_matched_writer(e.remote_writer_guid, e.unicast_locators, e.multicast_locators);
+    e.reader.emplace_matched_writer(std::move(e.pod));
     // TODO WriterProxy is initialized with all past and future samples from the Writer
     // as discussed in 8.4.10.4.
+    // TODO This action is actually not needed for RTPS StatelessReader
   };
 
   auto on_reader_deleted = [](auto & e) {
