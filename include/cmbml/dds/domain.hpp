@@ -4,6 +4,7 @@
 #include <cmbml/types.hpp>
 
 #include <cmbml/discovery/participant/spdp.hpp>
+#include <cmbml/discovery/endpoint/sedp.hpp>
 #include <cmbml/dds/waitset.hpp>
 
 #include <cmbml/utility/console_print.hpp>
@@ -216,8 +217,8 @@ private:
   List<SedpSubWriter> sedp_sub_writers;
   List<SedpSubReader> sedp_sub_readers;
 
-  List<SedpTopicWriter> sedp_topic_writers;
-  List<SedpTopicReader> sedp_topic_readers;
+  List<SedpTopicsWriter> sedp_topic_writers;
+  List<SedpTopicsReader> sedp_topic_readers;
 
   // Endpoints whose types are unknown to us.
   // I believe the domain needs a handle for even the locally created endpoints

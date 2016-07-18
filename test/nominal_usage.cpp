@@ -30,7 +30,8 @@ int main(int argc, char ** argv) {
     hana::make_pair(EndpointOptions::push_mode, true)
   );
 
-  // This macro makes a using declaration. May want to use a type_c instead to avoid namespace pollution.
+  // This macro makes a using declaration
+  // May want to use a type_c instead to avoid namespace pollution.
   CMBML__MAKE_WRITER_OPTIONS(WriterOptions, writer_options_map);
 
   // TODO Finish these interfaces and functions

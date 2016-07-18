@@ -3,6 +3,7 @@
 
 #include <cmbml/dds/reader.hpp>
 #include <cmbml/dds/writer.hpp>
+#include <cmbml/discovery/endpoint/messages.hpp>
 
 namespace cmbml {
 
@@ -12,18 +13,19 @@ namespace cmbml {
   // TODO Set resend_data_period in option map?
   constexpr auto sedp_writer_options = hana::make_map(
     hana::make_pair(EndpointOptions::stateful, true),
-    hana::make_pair(EndpointOptions::reliability, ReliablityKind_t::reliable),
-    hana::make_pair(EndpointOptions::topic_kind, ReliablityKind_t::with_key),
-    hana::make_pair(EndpointOptions::push_mode, true),
+    hana::make_pair(EndpointOptions::reliability, ReliabilityKind_t::reliable),
+    hana::make_pair(EndpointOptions::topic_kind, TopicKind_t::with_key),
+    hana::make_pair(EndpointOptions::push_mode, true)
   );
 
   CMBML__MAKE_WRITER_OPTIONS(SEDPWriterOptions, sedp_writer_options);
 
   constexpr auto sedp_reader_options = hana::make_map(
     hana::make_pair(EndpointOptions::stateful, true),
-    hana::make_pair(EndpointOptions::reliability, ReliablityKind_t::reliable),
-    hana::make_pair(EndpointOptions::topic_kind, ReliablityKind_t::with_key),
-    hana::make_pair(EndpointOptions::expects_inline_qos, false)
+    hana::make_pair(EndpointOptions::reliability, ReliabilityKind_t::reliable),
+    hana::make_pair(EndpointOptions::topic_kind, TopicKind_t::with_key),
+    hana::make_pair(EndpointOptions::expects_inline_qos, false),
+    hana::make_pair(EndpointOptions::transport, hana::type_c<udp::Context>)
   );
 
   CMBML__MAKE_READER_OPTIONS(SEDPReaderOptions, sedp_reader_options);
@@ -36,7 +38,7 @@ namespace cmbml {
   };
 
   class SedpPubReader :
-    public dds::DataReader<PDiscoWriterData, SEDPReaderOptions>
+    public dds::DataReader<DiscoWriterData, SEDPReaderOptions>
   {
   };
 

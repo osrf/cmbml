@@ -97,9 +97,6 @@ void traverse(const T element, CallbackT && callback, size_t & index)
   traverse(static_cast<typename std::underlying_type<T>::type>(element), callback, index);
 }
 
-// TODO Specialization for ParameterList. Parameters currently do not conform to CDR spec
-
-
 template<typename CallbackT>
 void traverse(const std::bitset<8> & src, CallbackT & callback, size_t & index)
 {
@@ -107,15 +104,24 @@ void traverse(const std::bitset<8> & src, CallbackT & callback, size_t & index)
   traverse(converted_bitset, callback, index);
 }
 
+template<typename CallbackT>
+void traverse(const String & src, CallbackT & callback, size_t & index)
+{
+  // uint8_t converted_bitset = static_cast<uint8_t>(src.to_ulong());
+  traverse(static_cast<uint32_t>(src.size()), callback, index);
+  traverse(src.data(), callback, index);
+}
+
+
 // Specialization for ParameterList
 template<typename CallbackT>
 void traverse(const List<Parameter> & src, CallbackT & callback, size_t & index)
 {
   for (const auto & parameter : src) {
-    // this might be too brittle; consider instead just cutting off serialization at the end of length
+    // this assert might be too brittle;
+    // consider instead just cutting off serialization at the end of length
     // assert(parameter.length == parameter.value.size());
     // TODO Ensure that this is aligned at the start of a word
-    // ugh, the list is not going to be serialized properly
     traverse(parameter.id, callback, index);
     traverse(parameter.length, callback, index);
     for (const auto & entry : parameter.value) {

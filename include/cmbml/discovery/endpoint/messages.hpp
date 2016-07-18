@@ -1,15 +1,18 @@
-#ifndef CMBML__SEDP___HPP_
-#define CMBML__SEDP___HPP_
+#ifndef CMBML__SEDP_MESSAGES___HPP_
+#define CMBML__SEDP_MESSAGES___HPP_
 
 #include <boost/hana/define_struct.hpp>
+
+#include <cmbml/discovery/common.hpp>
+#include <cmbml/dds/qos.hpp>
 
 namespace cmbml {
   struct ContentFilterProperty_t {
     BOOST_HANA_DEFINE_STRUCT(ContentFilterProperty_t,
-      char[256], content_filtered_topic_name,
-      char[256], related_topic_name,
-      String, filter_expression,
-      List<String> expression_parameters
+      (std::array<char, 256>, content_filtered_topic_name),
+      (std::array<char, 256>, related_topic_name),
+      (String, filter_expression),
+      (List<String>, expression_parameters)
     );
   };
 
@@ -85,4 +88,4 @@ namespace cmbml {
 
 }  // namespace cmbml
 
-#endif  // CMBML__SEDP___HPP_
+#endif  // CMBML__SEDP_MESSAGES___HPP_

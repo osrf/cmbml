@@ -43,7 +43,7 @@ namespace dds {
   };
 
   // TODO
-  struct PublisherQos {
+  struct PublicationQos {
   };
 
   // TODO

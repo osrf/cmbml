@@ -60,6 +60,26 @@ StatusCode deserialize(std::bitset<8> & dst, const SrcT & src, size_t & index)
   return status;
 }
 
+template<typename SrcT>
+StatusCode deserialize(String & dst, const SrcT & src, size_t & index)
+{
+  uint32_t string_size;
+  StatusCode status = deserialize(string_size, src, index);
+  if (status != StatusCode::ok) {
+    return status;
+  }
+  // TODO:
+  // String deserialization requires allocation if std::string is used.
+  // Could make this more efficient with a custom string class.
+  // char array
+  String output;
+  output.reserve(string_size);
+  for (auto & entry : output) {
+    status = deserialize(entry, src, index);
+  }
+  return status;
+}
+
 // Specialization for ParameterList
 template<typename SrcT>
 StatusCode deserialize(List<Parameter> & dst, const SrcT & src, size_t index)
