@@ -51,12 +51,12 @@ StatusCode deserialize(DstT & dst, const SrcT & src, size_t & index)
   return StatusCode::ok;
 }
 
-template<typename SrcT>
-StatusCode deserialize(std::bitset<8> & dst, const SrcT & src, size_t & index)
+template<typename SrcT, size_t NumBits>
+StatusCode deserialize(std::bitset<NumBits> & dst, const SrcT & src, size_t & index)
 {
   uint32_t flags = 0;
   StatusCode status = deserialize(flags, src, index);
-  dst = std::bitset<8>(flags);
+  dst = std::bitset<NumBits>(flags);
   return status;
 }
 

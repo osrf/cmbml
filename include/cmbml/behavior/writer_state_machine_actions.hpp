@@ -101,12 +101,12 @@ namespace stateful_writer {
         ChangeForReader change = reader_proxy.pop_next_unsent_change();
         change.status = ChangeForReaderStatus::underway;
         if (change.is_relevant) {
-          Data data(std::move(change), reader_proxy.expects_inline_qos,
+          Data data(std::move(change), reader_proxy.fields.expects_inline_qos,
             std::decay_t<decltype(e.writer)>::topic_kind == TopicKind_t::with_key);
           // TODO inline QoS
           data.reader_id = entity_id_unknown;
           Packet<> packet = e.writer.participant.serialize_with_header(data);
-          for (auto & locator : reader_proxy.unicast_locator_list) {
+          for (auto & locator : reader_proxy.fields.unicast_locator_list) {
             e.context.unicast_send(locator, packet.data(), packet.size());
           }
         }
@@ -163,23 +163,23 @@ namespace stateful_writer {
         ChangeForReader change = reader_proxy.pop_next_requested_change();
         change.status = ChangeForReaderStatus::underway;
         if (change.is_relevant) {
-          Data data(std::move(change), reader_proxy.expects_inline_qos,
+          Data data(std::move(change), reader_proxy.fields.expects_inline_qos,
             std::decay_t<decltype(e.writer)>::topic_kind == TopicKind_t::with_key);
           // ??? Is this implied by the spec?
-          data.reader_id = reader_proxy.remote_reader_guid.entity_id;
+          data.reader_id = reader_proxy.fields.remote_reader_guid.entity_id;
           // TODO inline QoS
           Packet<> packet = e.writer.participant.serialize_with_header(data);
-          for (auto & locator : reader_proxy.unicast_locator_list) {
+          for (auto & locator : reader_proxy.fields.unicast_locator_list) {
             e.context.unicast_send(locator, packet.data(), packet.size());
           }
           // e.reader_proxy.send(std::move(data), e.context);
           // e.writer.send(std::move(data), e.context);
         } else {
           // TODO
-          Gap gap(reader_proxy.remote_reader_guid.entity_id, change.writer_guid.entity_id,
+          Gap gap(reader_proxy.fields.remote_reader_guid.entity_id, change.writer_guid.entity_id,
               change.sequence_number);
           Packet<> packet = e.writer.participant.serialize_with_header(gap);
-          for (auto & locator : reader_proxy.unicast_locator_list) {
+          for (auto & locator : reader_proxy.fields.unicast_locator_list) {
             e.context.unicast_send(locator, packet.data(), packet.size());
           }
           // e.reader_proxy.send(std::move(gap), e.context);

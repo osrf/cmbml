@@ -97,12 +97,21 @@ void traverse(const T element, CallbackT && callback, size_t & index)
   traverse(static_cast<typename std::underlying_type<T>::type>(element), callback, index);
 }
 
+// TODO Generalize bitsets
 template<typename CallbackT>
 void traverse(const std::bitset<8> & src, CallbackT & callback, size_t & index)
 {
   uint8_t converted_bitset = static_cast<uint8_t>(src.to_ulong());
   traverse(converted_bitset, callback, index);
 }
+
+template<typename CallbackT>
+void traverse(const std::bitset<32> & src, CallbackT & callback, size_t & index)
+{
+  uint8_t converted_bitset = static_cast<uint32_t>(src.to_ulong());
+  traverse(converted_bitset, callback, index);
+}
+
 
 template<typename CallbackT>
 void traverse(const String & src, CallbackT & callback, size_t & index)

@@ -221,19 +221,10 @@ namespace cmbml {
     }
 
     // Stateless-specific
-    std::enable_if_t<!stateful> reset_unsent_changes() {
+    void reset_unsent_changes() {
       for (auto & reader : matched_readers) {
         reader.reset_unsent_changes();
       }
-    }
-
-    template<typename T, typename TransportContext = udp::Context,
-      typename std::enable_if_t<!stateful> * = nullptr>
-    void send_to_all_locators(T && msg, TransportContext & context) {
-      Packet<> packet = Endpoint<WriterOptions>::participant.serialize_with_header(msg);
-      // TODO Implement glomming-on of packets during send and wrapping in Message.
-      // TODO Check if the locator is unicast or multicast before sending
-      //
     }
 
     template<typename T, typename TransportContext = udp::Context>
@@ -243,10 +234,10 @@ namespace cmbml {
       conditionally_execute<stateful>::call(
         [&context, &packet](auto & readers) {
           for (auto & reader : readers) {
-            for (const auto & locator : reader.unicast_locator_list) {
+            for (const auto & locator : reader.fields.unicast_locator_list) {
               context.unicast_send(locator, packet.data(), packet.size());
             }
-            for (const auto & locator : reader.multicast_locator_list) {
+            for (const auto & locator : reader.fields.multicast_locator_list) {
               context.multicast_send(locator, packet.data(), packet.size());
             }
           }

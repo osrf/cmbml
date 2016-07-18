@@ -56,8 +56,8 @@ public:
   template<typename Executor, typename Context>
   SpdpParticipantDataWriter &
   create_spdp_writer(Participant & p, Context & context) {
-    known_spdp_writers.emplace_back(p);
-    SpdpParticipantDataWriter & spdp_builtin_writer = known_spdp_writers.back();
+    spdp_writers.emplace_back(p);
+    SpdpParticipantDataWriter & spdp_builtin_writer = spdp_writers.back();
     Executor & executor = Executor::get_instance();
     // Callback configuration:
     // The SpdpParticipantDataWriter needs to periodically send the
@@ -74,8 +74,8 @@ public:
   template<typename Executor>
   SpdpParticipantDataReader &
   create_spdp_reader(Participant & p) {
-    known_spdp_readers.emplace_back(p);
-    SpdpParticipantDataReader & spdp_builtin_reader = known_spdp_readers.back();
+    spdp_readers.emplace_back(p);
+    SpdpParticipantDataReader & spdp_builtin_reader = spdp_readers.back();
     Executor & executor = Executor::get_instance();
     // Time for guard conditions and read conditions
     executor.add_task(
@@ -146,12 +146,15 @@ public:
     // TODO
     for (auto & local_participant : local_participants) {
       // Discover the new participant's builtin sedp publication reader
-      if (data.available_builtin_endpoints[publications_reader]) {
+      if (data.available_builtin_endpoints[
+          static_cast<size_t>(BuiltinEndpointKind::publications_reader)])
+        {
         // Match the local participant's builtin sedp publication writer.
         // 
       }
-      // How interesting, this pattern repeats
-      if (data.available_builtin_endpoints[subscriptions_reader]) {
+      if (data.available_builtin_endpoints[
+          static_cast<size_t>(BuiltinEndpointKind::subscriptions_reader)])
+      {
         // Match the local participant's builtin sedp subscription writer.
         // 
       }
