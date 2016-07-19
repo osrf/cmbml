@@ -1,5 +1,7 @@
 #include <cmbml/psm/udp/transport.hpp>
 
+#include <cmbml/utility/console_print.hpp>
+
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netdb.h>
@@ -76,6 +78,7 @@ udp::Transport::Transport() {
     // fatal error condition
     return;
   }
+  CMBML__DEBUG("Configured multicast send socket\n");
 
   uint8_t loop = 1;
   result = setsockopt(multicast_send_socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
@@ -83,10 +86,14 @@ udp::Transport::Transport() {
     // fatal error
     return;
   }
+  CMBML__DEBUG("Configured unicast send socket\n");
 }
 
-
 void udp::Transport::add_unicast_receiver(const Locator_t & locator) {
+  // Don't add the socket if the port is already associated with a socket.
+  if (port_socket_map.count(locator.port) > 0) {
+    return;
+  }
   // TODO Convert locator_t to LocatorUDPv4_t here and below?
   // Create and bind the receive sockets
   int recv_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -105,11 +112,16 @@ void udp::Transport::add_unicast_receiver(const Locator_t & locator) {
     return;
   }
   port_socket_map[locator.port] = recv_socket;
+  CMBML__DEBUG("Configured unicast receive socket on port %u\n", locator.port);
 }
 
 // Expect locator to contain the port to listen on and the address representing the 
 // multicast group
 void udp::Transport::add_multicast_receiver(const Locator_t & locator) {
+  // Don't add the socket if the port is already associated with a socket.
+  if (port_socket_map.count(locator.port) > 0) {
+    return;
+  }
   const udp::LocatorUDPv4_t locator_v4(locator);
   // Create and bind the receive sockets
   int recv_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -138,6 +150,7 @@ void udp::Transport::add_multicast_receiver(const Locator_t & locator) {
   }
 
   port_socket_map[locator_v4.port] = recv_socket;
+  CMBML__DEBUG("Configured multicast receive socket on port %u\n", locator.port);
 }
 
 void udp::Transport::unicast_send(const Locator_t & locator, const uint32_t * packet, size_t size) {
@@ -169,7 +182,6 @@ const IPAddress & udp::Transport::address_as_array() const {
   return address_array;
 }
 
-// Maybe have a timeout option for select?
 // packet size has to be smaller for e.g. STM32F0
 // so maybe for that Transport we will need to make max packet size a type trait
 

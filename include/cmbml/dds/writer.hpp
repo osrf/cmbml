@@ -68,18 +68,18 @@ namespace dds {
     }
 
     template<typename TransportT, typename Executor>
-    void add_tasks(TransportT & thread_transport, Executor & executor) {
-      // TODO We really only want to have one transport per thread.
-      // Currently this is an overestimation.
-      // TODO thread safety!
-      // TODO Initialize receiver locators
-      auto receiver_thread = [this, &thread_transport](const auto & timeout) {
+    void add_tasks(TransportT & transport, Executor & executor) {
+      // TODO thread safety in transport!
+      // TODO Initialize locator with own address, how to determine port number?
+      // then initialize receiver socket with locators
+      // Add a locator to the transport
+      auto receiver_thread = [this, &transport](const auto & timeout) {
         // This is a blocking call
         CMBML__DEBUG("Waiting on packet...\n");
-        return thread_transport.receive_packet(
+        return transport.receive_packet(
           [&](const auto & packet) {
             CMBML__DEBUG("message came in! Deserializing...\n");
-            deserialize_message(packet, thread_transport);
+            deserialize_message(packet, transport);
           },
           timeout
         );
@@ -98,11 +98,11 @@ namespace dds {
         rtps_writer.nack_response_delay.to_ns(), false, nack_response_delay_event);
 
       hana::eval_if(WriterT::reliability == ReliabilityKind_t::reliable,
-        [this, &executor, &thread_transport]() {
+        [this, &executor, &transport]() {
           executor.add_timed_task(
             rtps_writer.heartbeat_period.to_ns(), false,
-            [this, &thread_transport]() {
-              cmbml::after_heartbeat<WriterT, TransportT> e{rtps_writer, thread_transport};
+            [this, &transport]() {
+              cmbml::after_heartbeat<WriterT, TransportT> e{rtps_writer, transport};
               state_machine.process_event(e);
             }
           );
@@ -265,8 +265,8 @@ namespace dds {
       receiver.source_guid_prefix = info_src.guid_prefix;
       receiver.source_version = info_src.protocol_version;
       receiver.source_vendor_id = info_src.vendor_id;
-      receiver.unicast_reply_locator_list = {{0}};
-      receiver.multicast_reply_locator_list = {{0}};
+      // receiver.unicast_reply_locator_list = {{0}};
+      // receiver.multicast_reply_locator_list = {{0}};
       receiver.have_timestamp = false;
       return StatusCode::ok;
     }

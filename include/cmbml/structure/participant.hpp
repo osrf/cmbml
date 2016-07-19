@@ -33,15 +33,17 @@ namespace cmbml {
       default_unicast_locator_list(data.default_unicast_locator_list),
       default_multicast_locator_list(data.default_multicast_locator_list),
       protocol_version(data.protocol_version),
-      vendor_id(data.vendor_id)
+      vendor_id(data.vendor_id),
+      participant_port_id(0)
     {
     }
 
-    Participant(GuidPrefix_t && prefix, List<Locator_t> && multicast_list) :
+    Participant(GuidPrefix_t && prefix, List<Locator_t> && multicast_list, uint32_t id) :
       Entity({prefix, participant_id}),
       default_multicast_locator_list(multicast_list),
       protocol_version(rtps_protocol_version),
-      vendor_id(cmbml_vendor_id)
+      vendor_id(cmbml_vendor_id),
+      participant_port_id(id)
     {
     }
 
@@ -89,6 +91,7 @@ namespace cmbml {
       return ret;
     }
 
+    const uint32_t participant_port_id;
   private:
     uint32_t current_entity_id = 0;
   };

@@ -59,6 +59,7 @@ public:
     spdp_writers.emplace_back(p);
     SpdpParticipantDataWriter & spdp_builtin_writer = spdp_writers.back();
     Executor & executor = Executor::get_instance();
+    spdp_builtin_writer.add_tasks(transport, executor);
     // Callback configuration:
     // The SpdpParticipantDataWriter needs to periodically send the
     // SpdpDiscoData representing this datawriter
@@ -96,10 +97,12 @@ public:
     );
   }
 
-  template<typename Executor>
-  SpdpParticipantDataReader & create_spdp_reader(Participant & p) {
+  template<typename Executor, typename TransportT>
+  SpdpParticipantDataReader & create_spdp_reader(Participant & p, TransportT & transport) {
     spdp_readers.emplace_back(p);
     SpdpParticipantDataReader & spdp_reader = spdp_readers.back();
+    Executor & executor = Executor::get_instance();
+    spdp_reader.add_tasks(transport, executor);
     configure_builtin_reader<Executor>(spdp_reader);
     return spdp_reader;
   }
@@ -134,16 +137,18 @@ public:
   // in the future, we could probably add some short-circuiting logic for endpoints
   // in the same participant!
   template<typename Executor, typename TransportT>
-  Participant & create_new_participant(TransportT & transport_transport) {
-    List<Locator_t> multicast_locator_list = {transport_transport.get_default_multicast_locator()};
+  Participant & create_new_participant(TransportT & transport) {
+    List<Locator_t> multicast_locator_list = {transport.get_default_multicast_locator()};
     local_participants.emplace_back(
-      get_next_guid_prefix(transport_transport), std::move(multicast_locator_list));
+      get_next_guid_prefix(transport),
+      std::move(multicast_locator_list),
+      participant_port_id++);
     // TODO Assert that the guid we produced is not currently in local participants OR
     // discovered participants
     // Add builtin spdp endpoints to container
     Participant & p = local_participants.back();
-    create_spdp_writer<Executor>(p, transport_transport);
-    create_spdp_reader<Executor>(p);
+    create_spdp_writer<Executor>(p, transport);
+    create_spdp_reader<Executor>(p, transport);
 
     // TODO Disable certain endpoints according to set options.
     sedp_pub_writers.emplace_back(p);
@@ -319,6 +324,7 @@ private:
 
   // TODO Use this somewhere
   // uint32_t domain_id = cmbml_test_domain_id;
+  uint32_t participant_port_id = 0;
 };
 
 }

@@ -113,7 +113,14 @@ namespace dds {
     // This is an initialization step. It can only be called once--enforce this.
     template<typename TransportT, typename Executor>
     void add_tasks(TransportT & transport, Executor & executor) {
-      // TODO Initialize receiver locators
+      // TODO Initialize receiver locators!!!
+      // Configure
+      rtps_reader.for_each_matched_multicast_locator(
+        [&transport](auto & locator) {
+          transport.add_multicast_receiver(locator);
+        }
+      );
+
       auto receiver_thread = [this, &transport](const auto & timeout) {
         // This is a blocking call
         CMBML__DEBUG("Waiting on packet...\n");
@@ -181,6 +188,7 @@ namespace dds {
         // return StatusCode::packet_invalid;
         return;
       }
+      // hmmmmmmmmmmmmm
       MessageReceiver receiver(
           header.guid_prefix, TransportT::kind, transport.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {

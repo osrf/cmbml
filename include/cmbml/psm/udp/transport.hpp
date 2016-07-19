@@ -74,12 +74,20 @@ struct LocatorUDPv4_t {
 // TODO formalize traits of "NetworkTransport"
 class Transport {
 public:
-  static const int32_t kind = LOCATOR_KIND_UDPv4;
+  static const LocatorKind kind = LocatorKind::udpv4;
+
+  constexpr static Locator_t get_default_unicast_locator(uint32_t p_id) {
+    return {
+      LocatorKind::udpv4,
+      static_cast<uint32_t>(udp::default_user_unicast_port(cmbml_test_domain_id, p_id)),
+      udp::LocatorUDPv4_t::get_array_from_address({{239, 255, 0, 1}})
+    };
+  }
 
   constexpr static Locator_t get_default_multicast_locator() {
     return {
-      LOCATOR_KIND_UDPv4,
-      udp::default_spdp_multicast_port(cmbml_test_domain_id),
+      LocatorKind::udpv4,
+      static_cast<uint32_t>(udp::default_spdp_multicast_port(cmbml_test_domain_id)),
       udp::LocatorUDPv4_t::get_array_from_address({{239, 255, 0, 1}})
     };
   }
@@ -111,10 +119,17 @@ public:
         max_socket = port_socket_pair.second;
       }
     }
-    // 
 
-    // TODO Apply timeout!
-    int num_fds = select(max_socket + 1, &socket_set, NULL, NULL, NULL);
+    struct timespec * timeout_struct = NULL;
+    struct timespec timeout_value;
+    if (timeout.count() > 0) {
+      timeout_value.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(timeout).count();
+      timeout_value.tv_nsec = (timeout -
+          std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::seconds(timeout_value.tv_sec))).count();
+      timeout_struct = &timeout_value;
+    }
+    int num_fds = pselect(max_socket + 1, &socket_set, NULL, NULL, timeout_struct, NULL);
     (void) num_fds;
     for (const auto & port_socket_pair : port_socket_map) {
       Packet<> packet(packet_size);
@@ -125,7 +140,6 @@ public:
 
       // TODO checking src is important error checking/security
       // struct sockaddr_in src_address;
-      // 
       ssize_t bytes_received = recvfrom(
         recv_socket, packet.data(), packet.size() * sizeof(Packet<>::value_type), 0, NULL, NULL);
       if (bytes_received != 0) {

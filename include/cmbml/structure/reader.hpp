@@ -71,9 +71,9 @@ namespace cmbml {
       }
     }
 
+    WriterProxyPOD fields;
 
   private:
-    WriterProxyPOD fields;
 
     std::map<uint64_t, ChangeFromWriter> changes_from_writer;
     uint32_t acknack_count = 0;
@@ -113,6 +113,19 @@ namespace cmbml {
         matched_writers.begin(), matched_writers.end(), function
       );
     }
+
+    template<typename FunctionT>
+    void for_each_matched_multicast_locator(FunctionT && function) {
+      std::for_each(
+        matched_writers.begin(), matched_writers.end(),
+          [&function](auto & writer) {
+            std::for_each(
+              writer.fields.multicast_locator_list.begin(),
+              writer.fields.multicast_locator_list.end(), function);
+          }
+      );
+    }
+
 
     // std::enable_if_t<stateful, WriterProxy *>
     WriterProxy * matched_writer_lookup(const GUID_t & writer_guid) {

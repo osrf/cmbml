@@ -36,8 +36,8 @@ struct EndpointOptions {
     Endpoint(const Participant & p) :
       participant(p)
     {
-      unicast_locator_list = p.default_unicast_locator_list;
-      multicast_locator_list = p.default_multicast_locator_list;
+      // unicast_locator_list = p.default_unicast_locator_list;
+      // multicast_locator_list = p.default_multicast_locator_list;
       guid.prefix = p.guid.prefix;
     }
   };

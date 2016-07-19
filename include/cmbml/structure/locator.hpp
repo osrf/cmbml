@@ -7,9 +7,18 @@ namespace cmbml {
 
   using IPAddress = std::array<Octet, 16>;
 
+  // does this need to indicate multicast or unicast?
+  // otherwise how to know what to do on send?
+  enum struct LocatorKind : int32_t {
+    invalid = -1,
+    reserved = 0,
+    udpv4 = 1,
+    udpv6 = 2
+  };
+
   struct Locator_t {
     BOOST_HANA_DEFINE_STRUCT(Locator_t,
-    (int32_t, kind),
+    (LocatorKind, kind),
     (uint32_t, port),
     (IPAddress, address));
   };

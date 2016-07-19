@@ -28,6 +28,20 @@ namespace cmbml {
       rtps_writer.guid.entity_id = spdp_writer_id;
     };
 
+    template<typename TransportT, typename Executor>
+    void add_tasks(TransportT & transport, Executor & executor) {
+      // Add locators and configure some ports for them.
+      rtps_writer.unicast_locator_list = rtps_writer.participant.default_unicast_locator_list;
+      for (auto & locator : rtps_writer.unicast_locator_list) {
+        transport.add_unicast_receiver(locator);
+      }
+      rtps_writer.multicast_locator_list = rtps_writer.participant.default_multicast_locator_list;
+      for (auto & locator : rtps_writer.multicast_locator_list) {
+        transport.add_multicast_receiver(locator);
+      }
+      ParentType::add_tasks(transport, executor);
+    }
+
     template<typename TransportT>
     StatusCode send_discovery_data(TransportT & transport) {
       // Set a few things in the message based on the transport?
@@ -60,6 +74,23 @@ namespace cmbml {
     SpdpParticipantDataReader(Participant & p) : ParentType("", p) {
       rtps_reader.guid.entity_id = spdp_reader_id;
     }
+
+    template<typename TransportT, typename Executor>
+    void add_tasks(TransportT & transport, Executor & executor) {
+      // Add locators and configure some ports for them.
+      rtps_reader.unicast_locator_list = {{
+        TransportT::get_default_unicast_locator(rtps_reader.participant.participant_port_id)}};
+      for (auto & locator : rtps_reader.unicast_locator_list) {
+        transport.add_unicast_receiver(locator);
+      }
+      rtps_reader.multicast_locator_list = {{TransportT::get_default_multicast_locator()}};
+      for (auto & locator : rtps_reader.multicast_locator_list) {
+        transport.add_multicast_receiver(locator);
+      }
+      ParentType::add_tasks(transport, executor);
+    }
+
+
 
   private:
 
