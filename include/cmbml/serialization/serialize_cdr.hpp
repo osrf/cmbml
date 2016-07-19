@@ -86,7 +86,6 @@ void traverse(const T element, CallbackT && callback, size_t & index)
   }
 
   callback(element);
-  // place_integral_type(element, dst[index / 32], index % 32);
   index += number_of_bits<T>();
 }
 
@@ -118,7 +117,10 @@ void traverse(const String & src, CallbackT & callback, size_t & index)
 {
   // uint8_t converted_bitset = static_cast<uint8_t>(src.to_ulong());
   traverse(static_cast<uint32_t>(src.size()), callback, index);
-  traverse(src.data(), callback, index);
+  // byte-by-byte serialization
+  for (auto & entry : src) {
+    traverse(static_cast<char>(entry), callback, index);
+  }
 }
 
 
@@ -197,6 +199,7 @@ size_t get_packet_size(const T & element) {
 template<typename T, typename DstT>
 void serialize(const T & element, DstT & dst, size_t & index) {
   auto serialize_base_case = [&dst, &index](auto element) {
+    // hm
     place_integral_type(element, dst[index / 32], index % 32);
   };
   traverse(element, serialize_base_case, index);

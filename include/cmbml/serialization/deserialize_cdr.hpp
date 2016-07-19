@@ -9,6 +9,8 @@
 
 #include <cmbml/message/message.hpp>
 
+#include <cmbml/utility/console_print.hpp>
+
 namespace hana = boost::hana;
 
 namespace cmbml {
@@ -68,13 +70,11 @@ StatusCode deserialize(String & dst, const SrcT & src, size_t & index)
   if (status != StatusCode::ok) {
     return status;
   }
-  // TODO:
   // String deserialization requires allocation if std::string is used.
   // Could make this more efficient with a custom string class.
   // char array
-  String output;
-  output.reserve(string_size);
-  for (auto & entry : output) {
+  dst.resize(string_size);
+  for (auto & entry : dst) {
     status = deserialize(entry, src, index);
   }
   return status;
@@ -97,11 +97,11 @@ StatusCode deserialize(List<Parameter> & dst, const SrcT & src, size_t index)
     status = deserialize(length, src, index);
     // Check if dst is big enough
     if (dst.size() <= i) {
-      dst.reserve(i + 1);
+      dst.resize(i + 1);
     }
     dst[i].id = id;
     dst[i].length = length;
-    dst[i].value.reserve(length);
+    dst[i].value.resize(length);
     for (auto entry : dst[i].value) {
       status = deserialize(entry, src, index);
     }

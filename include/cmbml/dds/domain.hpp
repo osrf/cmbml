@@ -64,6 +64,7 @@ public:
     // SpdpDiscoData representing this datawriter
     executor.add_timed_task(participant_data_resend_period, false,
       [&spdp_builtin_writer, &context]() {
+        CMBML__DEBUG("Resending discovery data.\n");
         spdp_builtin_writer.send_discovery_data(context);
       }
     );
@@ -80,11 +81,13 @@ public:
       [this, &builtin_reader](const auto & timeout) {
         typename BuiltinReader::Topic message;
         auto & read_condition = builtin_reader.create_read_condition();
+        CMBML__DEBUG("Waiting on read condition for builtin reader\n");
         read_condition.wait_until_trigger(timeout);
         auto status = builtin_reader.take(message);
         if (status != StatusCode::ok) {
           return status;
         }
+        CMBML__DEBUG("builtin reader message came through! Doing stuff.\n");
         on_builtin_data(std::move(message));
         // TODO Do some stuff with this data
         // when does the read trigger value reset??

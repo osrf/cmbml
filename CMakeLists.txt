@@ -31,10 +31,10 @@ function(basic_cmbml_test test_name src)
   target_include_directories(${test_name} PUBLIC include)
 endfunction()
 
+# TODO could make this better: cmake file for test folder, iterate over files
 if(ENABLE_TESTING)
-  # basic_cmbml_test(cmbml_test test/cmbml.cpp)
-
   basic_cmbml_test(serialization_test test/serialization.cpp)
+  # basic_cmbml_test(get_packet_size test/unit/get_packet_size.cpp)
 
   basic_cmbml_test(nominal_usage test/nominal_usage.cpp)
 endif()

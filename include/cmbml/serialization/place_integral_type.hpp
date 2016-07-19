@@ -7,9 +7,8 @@
 #include <boost/hana/at_key.hpp>
 #include <boost/hana/map.hpp>
 #include <boost/hana/type.hpp>
-/*
-#include <boost/hana.hpp>
-*/
+
+#include <cmbml/utility/console_print.hpp>
 
 namespace hana = boost::hana;
 
@@ -31,7 +30,7 @@ constexpr auto max_value_map = hana::make_map(
 );
 
 
-// deceptively, this actually works for bool types
+// deceptively, this actually works for bool types in CDR (because sizeof(bool) == 1)
 template<typename T>
 constexpr size_t number_of_bits() {
   return sizeof(T)*CHAR_BIT;
@@ -49,8 +48,7 @@ constexpr size_t number_of_bits() {
 // 0 0 0 0 0 0 0 0 | 1 0 0 0 0 1 0 | ...
 //
 // Preserve the value of dst: only overwrite the bits we need to replace
-// TODO Unit test me
-// TODO template specialization for "narrow", or make different f'ns for "widen" and "narrow"
+// TODO template specialization for "narrow"/"widen" instead?
 template<
   typename SrcT,
   typename DstT,

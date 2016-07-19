@@ -54,7 +54,8 @@ namespace dds {
     template<typename Context>
     StatusCode write(TopicT && data, Context & context) {
       SerializedData packet;
-      packet.reserve(get_packet_size(data));
+      packet.resize(get_packet_size(data));
+      CMBML__DEBUG("Writing packet of size %u\n", packet.size());
       serialize(data, packet);
       // Need to wrap data in a message type in can_send event
       InstanceHandle_t tmp{{0}};
@@ -66,7 +67,6 @@ namespace dds {
       return StatusCode::ok;
     }
 
-
     template<typename Context, typename Executor>
     void add_tasks(Context & thread_context, Executor & executor) {
       // TODO We really only want to have one context per thread.
@@ -75,8 +75,12 @@ namespace dds {
       // TODO Initialize receiver locators
       auto receiver_thread = [this, &thread_context](const auto & timeout) {
         // This is a blocking call
+        CMBML__DEBUG("Waiting on packet...\n");
         return thread_context.receive_packet(
-          [&](const auto & packet) { deserialize_message(packet, thread_context); },
+          [&](const auto & packet) {
+            CMBML__DEBUG("message came in! Deserializing...\n");
+            deserialize_message(packet, thread_context);
+          },
           timeout
         );
       };
@@ -85,6 +89,7 @@ namespace dds {
       auto nack_response_delay_event = [this]() {
         boost::msm::lite::state<class must_repair> must_repair_s;
         if (state_machine.is(must_repair_s)) {
+          CMBML__DEBUG("Nack response delay event triggered...\n");
           after_nack_delay e;
           state_machine.process_event(e);
         }

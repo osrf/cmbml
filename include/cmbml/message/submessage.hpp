@@ -34,9 +34,10 @@ namespace cmbml {
   template<uint32_t size>
   using SerializedDataFragment = std::array<Octet, size>;
   */
-  using SerializedData = std::vector<Octet>;  // TODO Static dispatch and allocator type
+  // this is a workaround.
+  using SerializedData = std::vector<uint32_t>;  // TODO Static dispatch and allocator type
 
-  using SerializedDataFragment = std::vector<Octet>;
+  using SerializedDataFragment = std::vector<uint32_t>;
 
   enum SubmessageKind : uint8_t {
     pad_id = 0x1,

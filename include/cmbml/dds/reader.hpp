@@ -90,7 +90,7 @@ namespace dds {
         return StatusCode::no_data;
       }
       size_t sample_length = std::min(max_samples, rtps_reader.reader_cache.size_of_cache());
-      data_values.reserve(sample_length);
+      data_values.resize(sample_length);
       for (size_t i = 0; i < sample_length; ++i) {
         StatusCode status;
         take_helper(data_values[i], status);
@@ -116,8 +116,12 @@ namespace dds {
       // TODO Initialize receiver locators
       auto receiver_thread = [this, &thread_context](const auto & timeout) {
         // This is a blocking call
+        CMBML__DEBUG("Waiting on packet...\n");
         return thread_context.receive_packet(
-          [&](const auto & packet) { deserialize_message(packet, thread_context); },
+          [&](const auto & packet) {
+            CMBML__DEBUG("message came in! Deserializing...\n");
+            deserialize_message(packet, thread_context);
+          },
           timeout
         );
       };
@@ -127,6 +131,7 @@ namespace dds {
         // TODO do I need to reference declaration of this state in state machine?
         boost::msm::lite::state<class must_ack> must_ack_s;
         if (state_machine.is(must_ack_s)) {
+          CMBML__DEBUG("Heartbeat response delay event triggered...\n");
           reader_events::heartbeat_response_delay<ReaderT, Context>
             e{rtps_reader, thread_context};
           state_machine.process_event(e);
