@@ -42,10 +42,10 @@ namespace reader_events {
     Heartbeat & heartbeat;
   };
 
-  template<typename ReaderT, typename TransportContext>
+  template<typename ReaderT, typename TransportT>
   struct heartbeat_response_delay {
     ReaderT & reader;
-    TransportContext & transport_context;
+    TransportT & transport;
   };
 
   struct missing_changes_empty {};

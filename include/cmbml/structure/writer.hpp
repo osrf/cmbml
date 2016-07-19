@@ -11,7 +11,7 @@
 #include <cmbml/structure/reader_proxy.hpp>
 #include <cmbml/serialization/serialize_cdr.hpp>
 #include <cmbml/message/data.hpp>
-#include <cmbml/psm/udp/context.hpp>
+#include <cmbml/psm/udp/transport.hpp>
 #include <cmbml/structure/history.hpp>
 #include <cmbml/utility/executor.hpp>
 #include <cmbml/utility/metafunctions.hpp>
@@ -217,25 +217,25 @@ namespace cmbml {
       }
     }
 
-    template<typename T, typename TransportContext = udp::Context>
-    void send_to_all_locators(T && msg, TransportContext & context) {
+    template<typename T, typename TransportT = udp::Transport>
+    void send_to_all_locators(T && msg, TransportT & transport) {
       Packet<> packet = Endpoint<WriterOptions>::participant.serialize_with_header(msg);
 
       conditionally_execute<stateful>::call(
-        [&context, &packet](auto & readers) {
+        [&transport, &packet](auto & readers) {
           for (auto & reader : readers) {
             for (const auto & locator : reader.fields.unicast_locator_list) {
-              context.unicast_send(locator, packet.data(), packet.size());
+              transport.unicast_send(locator, packet.data(), packet.size());
             }
             for (const auto & locator : reader.fields.multicast_locator_list) {
-              context.multicast_send(locator, packet.data(), packet.size());
+              transport.multicast_send(locator, packet.data(), packet.size());
             }
           }
         }, matched_readers);
       conditionally_execute<!stateful>::call(
-        [&context, &packet](auto & readers) {
+        [&transport, &packet](auto & readers) {
           for (auto & reader_locator : readers) {
-            context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+            transport.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
           }
         }, matched_readers);
     }

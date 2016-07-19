@@ -25,7 +25,7 @@ namespace cmbml {
     hana::make_pair(EndpointOptions::reliability, ReliabilityKind_t::reliable),
     hana::make_pair(EndpointOptions::topic_kind, TopicKind_t::with_key),
     hana::make_pair(EndpointOptions::expects_inline_qos, false),
-    hana::make_pair(EndpointOptions::transport, hana::type_c<udp::Context>)
+    hana::make_pair(EndpointOptions::transport, hana::type_c<udp::Transport>)
   );
 
   CMBML__MAKE_READER_OPTIONS(SEDPReaderOptions, sedp_reader_options);

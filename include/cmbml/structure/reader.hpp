@@ -5,7 +5,7 @@
 #include <cmbml/structure/history.hpp>
 #include <cmbml/structure/writer_proxy.hpp>
 #include <cmbml/message/data.hpp>
-#include <cmbml/psm/udp/context.hpp>
+#include <cmbml/psm/udp/transport.hpp>
 #include <cmbml/utility/executor.hpp>
 #include <cmbml/utility/metafunctions.hpp>
 #include <cmbml/serialization/serialize_cdr.hpp>
@@ -56,19 +56,18 @@ namespace cmbml {
     bool missing_changes_empty = true;
     bool missing_changes_not_empty = false;
 
-    // who provides the Context?
-    template<typename TransportContext = cmbml::udp::Context>
-    void send(AckNack && acknack, const Participant & p, TransportContext & context) {
+    template<typename TransportT = cmbml::udp::Transport>
+    void send(AckNack && acknack, const Participant & p, TransportT & transport) {
       // TODO Need to wrap with a SubmessageHeader and Message...
       acknack.count = ++acknack_count;
       Packet<> packet = p.serialize_with_header(acknack);
       // needs to know which destination to send to (pass a Locator?)
       // XXX This is dubious.
       for (const auto & locator : fields.unicast_locator_list) {
-        context.unicast_send(locator, packet.data(), packet.size());
+        transport.unicast_send(locator, packet.data(), packet.size());
       }
       for (const auto & locator : fields.multicast_locator_list) {
-        context.multicast_send(locator, packet.data(), packet.size());
+        transport.multicast_send(locator, packet.data(), packet.size());
       }
     }
 

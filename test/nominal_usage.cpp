@@ -16,13 +16,13 @@ struct Int32 {
 
 int main(int argc, char ** argv) {
   Domain & domain = Domain::get_instance();
-  udp::Context context;
+  udp::Transport transport;
   // SyncExecutor & executor = SyncExecutor::get_instance();
-  Participant & participant = domain.create_new_participant<SyncExecutor>(context);
+  Participant & participant = domain.create_new_participant<SyncExecutor>(transport);
   // TODO Block until discovery is over?
 
   // TODO Pass allocator to history cache through these maps
-  // Could also make it a handle for Executor and Context types.
+  // Could also make it a handle for Executor and Transport types.
   constexpr auto writer_options_map = make_option_map(
     hana::make_pair(EndpointOptions::stateful, false),
     hana::make_pair(EndpointOptions::reliability, ReliabilityKind_t::best_effort),
@@ -36,23 +36,23 @@ int main(int argc, char ** argv) {
 
   // TODO Finish these interfaces and functions
   auto writer = domain.create_data_writer<Int32, WriterOptions, SyncExecutor>(
-    "chatter", participant, context);
+    "chatter", participant, transport);
 
   constexpr auto reader_options_map = make_option_map(
     hana::make_pair(EndpointOptions::stateful, false),
     hana::make_pair(EndpointOptions::reliability, ReliabilityKind_t::best_effort),
     hana::make_pair(EndpointOptions::topic_kind, TopicKind_t::with_key),
     hana::make_pair(EndpointOptions::expects_inline_qos, true),
-    hana::make_pair(EndpointOptions::transport, hana::type_c<udp::Context>)
+    hana::make_pair(EndpointOptions::transport, hana::type_c<udp::Transport>)
   );
 
   CMBML__MAKE_READER_OPTIONS(ReaderOptions, reader_options_map);
 
   auto reader = domain.create_data_reader<Int32, ReaderOptions, SyncExecutor>(
-    "chatter", participant, context);
+    "chatter", participant, transport);
 
   {
-    auto error_code = writer.write(Int32{42}, context);
+    auto error_code = writer.write(Int32{42}, transport);
     if (error_code != StatusCode::ok) {
       const char * error_string = error_code_string(error_code);
       CMBML__PRINT("Write returned error code: %s\n", error_string);

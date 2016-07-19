@@ -9,7 +9,7 @@
 #include <cmbml/structure/writer.hpp>
 #include <cmbml/structure/writer_proxy.hpp>
 
-#include <cmbml/psm/udp/context.hpp>
+#include <cmbml/psm/udp/transport.hpp>
 
 #include <cmbml/utility/executor.hpp>
 
@@ -40,7 +40,7 @@ namespace dds {
     using WriterT = RTPSWriter<WriterOptions>;
   public:
 
-    // Consider taking a Context for this thread in the constructor.
+    // Consider taking a TransportT for this thread in the constructor.
     DataWriter(const String & topic_name, Participant & p) :
       WriterBase(topic_name), rtps_writer(p) {
     }
@@ -51,8 +51,8 @@ namespace dds {
       return instance_handle;
     }
 
-    template<typename Context>
-    StatusCode write(TopicT && data, Context & context) {
+    template<typename TransportT>
+    StatusCode write(TopicT && data, TransportT & transport) {
       SerializedData packet;
       packet.resize(get_packet_size(data));
       CMBML__DEBUG("Writing packet of size %u\n", packet.size());
@@ -62,24 +62,24 @@ namespace dds {
       rtps_writer.add_change(ChangeKind_t::alive, std::move(packet), tmp);
 
       // Consider doing this in a different thread as indicated by sequence chart in spec?
-      can_send<WriterT, Context> e{rtps_writer, context};
+      can_send<WriterT, TransportT> e{rtps_writer, transport};
       state_machine.process_event(e);
       return StatusCode::ok;
     }
 
-    template<typename Context, typename Executor>
-    void add_tasks(Context & thread_context, Executor & executor) {
-      // TODO We really only want to have one context per thread.
+    template<typename TransportT, typename Executor>
+    void add_tasks(TransportT & thread_transport, Executor & executor) {
+      // TODO We really only want to have one transport per thread.
       // Currently this is an overestimation.
       // TODO thread safety!
       // TODO Initialize receiver locators
-      auto receiver_thread = [this, &thread_context](const auto & timeout) {
+      auto receiver_thread = [this, &thread_transport](const auto & timeout) {
         // This is a blocking call
         CMBML__DEBUG("Waiting on packet...\n");
-        return thread_context.receive_packet(
+        return thread_transport.receive_packet(
           [&](const auto & packet) {
             CMBML__DEBUG("message came in! Deserializing...\n");
-            deserialize_message(packet, thread_context);
+            deserialize_message(packet, thread_transport);
           },
           timeout
         );
@@ -98,11 +98,11 @@ namespace dds {
         rtps_writer.nack_response_delay.to_ns(), false, nack_response_delay_event);
 
       hana::eval_if(WriterT::reliability == ReliabilityKind_t::reliable,
-        [this, &executor, &thread_context]() {
+        [this, &executor, &thread_transport]() {
           executor.add_timed_task(
             rtps_writer.heartbeat_period.to_ns(), false,
-            [this, &thread_context]() {
-              cmbml::after_heartbeat<WriterT, Context> e{rtps_writer, thread_context};
+            [this, &thread_transport]() {
+              cmbml::after_heartbeat<WriterT, TransportT> e{rtps_writer, thread_transport};
               state_machine.process_event(e);
             }
           );
@@ -135,8 +135,8 @@ namespace dds {
 
   protected:
     // TODO Refine MessageReceiver logic
-    template<typename SrcT, typename NetworkContext = udp::Context>
-    void deserialize_message(const SrcT & src, NetworkContext & context) {
+    template<typename SrcT, typename TransportT = udp::Transport>
+    void deserialize_message(const SrcT & src, TransportT & transport) {
       size_t index = 0;
       Header header;
       StatusCode deserialize_status = deserialize(header, src, index);
@@ -145,13 +145,13 @@ namespace dds {
         return;
       }
       MessageReceiver receiver(
-        header.guid_prefix, NetworkContext::kind, context.address_as_array());
+        header.guid_prefix, TransportT::kind, transport.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
         // This is pretty awful. Need an overhaul of the structure of Writer, maybe Writer provides
         // all relevant guard conditions
         rtps_writer.for_each_matched_reader(
-          [this, &context](auto & reader) {
+          [this, &transport](auto & reader) {
             if (reader.unsent_changes_not_empty) {
               unsent_changes e;
               state_machine.process_event(e);
@@ -162,7 +162,7 @@ namespace dds {
               reader.unsent_changes_empty = false;
             }
             if (reader.can_send) {
-              can_send<WriterT, NetworkContext> e{rtps_writer, context};
+              can_send<WriterT, TransportT> e{rtps_writer, transport};
               state_machine.process_event(e);
               reader.can_send = false;
             }

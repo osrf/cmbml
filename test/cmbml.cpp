@@ -39,40 +39,40 @@ int main(int argc, char ** argv) {
       reliable_stateful_reader(p);
 
   SyncExecutor & exec = SyncExecutor::get_instance();
-  udp::Context context;
+  udp::Transport transport;
   {
     dds::DataReader<SpdpDiscoData, decltype(best_effort_stateless_reader)> reader(p);
-    reader.add_tasks(context, exec);
+    reader.add_tasks(transport, exec);
   }
 
   {
     dds::DataReader<SpdpDiscoData, decltype(best_effort_stateful_reader)> reader(p);
-    reader.add_tasks(context, exec);
+    reader.add_tasks(transport, exec);
   }
 
   {
     dds::DataReader<SpdpDiscoData, decltype(reliable_stateful_reader)> reader(p);
-    reader.add_tasks(context, exec);
+    reader.add_tasks(transport, exec);
   }
 
   {
     dds::DataWriter<SpdpDiscoData, decltype(best_effort_stateless_writer)> writer(p);
-    writer.add_tasks(context, exec);
+    writer.add_tasks(transport, exec);
   }
 
   {
     dds::DataWriter<SpdpDiscoData, decltype(reliable_stateless_writer)> writer(p);
-    writer.add_tasks(context, exec);
+    writer.add_tasks(transport, exec);
   }
 
   {
     dds::DataWriter<SpdpDiscoData, decltype(best_effort_stateful_writer)> writer(p);
-    writer.add_tasks(context, exec);
+    writer.add_tasks(transport, exec);
   }
 
   {
     dds::DataWriter<SpdpDiscoData, decltype(reliable_stateful_writer)> writer(p);
-    writer.add_tasks(context, exec);
+    writer.add_tasks(transport, exec);
   }
 
   return 0;

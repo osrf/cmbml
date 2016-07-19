@@ -11,10 +11,10 @@ namespace cmbml {
   struct unsent_changes {};
   struct unsent_changes_empty {};
 
-  template<typename WriterT, typename Transport = udp::Context>
+  template<typename WriterT, typename TransportT = udp::Transport>
   struct can_send {
     WriterT & writer;
-    Transport & context;
+    TransportT & transport;
   };
 
   template<typename StatelessWriterT>
@@ -24,10 +24,10 @@ namespace cmbml {
   };
 
   template<typename WriterT,
-    typename Transport = udp::Context>
+    typename TransportT = udp::Transport>
   struct after_heartbeat {
     WriterT & writer;
-    Transport & context;
+    TransportT & transport;
   };
 
   template<typename WriterT>

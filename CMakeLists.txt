@@ -17,7 +17,7 @@ add_library(cmbml
   src/history.cpp
   src/reader.cpp
   src/writer.cpp
-  src/psm/udp/context.cpp
+  src/psm/udp/transport.cpp
 )
 
 target_include_directories(cmbml

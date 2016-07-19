@@ -1,5 +1,5 @@
-#ifndef CMBML__PSM__UDP__CONTEXT_HPP_
-#define CMBML__PSM__UDP__CONTEXT_HPP_
+#ifndef CMBML__PSM__UDP__TRANSPORT_HPP_
+#define CMBML__PSM__UDP__TRANSPORT_HPP_
 
 #include <cmbml/common.hpp>
 #include <cmbml/psm/udp/constants.hpp>
@@ -71,10 +71,8 @@ struct LocatorUDPv4_t {
   }
 };
 
-// Networking context.
-// TODO formalize traits of "NetworkContext"
-// Should this be a singleton? Yarr
-class Context {
+// TODO formalize traits of "NetworkTransport"
+class Transport {
 public:
   static const int32_t kind = LOCATOR_KIND_UDPv4;
 
@@ -87,7 +85,7 @@ public:
   }
   constexpr static LocatorUDPv4_t invalid_locator = {0, 0};
 
-  Context();
+  Transport();
 
   // Settings
   // This is pretty big...
@@ -162,4 +160,4 @@ private:
 }
 
 
-#endif  // CMBML__PSM__UDP__CONTEXT_HPP_
+#endif  // CMBML__PSM__UDP__TRANSPORT_HPP_

@@ -31,7 +31,7 @@ namespace stateless_writer {
             std::decay_t<decltype(e.writer)>::topic_kind == TopicKind_t::with_key);
         data.reader_id = entity_id_unknown;
         Packet<> packet = e.writer.participant.serialize_with_header(data);
-        e.context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+        e.transport.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
       }
     );
   };
@@ -46,11 +46,11 @@ namespace stateless_writer {
           // TODO: inline_qos; need to copy from related DDS writer
           data.reader_id = entity_id_unknown;
           Packet<> packet = e.writer.participant.serialize_with_header(data);
-          e.context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+          e.transport.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
         } else {
           Gap gap(entity_id_unknown, e.writer.guid.entity_id, change.sequence_number);
           Packet<> packet = e.writer.participant.serialize_with_header(gap);
-          e.context.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
+          e.transport.unicast_send(reader_locator.get_locator(), packet.data(), packet.size());
         }
       }
     );
@@ -69,7 +69,7 @@ namespace stateless_writer {
     heartbeat.final_flag = 1;
     heartbeat.reader_id = entity_id_unknown;
     heartbeat.count = e.writer.heartbeat_count++;
-    e.writer.send_to_all_locators(heartbeat, e.context);
+    e.writer.send_to_all_locators(heartbeat, e.transport);
   };
 
 
@@ -111,7 +111,7 @@ namespace stateful_writer {
           data.reader_id = entity_id_unknown;
           Packet<> packet = e.writer.participant.serialize_with_header(data);
           for (auto & locator : reader_proxy.fields.unicast_locator_list) {
-            e.context.unicast_send(locator, packet.data(), packet.size());
+            e.transport.unicast_send(locator, packet.data(), packet.size());
           }
         }
       }
@@ -145,7 +145,7 @@ namespace stateful_writer {
     heartbeat.reader_id = entity_id_unknown;
     // Send the packet using a multicast socket
     heartbeat.count = e.writer.heartbeat_count++;
-    e.writer.send_to_all_locators(heartbeat, e.context);
+    e.writer.send_to_all_locators(heartbeat, e.transport);
   };
 
   auto on_acknack = [](auto & e) {
@@ -174,20 +174,20 @@ namespace stateful_writer {
           // TODO inline QoS
           Packet<> packet = e.writer.participant.serialize_with_header(data);
           for (auto & locator : reader_proxy.fields.unicast_locator_list) {
-            e.context.unicast_send(locator, packet.data(), packet.size());
+            e.transport.unicast_send(locator, packet.data(), packet.size());
           }
-          // e.reader_proxy.send(std::move(data), e.context);
-          // e.writer.send(std::move(data), e.context);
+          // e.reader_proxy.send(std::move(data), e.transport);
+          // e.writer.send(std::move(data), e.transport);
         } else {
           // TODO
           Gap gap(reader_proxy.fields.remote_reader_guid.entity_id, change.writer_guid.entity_id,
               change.sequence_number);
           Packet<> packet = e.writer.participant.serialize_with_header(gap);
           for (auto & locator : reader_proxy.fields.unicast_locator_list) {
-            e.context.unicast_send(locator, packet.data(), packet.size());
+            e.transport.unicast_send(locator, packet.data(), packet.size());
           }
-          // e.reader_proxy.send(std::move(gap), e.context);
-          // e.writer.send(std::move(gap), e.context);
+          // e.reader_proxy.send(std::move(gap), e.transport);
+          // e.writer.send(std::move(gap), e.transport);
         }
 
       }

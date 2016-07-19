@@ -28,13 +28,13 @@ namespace cmbml {
       rtps_writer.guid.entity_id = spdp_writer_id;
     };
 
-    template<typename Context>
-    StatusCode send_discovery_data(Context & context) {
-      // Set a few things in the message based on the context?
+    template<typename TransportT>
+    StatusCode send_discovery_data(TransportT & transport) {
+      // Set a few things in the message based on the transport?
       // Make a new message every time to keep it fresh
       SpdpDiscoData message = rtps_writer.participant.create_discovery_data();
       // TODO Do I need to set metatraffic_*_locator_list ?
-      return write(std::move(message), context);
+      return write(std::move(message), transport);
     }
 
   private:
@@ -46,7 +46,7 @@ namespace cmbml {
     hana::make_pair(EndpointOptions::expects_inline_qos, true),
     hana::make_pair(EndpointOptions::reliability, ReliabilityKind_t::best_effort),
     hana::make_pair(EndpointOptions::topic_kind, TopicKind_t::with_key),
-    hana::make_pair(EndpointOptions::transport, hana::type_c<udp::Context>)
+    hana::make_pair(EndpointOptions::transport, hana::type_c<udp::Transport>)
   );
 
   CMBML__MAKE_READER_OPTIONS(SpdpReaderOptions, spdp_reader_options);

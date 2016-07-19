@@ -1,4 +1,4 @@
-#include <cmbml/psm/udp/context.hpp>
+#include <cmbml/psm/udp/transport.hpp>
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -13,7 +13,7 @@ using namespace cmbml;
 #define NI_MAXHOST 1025  // ???
 #endif
 
-udp::Context::Context() {
+udp::Transport::Transport() {
   // alternatively we could do delayed initialization
   // might prefer this since syscalls could fail
   // Unicast socket
@@ -86,7 +86,7 @@ udp::Context::Context() {
 }
 
 
-void udp::Context::add_unicast_receiver(const Locator_t & locator) {
+void udp::Transport::add_unicast_receiver(const Locator_t & locator) {
   // TODO Convert locator_t to LocatorUDPv4_t here and below?
   // Create and bind the receive sockets
   int recv_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -109,7 +109,7 @@ void udp::Context::add_unicast_receiver(const Locator_t & locator) {
 
 // Expect locator to contain the port to listen on and the address representing the 
 // multicast group
-void udp::Context::add_multicast_receiver(const Locator_t & locator) {
+void udp::Transport::add_multicast_receiver(const Locator_t & locator) {
   const udp::LocatorUDPv4_t locator_v4(locator);
   // Create and bind the receive sockets
   int recv_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -140,15 +140,15 @@ void udp::Context::add_multicast_receiver(const Locator_t & locator) {
   port_socket_map[locator_v4.port] = recv_socket;
 }
 
-void udp::Context::unicast_send(const Locator_t & locator, const uint32_t * packet, size_t size) {
+void udp::Transport::unicast_send(const Locator_t & locator, const uint32_t * packet, size_t size) {
   socket_send(unicast_send_socket, locator, packet, size);
 }
 
-void udp::Context::multicast_send(const Locator_t & locator, const uint32_t * packet, size_t size) {
+void udp::Transport::multicast_send(const Locator_t & locator, const uint32_t * packet, size_t size) {
   socket_send(multicast_send_socket, locator, packet, size);
 }
 
-void udp::Context::socket_send(
+void udp::Transport::socket_send(
   int sender_socket, const Locator_t & locator, const uint32_t * packet, size_t size)
 {
   if (sender_socket == -1) {
@@ -165,11 +165,11 @@ void udp::Context::socket_send(
       reinterpret_cast<struct sockaddr *>(&dest_address), sizeof(dest_address));
 }
 
-const IPAddress & udp::Context::address_as_array() const {
+const IPAddress & udp::Transport::address_as_array() const {
   return address_array;
 }
 
 // Maybe have a timeout option for select?
 // packet size has to be smaller for e.g. STM32F0
-// so maybe for that Context we will need to make max packet size a type trait
+// so maybe for that Transport we will need to make max packet size a type trait
 

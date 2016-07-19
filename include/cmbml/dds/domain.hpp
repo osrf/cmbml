@@ -25,14 +25,14 @@ public:
     return instance;
   }
 
-  template<typename Context>
-  GuidPrefix_t get_next_guid_prefix(Context & context) {
+  template<typename TransportT>
+  GuidPrefix_t get_next_guid_prefix(TransportT & transport) {
     GuidPrefix_t guid_prefix;
     guid_prefix[0] = cmbml_vendor_id[0];
     guid_prefix[1] = cmbml_vendor_id[1];
     // Choose the GUID prefix values based on the current time, our local IP,
     // and a random hash
-    // TODO This is IP specific. Is Context required to provide an IP address?
+    // TODO This is IP specific. Is TransportT required to provide an IP address?
     // we have 10 bytes of info
     // IP is either 6 or 4 octets
     // prefix 2-8: Take the most significant 6 bytes of time
@@ -44,7 +44,7 @@ public:
       guid_prefix[i + 2] = (time & (UINT64_MAX >> (8 * i))) >> (48 - 8 * i);
     }
 
-    auto ip_address = context.address_as_array();
+    auto ip_address = transport.address_as_array();
     for (size_t i = 0; i < 4; ++i) {
       guid_prefix[i + 8] = ip_address[i];
     }
@@ -53,9 +53,9 @@ public:
   }
 
   // Maybe these functions should be in spdp.hpp
-  template<typename Executor, typename Context>
+  template<typename Executor, typename TransportT>
   SpdpParticipantDataWriter &
-  create_spdp_writer(Participant & p, Context & context) {
+  create_spdp_writer(Participant & p, TransportT & transport) {
     spdp_writers.emplace_back(p);
     SpdpParticipantDataWriter & spdp_builtin_writer = spdp_writers.back();
     Executor & executor = Executor::get_instance();
@@ -63,9 +63,9 @@ public:
     // The SpdpParticipantDataWriter needs to periodically send the
     // SpdpDiscoData representing this datawriter
     executor.add_timed_task(participant_data_resend_period, false,
-      [&spdp_builtin_writer, &context]() {
+      [&spdp_builtin_writer, &transport]() {
         CMBML__DEBUG("Resending discovery data.\n");
-        spdp_builtin_writer.send_discovery_data(context);
+        spdp_builtin_writer.send_discovery_data(transport);
       }
     );
 
@@ -133,16 +133,16 @@ public:
 
   // in the future, we could probably add some short-circuiting logic for endpoints
   // in the same participant!
-  template<typename Executor, typename Context>
-  Participant & create_new_participant(Context & transport_context) {
-    List<Locator_t> multicast_locator_list = {transport_context.get_default_multicast_locator()};
+  template<typename Executor, typename TransportT>
+  Participant & create_new_participant(TransportT & transport_transport) {
+    List<Locator_t> multicast_locator_list = {transport_transport.get_default_multicast_locator()};
     local_participants.emplace_back(
-      get_next_guid_prefix(transport_context), std::move(multicast_locator_list));
+      get_next_guid_prefix(transport_transport), std::move(multicast_locator_list));
     // TODO Assert that the guid we produced is not currently in local participants OR
     // discovered participants
     // Add builtin spdp endpoints to container
     Participant & p = local_participants.back();
-    create_spdp_writer<Executor>(p, transport_context);
+    create_spdp_writer<Executor>(p, transport_transport);
     create_spdp_reader<Executor>(p);
 
     // TODO Disable certain endpoints according to set options.
@@ -240,50 +240,50 @@ public:
   // These would be helpful functions for combining constructing the object,
   // adding tasks to an Executor, and announcing it on the discovery protocol.
   // hurrggh
-  template<typename TopicT, typename ReaderOptions, typename Executor, typename Context>
-  auto create_data_reader(const String & topic_name, Participant & p, Context & context) {
+  template<typename TopicT, typename ReaderOptions, typename Executor, typename TransportT>
+  auto create_data_reader(const String & topic_name, Participant & p, TransportT & transport) {
     using ReaderT = dds::DataReader<TopicT, ReaderOptions>;
     ReaderT reader = ReaderT(topic_name, p);
     Executor & executor = Executor::get_instance();
-    reader.add_tasks(context, executor);
+    reader.add_tasks(transport, executor);
     // TODO clean up our entry in this vector in destructor
     readers.push_back(&reader);
-    announce_reader(reader, p, context);
+    announce_reader(reader, p, transport);
     return reader;
   }
 
-  template<typename TopicT, typename WriterOptions, typename Executor, typename Context>
-  auto create_data_writer(const String & topic_name, Participant & p, Context & context) {
+  template<typename TopicT, typename WriterOptions, typename Executor, typename TransportT>
+  auto create_data_writer(const String & topic_name, Participant & p, TransportT & transport) {
     using WriterT = dds::DataWriter<TopicT, WriterOptions>;
     WriterT writer = WriterT(topic_name, p);
     Executor & executor = Executor::get_instance();
-    writer.add_tasks(context, executor);
+    writer.add_tasks(transport, executor);
     // TODO clean up our entry in this vector in destructor
     writers.push_back(&writer);
-    announce_writer(writer, p, context);
+    announce_writer(writer, p, transport);
     return writer;
   }
 
-  template<typename ReaderT, typename Context>
-  void announce_reader(ReaderT & reader, Participant & participant, Context & context) {
+  template<typename ReaderT, typename TransportT>
+  void announce_reader(ReaderT & reader, Participant & participant, TransportT & transport) {
     // Convert the Reader to DiscoReaderData
     // Publish on the local sedp_sub_writer associated with this participant
     for (auto & builtin_writer : sedp_sub_writers) {
       if (builtin_writer.get_guid().prefix == participant.guid.prefix) {
-        builtin_writer.write(reader.convert_to_reader_data(), context);
+        builtin_writer.write(reader.convert_to_reader_data(), transport);
         CMBML__DEBUG("Announcing created reader\n");
         break;
       }
     }
   }
 
-  template<typename WriterT, typename Context>
-  void announce_writer(WriterT & writer, Participant & participant, Context & context) {
+  template<typename WriterT, typename TransportT>
+  void announce_writer(WriterT & writer, Participant & participant, TransportT & transport) {
     // Convert the Writer to DiscoWriterData
     // Publish on the local sedp_pub_writer
     for (auto & builtin_writer : sedp_pub_writers) {
       if (builtin_writer.get_guid().prefix == participant.guid.prefix) {
-        builtin_writer.write(writer.convert_to_writer_data(), context);
+        builtin_writer.write(writer.convert_to_writer_data(), transport);
         CMBML__DEBUG("Announcing created writer\n");
         break;
       }

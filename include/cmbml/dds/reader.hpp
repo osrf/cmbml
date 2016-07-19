@@ -111,29 +111,29 @@ namespace dds {
     }
 
     // This is an initialization step. It can only be called once--enforce this.
-    template<typename Context, typename Executor>
-    void add_tasks(Context & thread_context, Executor & executor) {
+    template<typename TransportT, typename Executor>
+    void add_tasks(TransportT & transport, Executor & executor) {
       // TODO Initialize receiver locators
-      auto receiver_thread = [this, &thread_context](const auto & timeout) {
+      auto receiver_thread = [this, &transport](const auto & timeout) {
         // This is a blocking call
         CMBML__DEBUG("Waiting on packet...\n");
-        return thread_context.receive_packet(
+        return transport.receive_packet(
           [&](const auto & packet) {
             CMBML__DEBUG("message came in! Deserializing...\n");
-            deserialize_message(packet, thread_context);
+            deserialize_message(packet, transport);
           },
           timeout
         );
       };
       executor.add_task(receiver_thread);
 
-      auto heartbeat_response_delay_event = [this, &thread_context]() {
+      auto heartbeat_response_delay_event = [this, &transport]() {
         // TODO do I need to reference declaration of this state in state machine?
         boost::msm::lite::state<class must_ack> must_ack_s;
         if (state_machine.is(must_ack_s)) {
           CMBML__DEBUG("Heartbeat response delay event triggered...\n");
-          reader_events::heartbeat_response_delay<ReaderT, Context>
-            e{rtps_reader, thread_context};
+          reader_events::heartbeat_response_delay<ReaderT, TransportT>
+            e{rtps_reader, transport};
           state_machine.process_event(e);
         }
       };
@@ -172,8 +172,8 @@ namespace dds {
   protected:
     // TODO duplicated in writer
     // TODO More messagereceiver rules.
-    template<typename SrcT, typename NetworkContext = udp::Context>
-    void deserialize_message(const SrcT & src, NetworkContext & context) {
+    template<typename SrcT, typename TransportT = udp::Transport>
+    void deserialize_message(const SrcT & src, TransportT & transport) {
       size_t index = 0;
       Header header;
       StatusCode deserialize_status = deserialize(header, src, index);
@@ -182,7 +182,7 @@ namespace dds {
         return;
       }
       MessageReceiver receiver(
-          header.guid_prefix, NetworkContext::kind, context.address_as_array());
+          header.guid_prefix, TransportT::kind, transport.address_as_array());
       while (index <= src.size() && deserialize_status == StatusCode::ok) {
         deserialize_status = deserialize_submessage(src, index, receiver);
 

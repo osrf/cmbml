@@ -12,16 +12,6 @@ namespace cmbml {
     (int32_t, kind),
     (uint32_t, port),
     (IPAddress, address));
-
-    /*
-    template<typename Context>
-    void unicast_send_packet(Context & context, Packet<> && packet) const {
-      // TODO Implement glomming-on of packets during send and wrapping in Message.
-      // We could really just add 
-      context.unicast_send(locator, packet.data(), packet.size());
-      // send(packet, context);
-    }
-    */
   };
 
 }  // namespace cmbml
