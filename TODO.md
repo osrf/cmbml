@@ -39,6 +39,7 @@
   - [ ] Put constants in one header (?) and use std::integer_sequence for compile-time integer seqs
   - [ ] header reorg
   - [ ] Static dispatch for allocator types (especially in serialization
+  - clang-format file
 
 - Unit test sockets module
 

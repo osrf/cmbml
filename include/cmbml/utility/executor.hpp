@@ -144,28 +144,40 @@ namespace cmbml {
     // Does not consider timed tasks
     // TODO Implement timeout
     // Spin until ONE of the tasks in task_id is completed.
-    void spin_until_task_complete(List<size_t> & task_ids, const std::chrono::nanoseconds & timeout)
+    void spin_until_task_complete(
+      List<size_t> & task_ids, const std::chrono::nanoseconds & timeout)
     {
       // Make a future for each task_id
       running.store(true);
       while (running && !task_list.empty()) {
+        // Return true from this function if we need to remove the task
+        auto time_now = std::chrono::steady_clock::now();
+        //auto check_timed_tasks = [](auto & task) {
         for (auto & task : timed_tasks) {
-          // Check if it's time to execute.
           if (std::chrono::steady_clock::now() - task.last_called_time  >= task.period) {
             task.callback();
-            task.last_called_time = std::chrono::steady_clock::now();
-            if (task.oneshot) {
-              // TODO remove
-            }
+            task.last_called_time = time_now;
           }
         }
+        /*
+        timed_tasks.erase(
+          std::remove_if(
+            timed_tasks.begin(), timed_tasks.end(),
+            [&time_now](auto & task) {
+              return task.oneshot && task.last_called_time == time_now;
+            }
+          )
+        );
+        */
 
         // TODO Calculating this timeslice
         std::chrono::nanoseconds timeslice = min_timeout / task_list.size();
+        CMBML__DEBUG("timeslice: %lu / %lu ns\n", min_timeout.count(), task_list.size());
 
         // TODO: I think we could get some savings if we don't make a new future every time
         // In fact this might be logically incorrect
         for (size_t i = 0; i < task_list.size(); ++i) {
+          CMBML__DEBUG("blocking call with timeslice: %lu ns\n", timeslice.count());
           auto status_code = task_list[i].callback(timeslice);
           for (auto & j : task_ids) {
             // Call the callback with a timeout
@@ -176,6 +188,16 @@ namespace cmbml {
             }
           }
         }
+
+        // remove oneshot tasks
+        task_list.erase(
+          std::remove_if(
+            task_list.begin(), task_list.end(),
+            [](auto & task) {
+              return task.oneshot;
+            }
+          )
+        );
       }
       running.store(false);
     }
@@ -190,7 +212,7 @@ namespace cmbml {
 
   private:
     using FutureT = std::future<void>;
-    SyncExecutor() : min_timeout(), running(false) {
+    SyncExecutor() : running(false) {
     }
     SyncExecutor(const SyncExecutor &) = delete;
     SyncExecutor(SyncExecutor &&) = delete;

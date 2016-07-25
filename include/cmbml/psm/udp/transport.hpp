@@ -7,6 +7,8 @@
 #include <cmbml/message/submessage.hpp>
 #include <cmbml/structure/locator.hpp>
 
+#include <cmbml/utility/console_print.hpp>
+
 #include <sys/socket.h>
 
 #include <map>
@@ -129,7 +131,9 @@ public:
             std::chrono::seconds(timeout_value.tv_sec))).count();
       timeout_struct = &timeout_value;
     }
+    CMBML__DEBUG("Blocking on pselect\n");
     int num_fds = pselect(max_socket + 1, &socket_set, NULL, NULL, timeout_struct, NULL);
+    CMBML__DEBUG("pselect returned\n");
     (void) num_fds;
     for (const auto & port_socket_pair : port_socket_map) {
       Packet<> packet(packet_size);
