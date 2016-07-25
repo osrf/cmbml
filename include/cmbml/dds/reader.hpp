@@ -111,15 +111,28 @@ namespace dds {
     }
 
     // This is an initialization step. It can only be called once--enforce this.
+    // TODO Get domain_id in initialization of DDS Entities and use it here
     template<typename TransportT, typename Executor>
     void add_tasks(TransportT & transport, Executor & executor) {
       // TODO Initialize receiver locators!!!
-      // Configure
-      rtps_reader.for_each_matched_multicast_locator(
-        [&transport](auto & locator) {
-          transport.add_multicast_receiver(locator);
-        }
+      rtps_reader.unicast_locator_list.emplace_back(Locator_t{
+        LocatorKind::udpv4,
+        static_cast<uint32_t>(udp::default_user_unicast_port(cmbml_default_domain_id,
+            rtps_reader.participant.participant_port_id)),
+        transport.address_as_array()
+      });
+
+      rtps_reader.multicast_locator_list.emplace_back(Locator_t{
+        LocatorKind::udpv4,
+        static_cast<uint32_t>(udp::default_user_multicast_port(cmbml_default_domain_id)),
+        transport.address_as_array()}
       );
+      for (auto & locator : rtps_reader.unicast_locator_list) {
+        transport.add_unicast_receiver(locator);
+      }
+      for (auto & locator : rtps_reader.multicast_locator_list) {
+        transport.add_multicast_receiver(locator);
+      }
 
       auto receiver_thread = [this, &transport](const auto & timeout) {
         // This is a blocking call

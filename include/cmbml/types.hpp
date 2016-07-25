@@ -14,7 +14,7 @@
 
 namespace cmbml {
   // TODO this should be selectable at compile time
-  static const uint32_t cmbml_test_domain_id = 1337;
+  static const uint32_t cmbml_default_domain_id = 0;
 
   enum class ReliabilityKind_t {
     best_effort = 1,

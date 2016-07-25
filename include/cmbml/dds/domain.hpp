@@ -323,7 +323,7 @@ private:
   List<dds::WriterBase *> writers;
 
   // TODO Use this somewhere
-  // uint32_t domain_id = cmbml_test_domain_id;
+  uint32_t domain_id = cmbml_default_domain_id;
   uint32_t participant_port_id = 0;
 };
 

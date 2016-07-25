@@ -99,6 +99,22 @@ namespace cmbml {
     {
     }
 
+    template<typename FunctionT>
+    void for_each_matched_unicast_locator(FunctionT && function) {
+      std::for_each(
+        fields.unicast_locator_list.begin(), fields.unicast_locator_list.end(),
+        function
+      );
+    }
+
+    template<typename FunctionT>
+    void for_each_matched_multicast_locator(FunctionT && function) {
+      std::for_each(
+        fields.multicast_locator_list.begin(), fields.multicast_locator_list.end(),
+        function
+      );
+    }
+
 
     ReaderProxyPOD fields;
     // TODO replace with POD

@@ -70,9 +70,34 @@ namespace dds {
     template<typename TransportT, typename Executor>
     void add_tasks(TransportT & transport, Executor & executor) {
       // TODO thread safety in transport!
-      // TODO Initialize locator with own address, how to determine port number?
-      // then initialize receiver socket with locators
-      // Add a locator to the transport
+      rtps_writer.unicast_locator_list.emplace_back(Locator_t{
+        LocatorKind::udpv4,
+        static_cast<uint32_t>(udp::default_user_unicast_port(cmbml_default_domain_id,
+          rtps_writer.participant.participant_port_id)),
+        transport.address_as_array()
+      });
+
+      rtps_writer.multicast_locator_list.emplace_back(Locator_t{
+        LocatorKind::udpv4,
+        static_cast<uint32_t>(udp::default_user_multicast_port(cmbml_default_domain_id)),
+        transport.address_as_array()
+      });
+
+      // Configure unicast and multicast locators
+      /*
+      rtps_writer.for_each_matched_unicast_locator(
+        [&transport](auto & locator) {
+          transport.add_unicast_receiver(locator);
+        }
+      );
+      rtps_writer.for_each_matched_multicast_locator(
+        [&transport](auto & locator) {
+          transport.add_multicast_receiver(locator);
+        }
+      );
+      */
+
+
       auto receiver_thread = [this, &transport](const auto & timeout) {
         // This is a blocking call
         CMBML__DEBUG("Waiting on packet...\n");

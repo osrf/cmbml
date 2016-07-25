@@ -126,6 +126,17 @@ namespace cmbml {
       );
     }
 
+    template<typename FunctionT>
+    void for_each_matched_unicast_locator(FunctionT && function) {
+      std::for_each(
+        matched_writers.begin(), matched_writers.end(),
+          [&function](auto & writer) {
+            std::for_each(
+              writer.fields.unicast_locator_list.begin(),
+              writer.fields.unicast_locator_list.end(), function);
+          }
+      );
+    }
 
     // std::enable_if_t<stateful, WriterProxy *>
     WriterProxy * matched_writer_lookup(const GUID_t & writer_guid) {

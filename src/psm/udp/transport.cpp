@@ -87,6 +87,8 @@ udp::Transport::Transport() {
     return;
   }
   CMBML__DEBUG("Configured unicast send socket\n");
+
+  // Assign a const locator based on our address that will represent the local address
 }
 
 void udp::Transport::add_unicast_receiver(const Locator_t & locator) {

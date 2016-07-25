@@ -79,7 +79,7 @@ public:
   constexpr static Locator_t get_default_unicast_locator(uint32_t p_id) {
     return {
       LocatorKind::udpv4,
-      static_cast<uint32_t>(udp::default_user_unicast_port(cmbml_test_domain_id, p_id)),
+      static_cast<uint32_t>(udp::default_user_unicast_port(cmbml_default_domain_id, p_id)),
       udp::LocatorUDPv4_t::get_array_from_address({{239, 255, 0, 1}})
     };
   }
@@ -87,7 +87,7 @@ public:
   constexpr static Locator_t get_default_multicast_locator() {
     return {
       LocatorKind::udpv4,
-      static_cast<uint32_t>(udp::default_spdp_multicast_port(cmbml_test_domain_id)),
+      static_cast<uint32_t>(udp::default_spdp_multicast_port(cmbml_default_domain_id)),
       udp::LocatorUDPv4_t::get_array_from_address({{239, 255, 0, 1}})
     };
   }
