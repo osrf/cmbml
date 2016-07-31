@@ -33,6 +33,8 @@ namespace cmbml {
     }
     std::function<void()> callback;
     bool oneshot = false;
+    // Trigger when the timer is first created.
+    bool trigger_initially = false;
     std::chrono::nanoseconds period;
     std::chrono::steady_clock::time_point last_called_time;
   };
@@ -87,15 +89,20 @@ namespace cmbml {
     template<typename CallbackT, typename ...Args>
     void add_timed_task(
       const std::chrono::nanoseconds & timeout, bool oneshot,
-      CallbackT && callback, Args &&... args)
+      CallbackT && callback, Args &&... args,
+      bool trigger_on_creation = false)
     {
+      auto start_time = std::chrono::steady_clock::now();
+      if (trigger_on_creation) {
+        start_time = start_time - timeout;
+      }
       timed_tasks.emplace_back(
           std::function<void()>([callback, &args...]() {
             callback(args...);
           }),
           oneshot,
           timeout,
-          std::chrono::steady_clock::now()
+          start_time
       );
       // Keep track of the shortest timeout period.
       min_timeout = std::min(min_timeout, timeout);
@@ -141,10 +148,9 @@ namespace cmbml {
       */
     }
 
-    // Does not consider timed tasks
-    // TODO Implement timeout
     // Spin until ONE of the tasks in task_id is completed.
-    void spin_until_task_complete(
+    // Does not consider timed tasks in the task_ids list (and the representation)
+    StatusCode spin_until_task_complete(
       List<size_t> & task_ids, const std::chrono::nanoseconds & timeout)
     {
       // Make a future for each task_id
@@ -179,12 +185,11 @@ namespace cmbml {
         for (size_t i = 0; i < task_list.size(); ++i) {
           CMBML__DEBUG("blocking call with timeslice: %lu ns\n", timeslice.count());
           auto status_code = task_list[i].callback(timeslice);
-          for (auto & j : task_ids) {
+          for (auto j : task_ids) {
             // Call the callback with a timeout
-            // TODO Task needs to be able to indicate status (error, succes, timeout)
             if (i == j && status_code == StatusCode::ok) {
               running.store(false);
-              return;
+              return status_code;
             }
           }
         }
@@ -200,6 +205,7 @@ namespace cmbml {
         );
       }
       running.store(false);
+      return StatusCode::ok;
     }
 
     // could use a signal handler

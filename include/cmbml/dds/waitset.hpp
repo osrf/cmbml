@@ -42,10 +42,6 @@ namespace dds {
     List<Condition> get_conditions();
 
     void wait(const std::chrono::nanoseconds & timeout = std::chrono::nanoseconds(-1)) {
-      // TODO
-      // Need to have one thread per condition variable to see which one comes in first?
-      // Need to keep track of futures
-      // executor would help determine this
       List<size_t> task_ids;
       std::transform(condition_task_id_map.begin(), condition_task_id_map.end(),
         back_inserter(task_ids),

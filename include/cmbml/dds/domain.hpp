@@ -67,7 +67,8 @@ public:
       [&spdp_builtin_writer, &transport]() {
         CMBML__DEBUG("Resending discovery data.\n");
         spdp_builtin_writer.send_discovery_data(transport);
-      }
+      },
+      true  // trigger on creation
     );
 
     return spdp_builtin_writer;
