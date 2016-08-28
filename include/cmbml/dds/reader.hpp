@@ -213,11 +213,11 @@ namespace dds {
     }
 
 
+    // TODO Skip to next submessage based on header.submessage_length
     template<typename SrcT>
     StatusCode deserialize_submessage(
       const SrcT & src, size_t & index, MessageReceiver & receiver)
     {
-      // TODO Skip to next submessage based on header.submessage_length
       auto header_callback = [this, &src, &index, &receiver](SubmessageHeader & header) {
         // Extract flags from the header
         switch (header.submessage_id) {

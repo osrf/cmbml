@@ -5,7 +5,7 @@ project(cmbml)
 # TODO use this in a build type
 set(EMBEDDED_OPTIMIZATION_FLAGS "-fno-exceptions -Os -fno-rtti")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -Wall")
 
 include_directories(external/msm-lite/include/)
 include_directories(external/hana/include/)

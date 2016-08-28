@@ -52,5 +52,9 @@ Optional behaviors
 
 
 - [ ] Fix "Context" injection based on sockets testing
-  - Context should probably instead be something like "TransportManager" and be a singleton (?)
+  - Context should probably instead be something like "TransportManager"
 
+- fix singletons
+
+- boost asio
+- 
