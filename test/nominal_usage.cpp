@@ -1,4 +1,5 @@
 #include <cmbml/cmbml.hpp>
+#include <cmbml/utility/sync_executor.hpp>
 #include <cmbml/utility/console_print.hpp>
 
 using namespace cmbml;
